@@ -1,0 +1,2677 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Journey Planner</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<style>
+  :root{
+    --bg: #0E141F;
+    --panel: #161F2C;
+    --panel-2: #1D2938;
+    --border: #2A374A;
+    --text: #F2EFE9;
+    --text-muted: #8B96A8;
+    --accent: #2EC4B6;
+    --radius: 10px;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; height:100%; }
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+  }
+  button, input{ font-family: inherit; }
+
+  header.top{
+    padding: 18px 20px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .title-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  h1{ font-size: 20px; font-weight: 700; margin: 0; }
+  select.trip-select{
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 10px; font-size: 13px;
+  }
+  .view-tabs{ display:flex; gap: 6px; margin-top: 14px; }
+  .view-tab{
+    background: transparent; border: none; color: var(--text-muted);
+    font-size: 14px; font-weight: 600; padding: 10px 4px 12px; cursor:pointer;
+    border-bottom: 2px solid transparent; margin-right: 18px;
+  }
+  .view-tab.active{ color: var(--text); border-bottom-color: var(--accent); }
+
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* ---------- MAPA VIEW ---------- */
+  #view-map{ }
+  .map-toolbar{
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+  }
+  .map-toolbar input[type=text]{
+    background: var(--panel); border:1px solid var(--border); color:var(--text);
+    border-radius: 8px; padding: 8px 10px; font-size:13px; min-width: 160px; flex: 1 1 160px;
+  }
+  .map-toolbar button{
+    background: var(--accent); color:#0E141F; font-weight:700; font-size:13px;
+    border:none; border-radius:8px; padding:9px 14px; cursor:pointer; white-space:nowrap;
+  }
+  .tier-filters{ display:flex; gap:14px; padding: 10px 20px; font-size:12px; color: var(--text-muted); }
+  .tier-filters label{ display:flex; align-items:center; gap:6px; cursor:pointer; }
+  #map-mapa{ height: 56vh; min-height: 340px; background:#10161f; }
+  .route-info{ padding: 10px 20px; font-size:13px; color: var(--text-muted); border-top:1px solid var(--border); }
+  .api-key-note{
+    margin: 12px 20px; padding: 12px 14px; border: 1px dashed var(--border);
+    border-radius: 10px; color: var(--text-muted); font-size: 13px;
+  }
+  .map-place-label{
+    position:absolute; background: rgba(14,20,31,.88); color:#F2EFE9; font-size:12px; font-weight:600;
+    padding:3px 8px; border-radius:6px; white-space:nowrap; pointer-events:none; transform: translate(8px,-50%);
+    display:none;
+  }
+  .map-neighborhood-label{
+    position:absolute; color:#F2EFE9; font-size:15px; font-weight:800; letter-spacing:.02em;
+    text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 8px rgba(0,0,0,.7);
+    pointer-events:none; transform: translate(-50%,-50%); text-transform:uppercase;
+  }
+  .map-leg-label{
+    position:absolute; font-size:11px; font-weight:700; padding:2px 7px; border-radius:999px;
+    color:#0E141F; white-space:nowrap; pointer-events:none; transform: translate(-50%,-50%);
+  }
+
+  /* ---------- AUTENTICAÇÃO / SYNC ---------- */
+  .auth-bar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--text-muted); margin-top:10px; }
+  .auth-bar input{ background:var(--panel); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:6px 9px; font-size:12px; flex:1 1 180px; max-width:280px; }
+  .auth-bar button{ background:var(--accent); color:#0E141F; font-weight:700; font-size:12px; border:none; border-radius:8px; padding:7px 11px; cursor:pointer; }
+  .sync-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .sync-on{ background:#2EC4B6; } .sync-off{ background:#8B96A8; } .sync-err{ background:#E8492A; }
+
+  /* ---------- HOSPEDAGEM ---------- */
+  .stay-form{ display:flex; flex-direction:column; gap:10px; margin:8px 0 14px; }
+  .stay-form label{ display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--text-muted); flex:1; }
+  .stay-form input, .stay-form select, .stay-form textarea{
+    background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit; width:100%;
+  }
+  .stay-row2{ display:flex; gap:10px; }
+  .stay-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:14px; margin:0 20px 12px; display:flex; flex-direction:column; gap:6px; cursor:pointer;
+  }
+  .stay-card:hover{ border-color:var(--accent); }
+  .stay-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .stay-name{ font-weight:700; font-size:15px; }
+  .stay-status{ font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; color:#0E141F; white-space:nowrap; }
+  .stay-dates{ font-size:13px; }
+  .stay-meta{ font-size:12px; color:var(--text-muted); }
+  .stay-notes{ font-size:12px; color:var(--text-muted); font-style:italic; }
+  .coverage{ padding:12px 20px 16px; }
+  .coverage-title{ font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:8px; }
+  .coverage-bar{ display:flex; gap:2px; }
+  .cov-night{ flex:1; height:30px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#0E141F; }
+  .cov-ok{ background:var(--accent); }
+  .cov-gap{ background:#4A3038; color:#FF8FA3; border:1px dashed #FF6F91; }
+  .coverage-note{ font-size:12px; color:var(--text-muted); margin-top:8px; }
+
+  /* ---------- MEU ROTEIRO ---------- */
+  .plan-toolbar{ padding:14px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .plan-summary{ font-size:13px; color:var(--text-muted); }
+  .plan-day{ border-bottom:1px solid var(--border); }
+  .plan-day-head{
+    padding:14px 20px 10px; display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap;
+  }
+  .plan-date{ font-weight:800; font-size:15px; }
+  .plan-weekday{ font-size:12px; color:var(--text-muted); font-weight:400; margin-left:8px; }
+  .plan-city{ font-size:12px; color:var(--text-muted); }
+  .plan-items{ padding:0 20px 14px; display:flex; flex-direction:column; gap:8px; }
+  .plan-item{
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .plan-item-main{ min-width:0; }
+  .plan-item-name{ font-weight:600; font-size:14px; }
+  .plan-item-meta{ font-size:12px; color:var(--text-muted); }
+  .plan-item-actions{ display:flex; gap:8px; align-items:center; flex:0 0 auto; }
+  .plan-empty{ font-size:13px; color:var(--text-muted); font-style:italic; padding:2px 0 6px; }
+  .plan-add{ display:flex; gap:8px; padding:0 20px 16px; flex-wrap:wrap; }
+  .plan-add select{
+    background:var(--panel); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:7px 9px; font-size:12px; flex:1 1 200px; max-width:420px;
+  }
+  .plan-add button{
+    background:var(--accent); color:#0E141F; font-weight:700; font-size:12px;
+    border:none; border-radius:8px; padding:7px 12px; cursor:pointer;
+  }
+  .plan-total{ font-size:12px; color:var(--text-muted); padding:0 20px 10px; }
+
+  /* ---------- CATÁLOGO ---------- */
+  .catalog-toolbar{ padding:14px 20px; border-bottom:1px solid var(--border); display:flex; gap:10px; flex-wrap:wrap; }
+  .catalog-toolbar input, .catalog-toolbar select{
+    background:var(--panel); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:8px 10px; font-size:13px;
+  }
+  .catalog-toolbar input{ flex:1 1 200px; }
+  .cat-group-title{
+    font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+    color:var(--text-muted); padding:22px 20px 8px; border-bottom:1px solid var(--border);
+  }
+  .cat-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; padding:16px 20px; }
+  .cat-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:14px; display:flex; flex-direction:column; gap:6px;
+  }
+  .cat-card.is-visited{ opacity:.5; }
+  .cat-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .cat-name{ font-weight:700; font-size:15px; }
+  .cat-tier{ font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; color:#0E141F; white-space:nowrap; }
+  .cat-meta{ font-size:12px; color:var(--text-muted); }
+  .cat-blurb{ font-size:13px; }
+  .cat-detail{ font-size:12px; color:var(--text-muted); }
+  .cat-row{ font-size:12px; display:flex; gap:6px; }
+  .cat-row b{ color:var(--text); font-weight:600; flex:0 0 auto; }
+  .cat-row span{ color:var(--text-muted); }
+  .cat-actions{ display:flex; gap:12px; margin-top:6px; flex-wrap:wrap; }
+  .cat-empty{ padding:40px 20px; text-align:center; color:var(--text-muted); font-size:14px; }
+
+  /* ---------- MODAL DE DETALHES (bottom sheet + carrossel de imagens) ---------- */
+  .modal-backdrop{
+    position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 1000;
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .modal-backdrop.open{ display:flex; }
+  .modal-sheet{
+    background: var(--panel); width: 100%; max-width: 520px; max-height: 82vh;
+    border-radius: 16px 16px 0 0; overflow-y: auto; overscroll-behavior: contain;
+    animation: sheet-up .18s ease-out;
+  }
+  @keyframes sheet-up{ from{ transform: translateY(24px); opacity:.4; } to{ transform: translateY(0); opacity:1; } }
+  .modal-close{
+    position: absolute; top: 10px; right: 16px; z-index: 2;
+    background: rgba(14,20,31,.75); color: var(--text); border: none; border-radius: 50%;
+    width: 32px; height: 32px; font-size: 16px; cursor: pointer;
+  }
+  .carousel{
+    display:flex; overflow-x:auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    height: 45vh; min-height: 220px; position: relative;
+  }
+  .carousel-slide{
+    flex: 0 0 100%; scroll-snap-align: start; height:100%;
+  }
+  .carousel-slide img, .carousel-slide .placeholder-big{
+    width:100%; height:100%; object-fit: cover; display:block; font-size: 40px;
+  }
+  .carousel-dots{ display:flex; gap:6px; justify-content:center; margin: 10px 0 2px; }
+  .carousel-dots span{ width:6px; height:6px; border-radius:50%; background: var(--border); }
+  .carousel-dots span.active{ background: var(--line-color, var(--accent)); }
+  .modal-body{ padding: 4px 18px 22px; }
+  .modal-title{ font-size: 19px; font-weight: 700; margin: 4px 0 6px; }
+  .modal-desc{ color: var(--text-muted); font-size: 14px; margin-bottom: 10px; }
+  .modal-actions{ display:flex; gap:14px; align-items:center; margin-top: 8px; }
+
+  /* ---------- CRONOGRAMA VIEW ---------- */
+  .day-tabs{ display:flex; gap:8px; overflow-x:auto; padding: 14px 20px 0; border-bottom: 1px solid var(--border); }
+  .day-tab{
+    flex: 0 0 auto; background: var(--panel); border: 1px solid var(--border); border-bottom:none;
+    color: var(--text-muted); padding: 10px 14px 12px; border-radius: 10px 10px 0 0;
+    cursor:pointer; font-size:13px; min-width: 118px;
+  }
+  .day-tab .d-num{ font-weight:700; font-size:14px; color: var(--text); display:block; }
+  .day-tab.active{ background: var(--panel-2); color: var(--text); box-shadow: inset 0 3px 0 var(--line-color, var(--accent)); }
+
+  main.crono{ display:block; }
+
+  .timeline-wrap{ padding: 22px 20px 60px; }
+  .timeline{ position: relative; padding-left: 22px; }
+  .timeline::before{
+    content:""; position:absolute; left:5px; top:6px; bottom:6px; width:3px;
+    background: var(--line-color, var(--accent)); border-radius:3px; opacity:.55;
+  }
+  .stop{ position:relative; margin-bottom: 26px; }
+  .stop::before{
+    content:""; position:absolute; left:-22px; top:4px; width:13px; height:13px; border-radius:50%;
+    background: var(--line-color, var(--accent)); border:3px solid var(--bg);
+    box-shadow: 0 0 0 2px var(--line-color, var(--accent));
+  }
+  .stop-time{ font-weight:700; font-size:13px; color: var(--line-color, var(--accent)); display:block; margin-bottom:8px; }
+  .stop-meta{ color: var(--text-muted); font-size:12px; margin-left:8px; font-weight:400; }
+
+  .options{ display:flex; flex-direction:column; gap:10px; }
+  .card{
+    background: var(--panel); border:1px solid var(--border); border-radius: var(--radius);
+    padding: 12px; cursor:pointer;
+  }
+  .card:hover{ border-color: var(--line-color, var(--accent)); }
+  .card.selected{ border-color: var(--line-color, var(--accent)); box-shadow: inset 3px 0 0 var(--line-color, var(--accent)); }
+  .card.hidden-place{ display:none; }
+
+  .hero-img{ height:150px; margin-bottom:10px; border-radius:8px; overflow:hidden; cursor: zoom-in; position: relative; }
+  .hero-img img, .hero-img .placeholder{ width:100%; height:100%; object-fit:cover; display:block; }
+  .hero-img .photo-count{
+    position:absolute; bottom:8px; right:8px; background: rgba(14,20,31,.75); color:#F2EFE9;
+    font-size:11px; padding:2px 7px; border-radius:999px;
+  }
+  .placeholder{
+    display:flex; align-items:center; justify-content:center; font-weight:700; color:rgba(255,255,255,.8);
+    background: color-mix(in srgb, var(--line-color, var(--accent)) 30%, var(--panel-2)); font-size:14px;
+  }
+
+  .card-title-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .card-title{ font-weight:600; font-size:15px; }
+  .check{ width:18px; height:18px; border-radius:50%; border:2px solid var(--border); flex:0 0 18px; }
+  .card.selected .check{ border-color: var(--line-color, var(--accent)); background: var(--line-color, var(--accent)); }
+  .card-desc{ color: var(--text-muted); font-size:13px; margin:4px 0 8px; }
+  .tags{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .tag{ font-size:11px; padding:2px 8px; border-radius:999px; background: var(--panel-2); color: var(--text-muted); border:1px solid var(--border); }
+  .timing-row{ font-size:12px; color: var(--text-muted); margin-bottom:8px; }
+  .card-actions{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .link-btn{ font-size:12px; color: var(--text-muted); background:none; border:none; cursor:pointer; text-decoration:underline; padding:0; }
+  .link-btn:hover{ color: var(--text); }
+  .pin-link{ font-size:12px; color: var(--text-muted); text-decoration:none; }
+  .pin-link:hover{ color: var(--text); }
+  .more-options{ margin-top: 2px; }
+  .include-toggle{ display:flex; align-items:center; gap:6px; font-size:12px; color: var(--text-muted); }
+  .order-select{
+    background: var(--panel-2); color: var(--text); border:1px solid var(--border); border-radius:6px;
+    padding:4px 6px; font-size:12px; font-weight:700; width:52px;
+  }
+  .card.excluded{ opacity: .45; }
+  .card-blurb{ font-size:13px; color: var(--text); margin: 2px 0 2px; }
+  .card-detail{ font-size:13px; color: var(--text-muted); margin: 0 0 8px; }
+  .detail-toggle{ margin-bottom: 8px; }
+  .leg-link{
+    display:block; font-size:12px; color: var(--line-color, var(--accent)); text-decoration:none;
+    margin: 6px 0 2px; padding-left: 2px;
+  }
+  .leg-link:hover{ text-decoration:underline; }
+
+  #map-crono-wrap{ border-top: 1px solid var(--border); }
+  #map-crono{ height: 50vh; min-height: 320px; background:#10161f; }
+  .map-footer{ padding:12px 16px; background: var(--panel); border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .eta{ font-size:13px; color: var(--text-muted); }
+  .eta b{ color: var(--text); }
+  .gmaps-btn{ background: var(--line-color, var(--accent)); color:#0E141F; font-weight:700; font-size:13px; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; white-space:nowrap; }
+
+  .todo-note{ margin: 0 20px 30px; padding: 12px 14px; border: 1px dashed var(--border); border-radius: 10px; color: var(--text-muted); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="title-row">
+    <h1 id="trip-title">Journey Planner</h1>
+    <select class="trip-select" id="trip-select"></select>
+  </div>
+  <div id="auth-bar" class="auth-bar"></div>
+  <div class="view-tabs">
+    <button class="view-tab active" data-view="map">Mapa</button>
+    <button class="view-tab" data-view="schedule">Cronograma</button>
+    <button class="view-tab" data-view="catalog">Atrações</button>
+    <button class="view-tab" data-view="myplan">Meu roteiro</button>
+    <button class="view-tab" data-view="stays">Hospedagem</button>
+  </div>
+</header>
+
+<!-- ================= MAPA VIEW ================= -->
+<section class="view active" id="view-map">
+  <div class="map-toolbar">
+    <input type="text" id="my-location-input" placeholder="Estou em... (define seu ponto de partida)">
+    <button id="set-location-btn">Definir</button>
+    <input type="text" id="origin-input" placeholder="De onde (cidade ou atração)">
+    <input type="text" id="dest-input" placeholder="Para onde (cidade ou atração)">
+    <button id="route-btn">Traçar rota</button>
+  </div>
+  <div class="tier-filters">
+    <label><input type="checkbox" class="tier-cb" value="1" checked> Tier 1 — essenciais</label>
+    <label><input type="checkbox" class="tier-cb" value="2" checked> Tier 2 — se der tempo</label>
+    <label><input type="checkbox" class="tier-cb" value="3" checked> Tier 3 — bônus</label>
+  </div>
+  <div id="map-mapa"></div>
+  <div class="route-info" id="route-info">Clique num marcador pra ver detalhes, ou digite origem/destino acima pra traçar uma rota.</div>
+  <div class="api-key-note" id="api-key-note"></div>
+</section>
+
+<!-- ================= CRONOGRAMA VIEW ================= -->
+<section class="view" id="view-schedule">
+  <nav class="day-tabs" id="day-tabs"></nav>
+  <main class="crono">
+    <div class="timeline-wrap">
+      <div class="timeline" id="timeline"></div>
+      <div class="todo-note">
+ Cada aba acima é um <b>bloco</b> — atrações próximas entre si, agrupadas pelo período do dia em que fazem sentido. Não é um dia da viagem: você pode combinar dois ou três blocos num dia só, ou espalhar um bloco em dias diferentes.
+      </div>
+    </div>
+    <div id="map-crono-wrap">
+      <div id="map-crono"></div>
+      <div class="map-footer">
+        <div class="eta">Trajeto: <b id="eta-value">—</b></div>
+        <button class="gmaps-btn" id="gmaps-btn" title="Transporte público não permite várias paradas no Google Maps — use os links 'abrir esse trecho' de cada card pra navegar de trem/ônibus">Ver trajeto completo a pé</button>
+      </div>
+    </div>
+  </main>
+</section>
+
+<!-- ================= HOSPEDAGEM ================= -->
+<section class="view" id="view-stays">
+  <div class="plan-toolbar">
+    <span id="stays-summary" class="plan-summary"></span>
+    <button class="gmaps-btn" id="stay-new">+ Nova reserva</button>
+  </div>
+  <div id="stays-coverage"></div>
+  <div id="stays-body"></div>
+</section>
+
+<div class="modal-backdrop" id="stay-modal">
+  <div class="modal-sheet" style="position:relative;">
+    <button class="modal-close" id="stay-modal-close">✕</button>
+    <div class="modal-body">
+      <div class="modal-title" id="stay-modal-title">Nova reserva</div>
+      <div class="stay-form">
+        <label>Nome do lugar<input type="text" id="stay-name" placeholder="Ex: Hostel Chillax"></label>
+        <label>Cidade / bairro<input type="text" id="stay-city" placeholder="Ex: Osaka, Nipponbashi"></label>
+        <div class="stay-row2">
+          <label>Check-in<input type="date" id="stay-in"></label>
+          <label>Check-out<input type="date" id="stay-out"></label>
+        </div>
+        <div class="stay-row2">
+          <label>Tipo
+            <select id="stay-type">
+              <option>Hostel</option><option>Ryokan</option><option>Capsule</option>
+              <option>Hotel</option><option>Airbnb</option><option>Outro</option>
+            </select>
+          </label>
+          <label>Status
+            <select id="stay-status">
+              <option value="ideia">Só uma ideia</option>
+              <option value="reservado">Reservado</option>
+              <option value="pago">Pago</option>
+            </select>
+          </label>
+        </div>
+        <div class="stay-row2">
+          <label>Preço total<input type="text" id="stay-price" placeholder="Ex: ¥50.000"></label>
+          <label>Reservado em<input type="date" id="stay-booked"></label>
+        </div>
+        <div class="stay-row2">
+          <label>Site<input type="text" id="stay-site" placeholder="Ex: Jalan, Booking"></label>
+          <label>Código da reserva<input type="text" id="stay-code" placeholder="Ex: ABC123"></label>
+        </div>
+        <label>Endereço / como chegar<input type="text" id="stay-address" placeholder="Opcional"></label>
+        <label>Observações<textarea id="stay-notes" rows="2" placeholder="Cancelamento grátis até... / banho privativo / etc"></textarea></label>
+      </div>
+      <div class="modal-actions">
+        <button class="gmaps-btn" id="stay-save">Salvar</button>
+        <button class="link-btn" id="stay-delete" style="display:none;">Excluir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MEU ROTEIRO ================= -->
+<section class="view" id="view-myplan">
+  <div class="plan-toolbar">
+    <span id="plan-summary" class="plan-summary"></span>
+    <button class="link-btn" id="plan-clear">Limpar tudo</button>
+  </div>
+  <div id="plan-body"></div>
+</section>
+
+<!-- ================= CATÁLOGO DE ATRAÇÕES ================= -->
+<section class="view" id="view-catalog">
+  <div class="catalog-toolbar">
+    <input type="text" id="catalog-search" placeholder="Buscar atração...">
+    <select id="catalog-group">
+      <option value="city">Agrupar por cidade</option>
+      <option value="district">Agrupar por bairro</option>
+      <option value="tier">Agrupar por importância</option>
+      <option value="period">Agrupar por período do dia</option>
+    </select>
+  </div>
+  <div class="tier-filters">
+    <label><input type="checkbox" class="cat-tier-cb" value="1" checked> Tier 1</label>
+    <label><input type="checkbox" class="cat-tier-cb" value="2" checked> Tier 2</label>
+    <label><input type="checkbox" class="cat-tier-cb" value="3" checked> Tier 3</label>
+    <label><input type="checkbox" id="cat-hide-visited"> Ocultar "já fui"</label>
+  </div>
+  <div id="catalog-body"></div>
+</section>
+
+<div class="modal-backdrop" id="place-modal">
+  <div class="modal-sheet" style="position:relative;">
+    <button class="modal-close" id="modal-close-btn">✕</button>
+    <div class="carousel" id="modal-carousel"></div>
+    <div class="carousel-dots" id="modal-dots"></div>
+    <div class="modal-body">
+      <div class="modal-title" id="modal-title"></div>
+      <div class="tags" id="modal-tags"></div>
+      <div class="modal-desc" id="modal-desc"></div>
+      <div class="modal-actions">
+        <a class="pin-link" id="modal-pin-link" target="_blank" rel="noopener">Ver no mapa</a>
+        <button class="link-btn" id="modal-hide-btn">Já fui</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="places-service-anchor" style="display:none"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* ==========================================================
+   CONFIGURAÇÃO
+   Cole sua chave da Google Maps JavaScript API aqui pra ativar
+   mapa real, busca de rota por endereço/autocomplete e fotos
+   oficiais dos lugares (via Places API). Sem chave, o app roda
+   inteiro em modo alternativo (Leaflet + OpenStreetMap + OSRM),
+   sem fotos reais nos cards.
+   ========================================================== */
+const CONFIG = {
+  googleMapsApiKey: "AIzaSyBorvHlS1t_wka3R3-zing2YzUkTrWn6FI",
+  // Supabase — a chave publishable pode ficar aqui à vista; quem protege o
+  // banco é a RLS do schema, não o sigilo da chave.
+  // No deploy via GitHub Actions, estes viram __SUPABASE_URL__ / __SUPABASE_KEY__.
+  supabaseUrl: "https://tpbbipamkqmuboaxfyso.supabase.co",
+  supabaseKey: "sb_publishable_OvgTmfUrliG0_Z1ybDrJ6Q_jsHjd91J"
+};
+
+/* ==========================================================
+   DADOS — um objeto por viagem.
+   Pra adicionar uma viagem nova (ex. Europa), duplique um bloco
+   inteiro deste array com um novo id/title/places/days.
+   Cada "place" vive numa biblioteca só; os "days" apenas
+   referenciam ids dessa biblioteca — isso é o que permite o
+   Mapa geral e o Cronograma compartilharem os mesmos dados,
+   e o "mais opções" sugerir vizinhos reais da biblioteca.
+
+   ---------- INSTRUÇÃO PRA ADICIONAR LUGARES NOVOS ----------
+   Sempre que um lugar novo entrar aqui (agora ou em viagens futuras),
+   pesquisar de verdade na internet (não só usar o que o usuário mandou
+   como texto puro) e preencher:
+     - blurb: 1 linha curta, o motivo/diferencial de ir (o "porquê").
+     - detail: 2-4 frases com mais contexto real (história, o que faz
+       o lugar especial, o que visitantes costumam achar) — baseado em
+       pesquisa, usando o que o usuário disse como ponto de partida,
+       não como única fonte.
+     - bestTime: recomendação de horário/momento pesquisada de verdade
+       (ex. "cedo, antes das excursões", "pôr do sol", "evitar fim de
+       semana") — não é só o campo "period" (que é só manhã/tarde/noite
+       pra ordenar o dia), é a dica prática de quando vale mais a pena ir.
+     - mealType (só pra lugares de comida/bebida): "café da manhã",
+       "almoço", "petisco/aperitivo", "jantar" etc. — usado pra não
+       empilhar duas refeições pesadas perto uma da outra. Meta do dia:
+       4-5 refeições, sendo 2 delas mais leves (petiscos), bem
+       distribuídas ao longo do dia, não concentradas no mesmo horário.
+   ============================================================ */
+const TRIPS = [
+  {
+    id: "japan-2026",
+    title: "Viagem ao Japão",
+    places: [
+      // ===================== TÓQUIO =====================
+      // --- Akihabara ---
+      { id:"akihabara", name:"Akihabara (Akiba)", city:"Tóquio", district:"Akihabara", lat:35.6984, lng:139.7731, mapQuery:"Akihabara Station Tokyo", photoQuery:"Akihabara UDX building", tags:["Anime","Eletrônicos"], visitMin:120, tier:1, period:"tarde",
+        blurb:"Sempre tem algum evento rolando por lá.",
+        detail:"Bairro dos eletrônicos e da cultura otaku, com ruas de neon e prédios inteiros dedicados a anime, games e colecionáveis.",
+        bestTime:"Qualquer hora; à noite os letreiros de neon ficam mais impressionantes.", cost:"Grátis (só a rua)" },
+      { id:"radiokaikan", name:"Radio Kaikan", city:"Tóquio", district:"Akihabara", lat:35.6989, lng:139.7716, mapQuery:"Radio Kaikan Akihabara", tags:["Steins;Gate","Anime"], visitMin:60, tier:1, period:"tarde",
+        blurb:"O prédio real do Steins;Gate — e um point de anime de verdade, não só cenário.",
+        detail:"Reconstruído entre 2011 e 2014, é o edifício que inspirou o 'Future Gadget Lab' do anime. Tem vários andares de lojas de figures, mangá e colecionáveis.",
+        bestTime:"Tarde — abre só às 10h." },
+      { id:"mandarake", name:"Loja Mandarake", city:"Tóquio", district:"Akihabara", lat:35.7010, lng:139.7714, mapQuery:"Mandarake Complex Akihabara", tags:["Mangá","Colecionáveis"], visitMin:60, tier:1, period:"tarde",
+        blurb:"Oito andares de nostalgia otaku — mangá raro, retrô e colecionáveis.",
+        detail:"Uma das maiores lojas de segunda mão de cultura pop do Japão, com departamentos separados por tema.",
+        bestTime:"Tarde, evitando o horário de almoço." },
+      { id:"kandamyojin", name:"Kanda Myojin", city:"Tóquio", district:"Akihabara", lat:35.7020, lng:139.7674, mapQuery:"Kanda Myojin Shrine", tags:["Santuário"], visitMin:30, tier:3, period:"tarde",
+        blurb:"Santuário que vende amuleto pra proteger eletrônicos — legal, mas não é prioridade.",
+        detail:"Por ficar colado em Akihabara, virou point dos tecnófilos locais, vendendo omamori contra vírus e pane de aparelhos.",
+        bestTime:"Qualquer horário diurno; fica no caminho entre Akihabara e Kanda.", cost:"Grátis" },
+
+      // --- Ikebukuro / Nakano ---
+      { id:"ikebukuro", name:"Ikebukuro", city:"Tóquio", district:"Ikebukuro", lat:35.7295, lng:139.7109, mapQuery:"Ikebukuro Tokyo", photoQuery:"Sunshine City Ikebukuro", tags:["Menos turístico","Barato"], visitMin:90, tier:2, period:"tarde",
+        blurb:"Bairro super legal, menos turístico, com muita coisa e bem barato.",
+        detail:"Tem o Sunshine City e a Otome Road, focada em mangá/anime voltado ao público feminino — a 'nova Akiba' pros próprios japoneses.",
+        bestTime:"Tarde de dia útil, bem menos concorrido que Akihabara.", cost:"Grátis (só a rua)" },
+      { id:"nakano", name:"Nakano Broadway", city:"Tóquio", district:"Nakano", lat:35.7080, lng:139.6655, mapQuery:"Nakano Broadway Tokyo", tags:["Otaku","Barato"], visitMin:60, tier:2, period:"tarde",
+        blurb:"A Akihabara que os próprios japoneses preferem — mais barata.",
+        detail:"Shopping meio decadente e cheio de charme, com dezenas de lojinhas de colecionáveis raros.",
+        bestTime:"Tarde de semana — muitas lojas fecham por volta das 20h." },
+
+      // --- Shinjuku ---
+      { id:"shinjuku-noite", name:"Shinjuku à noite", city:"Tóquio", district:"Shinjuku", lat:35.6938, lng:139.7036, mapQuery:"Shinjuku Tokyo", photoQuery:"Shinjuku Toho Building Kabukicho", tags:["Vida noturna"], visitMin:120, tier:1, period:"noite",
+        blurb:"O melhor bairro pra sair à noite em Tóquio.",
+        detail:"Concentra a maior parte da vida noturna da cidade, com bares, restaurantes e karaokê espalhados por várias vielas.",
+        bestTime:"Quinta ou sexta à noite.", cost:"Grátis (só a rua)" },
+      { id:"shinjuku-cafes", name:"Cafés diferentes em Shinjuku", city:"Tóquio", district:"Shinjuku", lat:35.6910, lng:139.7040, mapQuery:"cafes Shinjuku Tokyo", photoQuery:"Shinjuku street cafe night", tags:["Cafés"], visitMin:60, tier:2, period:"tarde", mealType:"Café/Lanche",
+        blurb:"Shinjuku também é muito bom pra cafés fora do comum, não só pra noite.",
+        detail:"O bairro tem uma cena forte de cafés temáticos e de especialidade, funcionando bem como parada diurna.",
+        bestTime:"Durante o dia, entre um passeio e outro." },
+      { id:"karaoke-chakura", name:"Karaokê em Shinjuku (ver c/ amigo)", city:"Tóquio", district:"Shinjuku", lat:35.6945, lng:139.7020, mapQuery:"Karaoke Kan Shinjuku", photoQuery:"karaoke room Japan", tags:["Karaokê","Recomendado"], visitMin:90, tier:2, period:"noite",
+        blurb:"⚠️ Seu amigo indicou \"um perto do karaokê bar Chakura\" sem dizer o nome — confirmar com ele.",
+        detail:"O Chakura é um bar de karaokê em Shinjuku; a recomendação era de OUTRO lugar perto dele, sem nome. Enquanto não confirmar, o mapa aponta pra um karaokê conhecido do bairro como referência.",
+        bestTime:"Noite, depois do jantar." },
+      { id:"uniqlo-shinjuku", name:"Shopping + Uniqlo (Shinjuku)", city:"Tóquio", district:"Shinjuku", lat:35.6900, lng:139.7003, mapQuery:"UNIQLO Shinjuku", photoQuery:"UNIQLO store Japan", tags:["Compras"], visitMin:60, tier:2, period:"tarde",
+        blurb:"Vale conhecer um shopping japonês — especialmente a Uniqlo daqui.",
+        detail:"A flagship de Shinjuku costuma ter mais variedade e colaborações exclusivas que não chegam a outros países.",
+        bestTime:"Horário comercial; evite fim de semana à tarde." },
+
+      // --- Kabukicho ---
+      { id:"kabukicho", name:"Kabukicho", city:"Tóquio", district:"Kabukicho", lat:35.6952, lng:139.7025, mapQuery:"Kabukicho Shinjuku", photoQuery:"Hotel Gracery Shinjuku", tags:["Vida noturna","Karaokê"], visitMin:120, tier:1, period:"noite",
+        blurb:"Altamente recomendado — bar, balada, games, karaokê. Galera muito resenha.",
+        detail:"Maior distrito de entretenimento noturno do Japão. Bastante atração turística concentrada, ótimo pra trocar ideia com gente nova.",
+        bestTime:"Depois das 21h. ⚠️ Atenção: 'pra gringo é mais caro' — combine o preço antes de entrar.", cost:"Grátis (só a rua) — ⚠️ preço de gringo nos bares" },
+
+      // --- Harajuku ---
+      { id:"takeshita", name:"Takeshita Street (Harajuku)", city:"Tóquio", district:"Harajuku", lat:35.6702, lng:139.7026, mapQuery:"Takeshita Street Harajuku", tags:["Compras","Imperdível"], visitMin:60, tier:1, period:"tarde", mealType:"Lanche",
+        blurb:"Imperdível — o epicentro colorido da moda jovem japonesa.",
+        detail:"Rua de 350 metros lotada de lojas de moda alternativa, crepes decorados e lojinhas de doces.",
+        bestTime:"Manhã/início da tarde em dia útil pra evitar multidão.", cost:"Grátis (só a rua)" },
+      { id:"harajuku-cafes", name:"Cafés temáticos em Harajuku", city:"Tóquio", district:"Harajuku", lat:35.6715, lng:139.7050, mapQuery:"themed cafes Harajuku", photoQuery:"Harajuku crepe shop Takeshita", tags:["Cafés"], visitMin:60, tier:2, period:"tarde", mealType:"Café/Lanche",
+        blurb:"Tem bastante café temático espalhado pelo bairro.",
+        detail:"Cafés de animais, de personagens e conceituais se concentram em Harajuku, muitos exigindo reserva ou fila.",
+        bestTime:"Tarde; alguns pedem reserva com antecedência." },
+
+      // --- Shibuya ---
+      { id:"nintendo-shibuya", name:"Loja da Nintendo (Shibuya)", city:"Tóquio", district:"Shibuya", lat:35.6618, lng:139.6983, mapQuery:"Nintendo Tokyo Shibuya", tags:["Games","Incrível"], visitMin:60, tier:1, period:"tarde",
+        blurb:"Incrível — muita coisa temática que só existe aqui.",
+        detail:"A Nintendo Tokyo fica dentro do Shibuya Parco e concentra produtos exclusivos da marca.",
+        bestTime:"Horário comercial; costuma ter fila em fins de semana." },
+      { id:"shibuya-noite", name:"Shibuya à noite", city:"Tóquio", district:"Shibuya", lat:35.6595, lng:139.7005, mapQuery:"Shibuya Crossing Tokyo", tags:["Vida noturna","Icônico"], visitMin:90, tier:2, period:"noite",
+        blurb:"Vida noturna e o cruzamento mais famoso do mundo.",
+        detail:"Na saída Hachiko, até 2.500 pessoas atravessam de uma vez quando o sinal abre.",
+        bestTime:"Fim de tarde/noite (17h-20h), com os letreiros acesos.", cost:"Grátis" },
+
+      // --- Skytree ---
+      { id:"skytree", name:"Tokyo Skytree", city:"Tóquio", district:"Sumida", lat:35.7101, lng:139.8107, mapQuery:"Tokyo Skytree", tags:["Vista","Recomendado"], visitMin:90, tier:1, period:"tarde",
+        blurb:"Recomendação forte — a torre mais alta do Japão, vista de até 450m.",
+        detail:"Com 634 metros, é a estrutura mais alta do país. Tem dois decks de observação e um shopping na base (Solamachi).",
+        bestTime:"Pôr do sol — dá pra ver a cidade clareando pra noite num só ingresso. Compre online pra pular fila.", cost:"A conferir", booking:"Comprar online pra pular fila" },
+
+      // --- Ginza ---
+      { id:"ginza", name:"Ginza", city:"Tóquio", district:"Ginza", lat:35.6717, lng:139.7650, mapQuery:"Ginza Tokyo", photoQuery:"Ginza Chuo-dori street Tokyo", tags:["Compras","Jovem"], visitMin:90, tier:2, period:"tarde",
+        blurb:"Lugar com muitos jovens, apesar da fama de bairro chique.",
+        detail:"Mistura grifes de luxo com lojas mais acessíveis e prédios-conceito. Aos domingos a rua principal fecha pra carros.",
+        bestTime:"Domingo à tarde, quando a Chuo-dori vira rua de pedestres.", cost:"Grátis (só a rua)" },
+      { id:"gu-ginza", name:"GU (Ginza)", city:"Tóquio", district:"Ginza", lat:35.6720, lng:139.7648, mapQuery:"GU Ginza Tokyo", photoQuery:"GU store Japan storefront", tags:["Compras"], visitMin:30, tier:2, period:"tarde",
+        blurb:"Da sua lista de lojinhas pra conhecer.",
+        detail:"Marca irmã da Uniqlo, com preços mais baixos e pegada mais jovem/moderna.",
+        bestTime:"Horário comercial." },
+      { id:"cdg-ginza", name:"Comme des Garçons (Ginza)", city:"Tóquio", district:"Ginza", lat:35.6712, lng:139.7635, mapQuery:"Comme des Garcons Ginza Tokyo", photoQuery:"Comme des Garcons store Tokyo", tags:["Compras"], visitMin:30, tier:2, period:"tarde",
+        blurb:"Da sua lista de lojinhas pra conhecer.",
+        detail:"Grife japonesa de moda conceitual, com loja marcante em Ginza.",
+        bestTime:"Horário comercial." },
+
+      // --- Odaiba ---
+      { id:"odaiba", name:"Odaiba", city:"Tóquio", district:"Odaiba", lat:35.6267, lng:139.7746, mapQuery:"Odaiba Tokyo", photoQuery:"Odaiba Rainbow Bridge night", tags:["Cafés","Mais longe"], visitMin:90, tier:2, period:"tarde", mealType:"Café",
+        blurb:"Mais afastado, mas tem lugares bem legais — cafezinhos high-end.",
+        detail:"Ilha artificial com vista pra baía, shopping e parques. Clima mais espaçoso e menos apressado que o resto de Tóquio.",
+        bestTime:"Fim de tarde, pra pegar a Rainbow Bridge iluminada.", cost:"Grátis (só a área)" },
+
+      // --- Saitama ---
+      { id:"saitama", name:"Saitama / Omiya", city:"Tóquio", district:"Saitama", lat:35.9068, lng:139.6238, mapQuery:"Omiya Saitama", photoQuery:"Omiya Station Saitama", tags:["Local","Menos turístico"], visitMin:60, tier:3, period:"tarde",
+        blurb:"Bairro mais normal, menos turístico — o Japão do dia a dia.",
+        detail:"Área residencial e comercial comum, útil pra ver o cotidiano fora do roteiro de cartão-postal.",
+        bestTime:"Qualquer tarde de dia útil." },
+
+      // --- Se sobrar tempo (classificação sua) ---
+      { id:"yokohama", name:"Yokohama", city:"Tóquio", district:"Yokohama", lat:35.4437, lng:139.6380, mapQuery:"Yokohama Minato Mirai", tags:["Se sobrar tempo"], visitMin:120, tier:3, period:"tarde",
+        blurb:"Legal também, e fica perto de Tóquio.",
+        detail:"Área portuária com roda-gigante icônica e a maior Chinatown do Japão.",
+        bestTime:"Fim de tarde/noite, quando tudo se ilumina sobre a água." },
+      { id:"palacio-tokyo", name:"Palácio Imperial de Tóquio", city:"Tóquio", district:"Chiyoda", lat:35.6852, lng:139.7528, mapQuery:"Tokyo Imperial Palace", tags:["Se sobrar tempo"], visitMin:60, tier:3, period:"manha",
+        blurb:"Da sua lista de 'se sobrar tempo'.",
+        detail:"Construído sobre as ruínas do Castelo de Edo. O prédio principal quase nunca abre, mas o Jardim Leste é gratuito.",
+        bestTime:"Manhã de terça a sábado — o Jardim Leste fecha segundas e sextas.", cost:"Grátis (Jardim Leste)" },
+      { id:"todai", name:"Universidade de Tóquio (campus)", city:"Tóquio", district:"Bunkyo", lat:35.7128, lng:139.7621, mapQuery:"University of Tokyo", photoQuery:"Akamon Gate University of Tokyo", tags:["Campus aberto","Se sobrar tempo"], visitMin:60, tier:3, period:"manha",
+        blurb:"Campus aberto pra visitar — clima bem diferente do resto de Tóquio.",
+        detail:"Universidade mais prestigiada do Japão; o campus de Hongo tem prédios de tijolo estilo europeu e o Portão Akamon, do período Edo.",
+        bestTime:"Dia útil em horário comercial, fora de período de provas.", cost:"Grátis (campus aberto)" },
+
+      // --- Comida em Tóquio ---
+      { id:"ramen-estacao", name:"Ramen na Estação de Tóquio", city:"Tóquio", district:"Chiyoda", lat:35.6812, lng:139.7671, mapQuery:"Tokyo Ramen Street Tokyo Station", tags:["Comida"], visitMin:45, tier:1, period:"tarde", mealType:"Almoço/Jantar",
+        blurb:"Ótimo pra começar leve no primeiro ou segundo dia.",
+        detail:"A Tokyo Ramen Street reúne várias casas conhecidas de ramen dentro da própria estação — prático e sem precisar se deslocar.",
+        bestTime:"Horários de refeição; pode ter fila no pico." },
+      { id:"restaurantes-escondidos", name:"Restaurantes pequenos escondidos", city:"Tóquio", district:"—", lat:35.6895, lng:139.6917, mapQuery:"small local restaurants Tokyo", photoQuery:"Omoide Yokocho Shinjuku alley", tags:["Comida","Autêntico"], visitMin:60, tier:1, period:"tarde", mealType:"Refeição",
+        blurb:"Os lugarzinhos escondidos costumam valer mais que os famosos.",
+        detail:"Balcões pequenos de bairro, muitas vezes sem cardápio em inglês, com comida honesta e preço justo.",
+        bestTime:"Qualquer horário de refeição." },
+      { id:"sukiya", name:"Sukiya (fast food japonês)", city:"Tóquio", district:"—", lat:35.6900, lng:139.7000, mapQuery:"Sukiya Tokyo", photoQuery:"Sukiya gyudon restaurant Japan", tags:["Comida","Barato"], visitMin:30, tier:2, period:"tarde", mealType:"Refeição rápida",
+        blurb:"Fast food japonês barato pra resolver uma refeição rápida.",
+        detail:"Rede de gyudon (tigela de arroz com carne) aberta praticamente o tempo todo, útil quando o tempo é curto.",
+        bestTime:"Qualquer hora — muitas unidades abrem 24h." },
+      { id:"konbini", name:"Konbini (bento de manhã)", city:"Tóquio", district:"—", lat:35.6890, lng:139.7010, mapQuery:"7-Eleven Tokyo", photoQuery:"7-Eleven storefront Japan", tags:["Comida","Prático"], visitMin:15, tier:1, period:"manha", mealType:"Café da manhã",
+        blurb:"Saiu à noite? Pega o café da manhã do dia seguinte na konbini.",
+        detail:"Lojas de conveniência japonesas têm bentos, onigiri e sanduíches de qualidade surpreendente, abertas 24h.",
+        bestTime:"Compre na volta da noite, coma de manhã." },
+
+      // ===================== FUJI =====================
+      { id:"chureito", name:"Chureito Pagoda (Arakurayama Sengen Park)", city:"Fujiyoshida", district:"Shimoyoshida", lat:35.4986, lng:138.8003, mapQuery:"Chureito Pagoda Fujiyoshida", tags:["Vista do Fuji","Icônico","Grátis"], visitMin:90, tier:1, period:"manha",
+        blurb:"O cartão-postal clássico: pagode vermelho emoldurando o Monte Fuji.",
+        detail:"Fica em Shimoyoshida, uma estação depois de Kawaguchiko. Do trem são 20-30 min de caminhada e depois uma escadaria de ~400 degraus até o mirante. ⚠️ Pode ter gelo nos degraus em dezembro.",
+        bestTime:"Nascer do sol — menos gente e ar mais limpo. Alternativa: em dezembro há iluminação noturna das 16h às 21h50, também grátis, se a ida de manhã não rolar.", cost:"Grátis", booking:"Não precisa" },
+      { id:"honcho-street", name:"Honcho Street (Fujiyoshida)", city:"Fujiyoshida", district:"Shimoyoshida", lat:35.4880, lng:138.8010, mapQuery:"Honcho Street Fujiyoshida", photoQuery:"Honcho street Fujiyoshida Mount Fuji", tags:["Vista do Fuji","Retrô","Grátis"], visitMin:45, tier:1, period:"tarde",
+        blurb:"Rua retrô estilo Showa com o Fuji emoldurado bem no fim dela.",
+        detail:"Fachadas antigas dos dois lados e a montanha fechando a perspectiva — uma das composições mais fotografadas da região. Fica perto da estação Shimoyoshida.",
+        bestTime:"Fim de tarde, quando a luz fica melhor.", cost:"Grátis", booking:"Não precisa" },
+      { id:"fujisan-center", name:"Fujisan World Heritage Center", city:"Fujiyoshida", district:"Fujiyoshida", lat:35.4870, lng:138.7620, mapQuery:"Fujisan World Heritage Center Yamanashi", photoQuery:"Fujisan World Heritage Center", tags:["Museu","Grátis"], visitMin:60, tier:2, period:"tarde",
+        blurb:"Centro sobre o Fuji como Patrimônio Mundial — e é de graça.",
+        detail:"Exposições sobre a geologia, a história e o significado cultural e religioso da montanha. Bom complemento pra entender o que você vai ver.",
+        bestTime:"Tarde. ⚠️ Em dezembro funciona em horário reduzido: 9h às 16h30.", cost:"Grátis", booking:"Não precisa · aberto todos os dias" },
+      { id:"kachikachi", name:"Mt. Fuji Panoramic Ropeway (Kachi Kachi Yama)", city:"Fujiyoshida", district:"Kawaguchiko", lat:35.5045, lng:138.7640, mapQuery:"Mt. Fuji Panoramic Ropeway Kawaguchiko", photoQuery:"Kachi Kachi Ropeway Kawaguchiko", tags:["Vista do Fuji","Mirante"], visitMin:60, tier:2, period:"tarde",
+        blurb:"Bondinho até o Monte Tenjo, com lago e Fuji na mesma vista.",
+        detail:"Sobe até um mirante onde dá pra ver o Lago Kawaguchiko em primeiro plano com o Fuji atrás. ⚠️ Só vale a pena em dia de céu limpo — com nuvem, não se vê a montanha.",
+        bestTime:"Durante o dia, com céu limpo. No inverno funciona só até ~17h. Fica perto do lago, 15-20 min a pé da estação ou um pulo de ônibus.", cost:"¥1.000 ida e volta (adulto)", booking:"Não precisa" },
+
+      // ===================== HAKONE (noite 02→03/12, ryokan) =====================
+      { id:"hakone-yumoto", name:"Hakone-Yumoto (porta de entrada)", city:"Hakone", district:"Hakone-Yumoto", lat:35.2328, lng:139.1058, mapQuery:"Hakone-Yumoto Station", photoQuery:"Hakone Yumoto station town", tags:["Chegada","Onsen"], visitMin:45, tier:2, period:"tarde",
+        blurb:"Onde o loop de Hakone começa — vila termal na entrada da região.",
+        detail:"Estação principal de Hakone, ~1h30 de Shinjuku pelo Romancecar. Rua comercial com lojinhas, comida e casas de banho. Daqui sai o trem de montanha Hakone Tozan, que sobe em ziguezague pela encosta.",
+        bestTime:"Chegada. Vale comprar o Hakone Free Pass aqui — cobre trem, teleférico, ônibus e o barco do lago.", cost:"Free Pass: a conferir", booking:"Não precisa" },
+      { id:"open-air-museum", name:"Museu ao Ar Livre de Hakone", city:"Hakone", district:"Gora", lat:35.2447, lng:139.0505, mapQuery:"Hakone Open-Air Museum", photoQuery:"Hakone Open Air Museum sculpture", tags:["Arte","Destaque"], visitMin:120, tier:1, period:"tarde",
+        blurb:"Esculturas ao ar livre com as montanhas ao fundo — e um onsen de pés com vista do vale.",
+        detail:"Considerado o destaque cultural de Hakone. Tem o Pavilhão Picasso, com acervo e contexto sobre a vida dele, obras de artistas japoneses e internacionais espalhadas pelo gramado, e um café. O onsen de pés (footbath) é ótimo depois de um dia andando.",
+        bestTime:"Aberto todos os dias, 9h-17h. Melhor com tempo bom, já que metade da graça é andar pelo jardim.", cost:"A conferir", booking:"Não precisa" },
+      { id:"owakudani", name:"Owakudani (vale vulcânico)", city:"Hakone", district:"Owakudani", lat:35.2440, lng:139.0196, mapQuery:"Owakudani Hakone", photoQuery:"Owakudani volcanic valley Hakone", tags:["Vulcânico","Icônico"], visitMin:90, tier:1, period:"tarde", mealType:"Petisco",
+        blurb:"Fumarolas de enxofre saindo do chão — e o ovo preto que dizem somar 5 anos de vida.",
+        detail:"Zona vulcânica ativa com vapor saindo de fendas por todo o vale. O ovo preto é cozido na água sulfurosa e fica com a casca escurecida pelo enxofre e ferro. Tem o Hakone Geo Museum (¥100) e, na estação, o black curry bread é recomendado por quem já foi.",
+        bestTime:"Durante o dia. ⚠️ Conferir o status do teleférico antes de ir — atividade vulcânica às vezes suspende o serviço por segurança.", cost:"Ovo preto ~¥500 (5 un.) · Geo Museum ¥100", booking:"Não precisa" },
+      { id:"hakone-ropeway", name:"Teleférico de Hakone", city:"Hakone", district:"Owakudani", lat:35.2400, lng:139.0250, mapQuery:"Hakone Ropeway", photoQuery:"Hakone Ropeway cable car", tags:["Transporte","Vista"], visitMin:40, tier:2, period:"tarde",
+        blurb:"A ligação aérea do loop, passando por cima do vale vulcânico.",
+        detail:"Vai de Gora a Owakudani e de Owakudani a Togendai, na beira do Lago Ashi. Em dia limpo dá pra ver o Fuji do próprio teleférico. Incluído no Hakone Free Pass.",
+        bestTime:"Durante o dia. Sujeito a suspensão por atividade vulcânica ou vento forte.", cost:"Incluído no Hakone Free Pass", booking:"Não precisa" },
+      { id:"lake-ashi", name:"Lago Ashi + cruzeiro do barco pirata", city:"Hakone", district:"Lago Ashi", lat:35.2100, lng:139.0150, mapQuery:"Lake Ashi Hakone", photoQuery:"Lake Ashi pirate ship Hakone", tags:["Lago","Cruzeiro"], visitMin:60, tier:1, period:"tarde",
+        blurb:"Lago de cratera atravessado por um barco pirata temático.",
+        detail:"O lago preenche a caldeira de um vulcão antigo. O barco tem interior inspirado em navios de guerra europeus e cruza de Togendai até Motohakone-ko (onde fica o santuário). Em dia limpo o Fuji aparece ao fundo — vá pra proa pra vista desobstruída.",
+        bestTime:"Tarde, encadeando com o teleférico. Cruzeiro de 30-40 min.", cost:"Incluído no Hakone Free Pass", booking:"Não precisa" },
+      { id:"hakone-shrine", name:"Santuário Hakone (torii flutuante)", city:"Hakone", district:"Motohakone", lat:35.2046, lng:139.0254, mapQuery:"Hakone Shrine", photoQuery:"Hakone Shrine floating torii lake", tags:["Santuário","Foto"], visitMin:45, tier:1, period:"tarde",
+        blurb:"Torii vermelho flutuando na água do lago — a foto símbolo de Hakone.",
+        detail:"Mais de 1.260 anos de história, na margem do Lago Ashi, a 10 min a pé do porto de Motohakone-ko. Tem também um pequeno santuário anexo do dragão de nove cabeças. ⚠️ Costuma ter fila pra foto no torii.",
+        bestTime:"Fim de tarde, fechando o loop depois do cruzeiro.", cost:"Grátis", booking:"Não precisa" },
+      { id:"pola-museum", name:"Pola Museum of Art", city:"Hakone", district:"Sengokuhara", lat:35.2560, lng:139.0210, mapQuery:"Pola Museum of Art Hakone", photoQuery:"Pola Museum of Art Hakone", tags:["Arte","Coberto"], visitMin:90, tier:2, period:"tarde",
+        blurb:"Acervo grande de arte europeia e impressionista, escondido na floresta.",
+        detail:"Boa alternativa coberta se o tempo virar — ao contrário do Museu ao Ar Livre, funciona igual com chuva.",
+        bestTime:"Qualquer hora do dia; plano B pra dia ruim.", cost:"A conferir", booking:"Não precisa" },
+      { id:"gora-park", name:"Hakone Gora Park", city:"Hakone", district:"Gora", lat:35.2418, lng:139.0432, mapQuery:"Hakone Gora Park", photoQuery:"Hakone Gora Park garden", tags:["Jardim"], visitMin:45, tier:3, period:"tarde",
+        blurb:"Jardim estilo francês que muda de cor conforme a estação.",
+        detail:"Fica em Gora, no caminho entre o trem de montanha e o teleférico — fácil de encaixar sem desvio.",
+        bestTime:"Durante o dia, se sobrar tempo entre um transporte e outro.", cost:"A conferir", booking:"Não precisa" },
+      { id:"hakone-yuryo", name:"Hakone Yuryo (onsen de uso diurno)", city:"Hakone", district:"Hakone-Yumoto", lat:35.2350, lng:139.0980, mapQuery:"Hakone Yuryo onsen", photoQuery:"Japanese onsen outdoor bath", tags:["Onsen","Sem hospedar"], visitMin:120, tier:1, period:"tarde",
+        blurb:"Onsen que você usa sem se hospedar — dos mais acessíveis a partir de Hakone-Yumoto.",
+        detail:"Hakone tem vários onsen de uso diurno (higaeri), ao contrário de Kawaguchiko, onde quase todos estão presos à hospedagem. Tenzan Onsen e Hakone Yunessun são as outras duas opções mais citadas.",
+        bestTime:"Fim de tarde, antes de seguir viagem — ou de manhã, no dia da partida.", cost:"A conferir", booking:"Não precisa" },
+      { id:"odawara-castle", name:"Castelo de Odawara", city:"Hakone", district:"Odawara", lat:35.2510, lng:139.1534, mapQuery:"Odawara Castle", photoQuery:"Odawara Castle Japan", tags:["Castelo","No caminho"], visitMin:60, tier:3, period:"manha",
+        blurb:"Fica na estação de onde sai o Shinkansen pra Kyoto — dá pra encaixar na saída.",
+        detail:"Odawara é o nó de transporte entre Hakone e a linha Tokaido. Se você sair de Hakone pra Kyoto, passa por aqui de qualquer jeito.",
+        bestTime:"Manhã do dia de partida, antes de pegar o Shinkansen.", cost:"A conferir", booking:"Não precisa" },
+
+      // ===================== KYOTO =====================
+      { id:"bamboo", name:"Bosque de Bambu (Arashiyama)", city:"Kyoto", district:"Arashiyama", lat:35.0170, lng:135.6720, mapQuery:"Arashiyama Bamboo Grove", tags:["Icônico","Imperdível"], visitMin:40, tier:1, period:"manha",
+        blurb:"Andar entre bambus de 15 metros que rangem com o vento.",
+        detail:"Um dos caminhos mais fotografados do Japão — os troncos altíssimos filtram a luz de um jeito único.",
+        bestTime:"Antes das 8h, pra evitar os grupos de turismo.", cost:"Grátis" },
+      { id:"kiyomizu", name:"Kiyomizu-dera", city:"Kyoto", district:"Higashiyama", lat:34.9949, lng:135.7850, mapQuery:"Kiyomizu-dera Temple", tags:["Templo","Vista"], visitMin:60, tier:1, period:"manha",
+        blurb:"Templo de madeira sobre pilotis, com uma das vistas mais bonitas de Kyoto.",
+        detail:"Fundado em 780, famoso pelo terraço erguido sem um único prego, sobre pilares de 13 metros. As ruas Sannenzaka e Ninenzaka, na subida, também valem.",
+        bestTime:"Abertura (6h) ou fim de tarde — no meio do dia fica bem cheio.", cost:"A conferir" },
+      { id:"yasaka", name:"Yasaka Shrine", city:"Kyoto", district:"Higashiyama", lat:35.0037, lng:135.7784, mapQuery:"Yasaka Shrine Kyoto", tags:["Santuário"], visitMin:30, tier:1, period:"tarde",
+        blurb:"Santuário no coração de Gion, ótimo ponto de partida pra Higashiyama.",
+        detail:"Fundado há mais de 1.350 anos, na entrada de Gion. À noite as lanternas penduradas mudam completamente o clima.",
+        bestTime:"Fim de tarde/começo da noite, com as lanternas acesas.", cost:"Grátis" },
+      { id:"gion", name:"Gion", city:"Kyoto", district:"Gion", lat:35.0037, lng:135.7752, mapQuery:"Gion District Kyoto", photoQuery:"Gion Hanamikoji street Kyoto", tags:["Distrito histórico"], visitMin:90, tier:2, period:"noite",
+        blurb:"O distrito pra conhecer a cidade de verdade.",
+        detail:"Ruas de madeira preservadas com casas de chá tradicionais, onde geishas e maiko ainda trabalham hoje.",
+        bestTime:"Entardecer (17h-18h), quando maiko saem a caminho dos compromissos — mantenha distância.", cost:"Grátis (só caminhar)" },
+      { id:"heianjingu", name:"Heian Jingu", city:"Kyoto", district:"Higashiyama", lat:35.0161, lng:135.7822, mapQuery:"Heian Jingu Shrine", tags:["Perto de Yasaka"], visitMin:30, tier:3, period:"tarde",
+        blurb:"Legal também, e fica pertinho do Yasaka Shrine.",
+        detail:"Erguido em 1895 em escala imponente, com um enorme torii laranja na entrada da avenida.",
+        bestTime:"Tarde, emendando com o Yasaka — cabem no mesmo passeio a pé.", cost:"Grátis (jardim pago à parte)" },
+      { id:"fushimi", name:"Fushimi Inari", city:"Kyoto", district:"Fushimi", lat:34.9671, lng:135.7727, mapQuery:"Fushimi Inari Taisha", tags:["Icônico","Imperdível"], visitMin:90, tier:1, period:"noite",
+        blurb:"Milhares de torii vermelhos subindo a montanha.",
+        detail:"O santuário xintoísta mais fotografado do Japão, com mais de 10 mil torii formando túneis vermelhos até o topo do Monte Inari. Aberto 24h.",
+        bestTime:"Entardecer/noite — bem mais vazio e quase cinematográfico.", cost:"Grátis" },
+      { id:"ryoanji", name:"Ryoanji", city:"Kyoto", district:"Noroeste", lat:35.0345, lng:135.7183, mapQuery:"Ryoan-ji Temple", tags:["Jardim zen"], visitMin:45, tier:1, period:"tarde",
+        blurb:"O jardim zen mais famoso do Japão — 15 pedras, nunca todas visíveis de uma vez.",
+        detail:"Um retângulo de cascalho rastrilhado onde, de qualquer ângulo do terraço, sempre uma pedra fica escondida.",
+        bestTime:"Logo pela manhã, pra aproveitar o silêncio.", cost:"A conferir" },
+      { id:"nijo", name:"Nijo Castle", city:"Kyoto", district:"Centro", lat:35.0142, lng:135.7481, mapQuery:"Nijo Castle Kyoto", tags:["Castelo"], visitMin:60, tier:2, period:"manha",
+        blurb:"Castelo com 'assoalho rouxinol' que cantava pra avisar de invasores.",
+        detail:"Construído em 1603 como residência de Tokugawa Ieyasu, Patrimônio da UNESCO. Os corredores rangem de propósito — segurança antiga contra assassinos.",
+        bestTime:"Abertura (8h45), antes dos ônibus de excursão.", cost:"A conferir" },
+      { id:"palacio-kyoto", name:"Palácio Imperial de Kyoto", city:"Kyoto", district:"Centro", lat:35.0254, lng:135.7622, mapQuery:"Kyoto Imperial Palace", tags:["Nem sempre abre"], visitMin:60, tier:3, period:"manha",
+        blurb:"É lindo, mas nem sempre ele abre — confirme antes de ir.",
+        detail:"Foi residência da família imperial até 1868. Cercado por um parque público extenso.",
+        bestTime:"Manhã, e só depois de confirmar online — fecha às segundas.", cost:"A conferir", booking:"Nem sempre abre — confirmar antes" },
+      { id:"kinkakuji", name:"Kinkakuji", city:"Kyoto", district:"Noroeste", lat:35.0394, lng:135.7292, mapQuery:"Kinkaku-ji Golden Pavilion", tags:["Muito longe"], visitMin:45, tier:3, period:"manha",
+        blurb:"Legal, mas muito longe — só se tiver tempo sobrando.",
+        detail:"O Pavilhão Dourado, coberto de folha de ouro e refletido num lago. A estrutura atual é de 1955.",
+        bestTime:"Abertura (9h) num dia claro, pra pegar o reflexo dourado.", cost:"A conferir" },
+      { id:"ginkakuji", name:"Ginkakuji", city:"Kyoto", district:"Leste", lat:35.0270, lng:135.7982, mapQuery:"Ginkaku-ji Silver Pavilion", tags:["Muito longe"], visitMin:45, tier:3, period:"tarde",
+        blurb:"Legal, mas muito longe — só se tiver tempo sobrando.",
+        detail:"O 'Pavilhão de Prata' que nunca recebeu o revestimento prateado planejado, resultando numa estética mais discreta.",
+        bestTime:"Manhã de dia útil — bem mais tranquilo que o Kinkakuji.", cost:"A conferir" },
+
+      // ===================== OSAKA =====================
+      { id:"dotonbori", name:"Dotonbori", city:"Osaka", district:"Namba", lat:34.6687, lng:135.5013, mapQuery:"Dotonbori Osaka", tags:["Imperdível","Noite"], visitMin:120, tier:1, period:"noite", mealType:"Jantar",
+        blurb:"Imperdível — e tem que ser à noite.",
+        detail:"Ao longo do canal, letreiros gigantes (o caranguejo do Kani Doraku, o corredor da Glico) criam o visual mais icônico de Osaka.",
+        bestTime:"Depois que escurece — os letreiros são o motivo de ir.", cost:"Grátis (só a rua)" },
+      { id:"takoyaki", name:"Takoyaki em Dotonbori", city:"Osaka", district:"Namba", lat:34.6685, lng:135.5010, mapQuery:"takoyaki Dotonbori Osaka", tags:["Comida","Imperdível"], visitMin:30, tier:1, period:"noite", mealType:"Petisco",
+        blurb:"O melhor takoyaki do mundo, segundo quem já foi.",
+        detail:"Bolinhos de polvo grelhados na hora, prato-símbolo de Osaka, vendidos em várias barracas ao longo do canal.",
+        bestTime:"Noite, junto com o passeio por Dotonbori." },
+      { id:"shinsekai", name:"Shin Sekai", city:"Osaka", district:"Shinsekai", lat:34.6524, lng:135.5063, mapQuery:"Shinsekai Osaka", tags:["Imperdível","Retrô"], visitMin:90, tier:1, period:"noite", mealType:"Jantar",
+        blurb:"Imperdível — bairro retrô que parece ter parado no tempo.",
+        detail:"Construído nos anos 1900 inspirado em Paris e Nova York, com a torre Tsutenkaku no centro. Point clássico do kushikatsu.",
+        bestTime:"Fim de tarde/noite, quando os letreiros acendem.", cost:"Grátis (só a rua)" },
+      { id:"osakacastle", name:"Castelo de Osaka", city:"Osaka", district:"Chuo", lat:34.6873, lng:135.5262, mapQuery:"Osaka Castle", tags:["Vale muito"], visitMin:90, tier:1, period:"manha",
+        blurb:"Vale muito ir.",
+        detail:"Erguido em 1583 por Toyotomi Hideyoshi, com museu sobre a história do castelo dentro. O parque ao redor permite passeio de barco pelo fosso.",
+        bestTime:"Manhã, pra evitar fila no elevador/museu.", cost:"A conferir" },
+      { id:"balada-osaka", name:"Balada (Giraffe / Owl)", city:"Osaka", district:"Namba", lat:34.6700, lng:135.4990, mapQuery:"Giraffe nightclub Osaka", photoQuery:"Giraffe Osaka nightclub Namba", tags:["Vida noturna"], visitMin:120, tier:2, period:"noite",
+        blurb:"Tentar ir numa balada insana de lá.",
+        detail:"Giraffe e Owl são das casas mais conhecidas da noite de Osaka, na região de Namba.",
+        bestTime:"Depois das 23h.", cost:"A conferir" },
+      { id:"barco-osaka", name:"Passeio de barco", city:"Osaka", district:"Chuo", lat:34.6690, lng:135.5030, mapQuery:"Osaka river cruise Dotonbori", tags:["Passeio"], visitMin:45, tier:2, period:"noite",
+        blurb:"Tentar pegar o passeio do barco.",
+        detail:"Cruzeiros curtos pelo canal Dotonbori e pelos rios da cidade, com vista dos letreiros a partir da água.",
+        bestTime:"Noite, com os letreiros acesos.", cost:"A conferir" },
+      { id:"vending-osaka", name:"Bebidas de vending machine", city:"Osaka", district:"—", lat:34.6690, lng:135.5020, mapQuery:"vending machine Osaka", photoQuery:"Japanese vending machine street", tags:["Barato"], visitMin:10, tier:2, period:"tarde", mealType:"Bebida",
+        blurb:"Em Osaka compensa muito pegar as bebidas de vending machine.",
+        detail:"Máquinas espalhadas por toda parte, com bebidas quentes e geladas por poucos ienes — bem mais barato que loja.",
+        bestTime:"Qualquer hora." },
+
+      // ===================== NARA =====================
+      { id:"nara", name:"Nara", city:"Nara", district:"Nara", lat:34.6851, lng:135.8048, mapQuery:"Nara Park deer", photoQuery:"Nara Park deer Todai-ji", tags:["Destino secundário"], visitMin:180, tier:3, period:"manha",
+        blurb:"Destino secundário — dá pra passar na volta.",
+        detail:"Parque com mais de mil veados que circulam livremente e aprenderam a curvar a cabeça pedindo biscoito (shika senbei).",
+        bestTime:"Manhã, antes das excursões de ônibus.", cost:"Parque grátis · biscoito p/ veados ~¥200" },
+
+      // ===================== LOJINHAS (encaixe livre) =====================
+      { id:"muji", name:"Muji", city:"Tóquio", district:"—", lat:35.6720, lng:139.7639, mapQuery:"Muji Ginza Tokyo", photoQuery:"Muji flagship store Ginza", tags:["Compras"], visitMin:30, tier:2, period:"tarde",
+        blurb:"Da sua lista de lojinhas.",
+        detail:"Marca japonesa de produtos minimalistas — papelaria, roupa, casa e até comida.",
+        bestTime:"Horário comercial." },
+      { id:"seven-eleven", name:"7-Eleven", city:"Tóquio", district:"—", lat:35.6890, lng:139.7005, mapQuery:"7-Eleven Tokyo", tags:["Conveniência"], visitMin:15, tier:2, period:"tarde",
+        blurb:"Da sua lista — konbini onipresente e surpreendentemente bom.",
+        detail:"Além de comida, é onde ficam os caixas eletrônicos que aceitam cartão estrangeiro sem taxa.",
+        bestTime:"Qualquer hora — abre 24h." },
+
+      // ============ VINDOS DOS DOCUMENTOS DO PROJETO ============
+      // --- Karaokê: a dúvida do Chakura, resolvida ---
+      { id:"chakura", name:"Chakura (bar de karaokê)", city:"Tóquio", district:"Shinjuku", lat:35.6945, lng:139.7020, mapQuery:"Chakura karaoke bar Shinjuku", photoQuery:"karaoke bar Tokyo interior", tags:["Karaokê","Com locais"], visitMin:90, tier:1, period:"noite", mealType:"Bebida",
+        blurb:"Bar de karaokê onde todo mundo canta junto — não é box privado.",
+        detail:"Diferença que muda tudo: box de karaokê é sala privada e você não conhece ninguém; bar de karaokê é sala comum onde todos cantam juntos. O Chakura é do segundo tipo — é por isso que ele entra como destino, não como referência de endereço.",
+        bestTime:"Dia de semana depois das 21h. Emendar com o Champion na mesma noite.", cost:"A conferir" },
+      { id:"champion", name:"Champion (Golden Gai)", city:"Tóquio", district:"Shinjuku", lat:35.6938, lng:139.7043, mapQuery:"Champion bar Golden Gai Shinjuku", photoQuery:"Golden Gai Shinjuku alley", tags:["Karaokê","Barato"], visitMin:90, tier:1, period:"noite", mealType:"Bebida",
+        blurb:"Drink ¥500, sem couvert — e todo mundo canta junto.",
+        detail:"Fica no Golden Gai e é a dupla natural do Chakura na mesma noite. Sem taxa de entrada, ao contrário de muitos bares da região.",
+        bestTime:"Dia de semana depois das 21h, emendando com o Chakura.", cost:"~¥500/drink, sem couvert" },
+
+      // --- Torre Tokyu Kabukicho (complexo novo) ---
+      { id:"tokyu-kabukicho", name:"Torre Tokyu Kabukicho", city:"Tóquio", district:"Kabukicho", lat:35.6955, lng:139.7000, mapQuery:"Tokyu Kabukicho Tower", tags:["Novo","Vida noturna"], visitMin:180, tier:1, period:"noite", mealType:"Jantar",
+        blurb:"Prédio inteiro de entretenimento — comida, games e balada em andares diferentes.",
+        detail:"Reúne o Kabuki Yokocho (praça de alimentação temática, aberta 6h-5h), o namco TOKYO (fliperama com DJ bar), o Tokyo Matrix (atração imersiva) e o ZEROTOKYO (complexo de balada).",
+        bestTime:"Noite. O Kabuki Yokocho funciona quase 24h, os clubes enchem entre 1h e 3h.", cost:"Grátis a entrada (paga consumo)" },
+
+      // --- Museu (substituiu o Museu da Nintendo) ---
+      { id:"museu-nacional", name:"Museu Nacional de Tóquio", city:"Tóquio", district:"Ueno", lat:35.7188, lng:139.7766, mapQuery:"Tokyo National Museum Ueno", tags:["Museu","Samurai"], visitMin:120, tier:1, period:"tarde",
+        blurb:"Armadura e espada de samurai, ukiyo-e e escultura budista — ¥1.000.",
+        detail:"Entrou no lugar do Museu da Nintendo. Maior museu do Japão, com a coleção nacional de arte e artefatos históricos.",
+        bestTime:"Sexta e sábado abre até 20h. ⚠️ Fecha às segundas.", cost:"¥1.000" },
+
+      // --- Bairros alternativos ---
+      { id:"shimokitazawa", name:"Shimokitazawa", city:"Tóquio", district:"Shimokitazawa", lat:35.6613, lng:139.6680, mapQuery:"Shimokitazawa Tokyo", photoQuery:"Shimokitazawa street Tokyo", tags:["Brechó","Alternativo"], visitMin:120, tier:2, period:"tarde",
+        blurb:"Bairro de brechó e live house, longe do circuito turístico.",
+        detail:"Ruas estreitas cheias de lojas de roupa usada, sebos e casas de show pequenas. Clima bem mais jovem e independente que Shibuya.",
+        bestTime:"Tarde, qualquer dia.", cost:"Grátis (só a rua)" },
+      { id:"koenji", name:"Koenji", city:"Tóquio", district:"Koenji", lat:35.7056, lng:139.6498, mapQuery:"Koenji Tokyo", photoQuery:"Koenji shopping street Tokyo", tags:["Brechó","Sentō"], visitMin:120, tier:2, period:"tarde",
+        blurb:"Brechó, live house e o sentō Kosugiyu por ¥550.",
+        detail:"Vizinho de Shimokitazawa em espírito: cena punk/independente, lojas de segunda mão e um banho público tradicional (sentō) barato pra experimentar o costume local.",
+        bestTime:"Tarde; o sentō funciona bem no fim do dia.", cost:"¥550 (sentō Kosugiyu)" },
+
+      // --- Akihabara extra ---
+      { id:"silk-hat", name:"Silk Hat Akihabara", city:"Tóquio", district:"Akihabara", lat:35.6995, lng:139.7710, mapQuery:"Silk Hat Akihabara", photoQuery:"Japanese arcade Akihabara", tags:["Fliperama","Novo"], visitMin:60, tier:2, period:"tarde",
+        blurb:"Fliperama novo que assumiu o lugar do GiGO.",
+        detail:"O prédio 1 do GiGO Akihabara fechou em agosto de 2025; o Silk Hat ocupou o espaço na cena de fliperamas do bairro.",
+        bestTime:"Tarde. Compras em Akiba rendem mais ter/qua 14h-17h; domingo 13h-18h a rua vira calçadão (melhor atmosfera, pior pra comprar).", cost:"Grátis a entrada (paga por jogo)" },
+
+      // --- Experiências ---
+      { id:"aula-ramen", name:"Aula de ramen", city:"Tóquio", district:"—", lat:35.6900, lng:139.7000, mapQuery:"ramen cooking class Tokyo", photoQuery:"ramen cooking class Japan", tags:["Experiência","Comida"], visitMin:180, tier:2, period:"tarde", mealType:"Almoço",
+        blurb:"Aprender a fazer o ramen em vez de só comer.",
+        detail:"Aulas práticas de algumas horas em que você monta o caldo e o prato do zero.",
+        bestTime:"Reservar com antecedência; costuma ter turma de manhã e de tarde.", cost:"A conferir", booking:"Reservar com antecedência" },
+      { id:"basquete-bleague", name:"Basquete B.League", city:"Tóquio", district:"—", lat:35.6950, lng:139.7500, mapQuery:"B.League basketball Tokyo", photoQuery:"basketball arena Japan", tags:["Esporte"], visitMin:150, tier:3, period:"noite",
+        blurb:"Jogo da liga japonesa de basquete — torcida organizada é um espetáculo à parte.",
+        detail:"Liga profissional japonesa de basquete. A torcida é organizada e barulhenta de um jeito bem diferente do basquete americano ou brasileiro.",
+        bestTime:"Conferir tabela da temporada pras datas em dezembro.", cost:"A conferir", booking:"Conferir tabela da temporada" },
+
+      // --- Diversão ---
+      { id:"pokepark", name:"PokéPark KANTO + Jewellumination", city:"Tóquio", district:"Yomiuriland", lat:35.6270, lng:139.5160, mapQuery:"Yomiuriland Tokyo", photoQuery:"Yomiuriland illumination Tokyo", tags:["Pokémon","Iluminação"], visitMin:240, tier:2, period:"tarde",
+        blurb:"PokéPark novo + a iluminação de inverno do Yomiuriland.",
+        detail:"O Jewellumination é a decoração de luzes de inverno do parque, que combina com a visita ao PokéPark KANTO.",
+        bestTime:"Chegar de tarde e ficar até escurecer, pra pegar a iluminação acesa.", cost:"A conferir" },
+      { id:"pokemon-cafe", name:"Pokémon Café", city:"Tóquio", district:"Nihonbashi", lat:35.6815, lng:139.7745, mapQuery:"Pokemon Cafe Nihonbashi Tokyo", photoQuery:"Pokemon Cafe Tokyo", tags:["Temático","Reserva"], visitMin:90, tier:2, period:"tarde", mealType:"Almoço",
+        blurb:"⚠️ Reserva abre 31 dias antes, às 18h JST — e some rápido.",
+        detail:"Café temático com pratos decorados. Sem reserva não entra.",
+        bestTime:"Marcar no calendário: 31 dias antes da data desejada, 18h no horário do Japão.", cost:"A conferir", booking:"31 dias antes, 18h JST" },
+      { id:"teamlab", name:"teamLab Borderless", city:"Tóquio", district:"Azabudai", lat:35.6605, lng:139.7292, mapQuery:"teamLab Borderless Tokyo", photoQuery:"teamLab Borderless digital art", tags:["Arte digital","Reserva"], visitMin:180, tier:1, period:"tarde",
+        blurb:"⚠️ Ingressos de dezembro abrem em 1º/out.",
+        detail:"Museu de arte digital imersiva. Os ingressos são por horário e esgotam.",
+        bestTime:"Comprar assim que abrir a venda (1º de outubro para dezembro).", cost:"A conferir", booking:"Ingressos de dezembro abrem 1º/out" },
+      { id:"ghibli", name:"Museu Ghibli", city:"Tóquio", district:"Mitaka", lat:35.6962, lng:139.5704, mapQuery:"Ghibli Museum Mitaka", photoQuery:"Ghibli Museum Mitaka", tags:["Reserva difícil"], visitMin:180, tier:2, period:"tarde",
+        blurb:"⚠️ Só pela Lawson, em japonês, dia 10/nov às 10h JST — esgota em segundos.",
+        detail:"A venda é exclusiva pelo sistema da Lawson e a interface é em japonês. É das reservas mais disputadas do Japão.",
+        bestTime:"10 de novembro, 10h JST, com tudo preparado antes.", cost:"A conferir", booking:"10/nov às 10h JST, só pela Lawson (em japonês) — esgota em segundos" },
+      { id:"shibuya-sky", name:"Shibuya Sky", city:"Tóquio", district:"Shibuya", lat:35.6580, lng:139.7016, mapQuery:"Shibuya Sky", photoQuery:"Shibuya Sky observation deck", tags:["Vista","Reserva"], visitMin:90, tier:1, period:"tarde",
+        blurb:"Entrar 15h40-16h: o pôr do sol em dezembro é às 16h28.",
+        detail:"Mirante aberto no topo do Shibuya Scramble Square. ⚠️ O slot do pôr do sol some em horas — abre 14 dias antes.",
+        bestTime:"Entrada entre 15h40 e 16h. Reservar 14 dias antes.", cost:"A conferir", booking:"Abre 14 dias antes — slot do pôr do sol some em horas" },
+      { id:"round1", name:"Den Den Town + Round1 Spo-Cha", city:"Osaka", district:"Nipponbashi", lat:34.6600, lng:135.5060, mapQuery:"Den Den Town Osaka", photoQuery:"Round1 Spo-Cha Japan", tags:["Games","Esporte"], visitMin:180, tier:2, period:"tarde",
+        blurb:"A Akihabara de Osaka + um complexo de esportes indoor liberado.",
+        detail:"Den Den Town é o bairro de eletrônicos e anime de Osaka. O Round1 Spo-Cha cobra entrada única e libera boliche, batting cage, quadras e fliperama.",
+        bestTime:"Tarde/noite.", cost:"A conferir" },
+
+      // --- Fuji (detalhes do doc) ---
+      { id:"fuji-excursion", name:"Trem Fuji Excursion", city:"Fujiyoshida", district:"—", lat:35.6896, lng:139.7006, mapQuery:"Shinjuku Station Tokyo", photoQuery:"Fuji Excursion limited express train", tags:["Transporte","Reserva obrigatória"], visitMin:120, tier:1, period:"manha",
+        blurb:"⚠️ Reserva obrigatória — não existe vagão livre.",
+        detail:"Trem expresso direto de Shinjuku até a região do Fuji. As reservas abrem 1 mês antes, às 10h JST.",
+        bestTime:"Reservar exatamente 1 mês antes, 10h JST.", cost:"A conferir", booking:"Reserva OBRIGATÓRIA, abre 1 mês antes às 10h JST — não há vagão livre" },
+
+      // --- Kyoto extras ---
+      { id:"kenninji-noite", name:"Kenninji (iluminação noturna)", city:"Kyoto", district:"Gion", lat:35.0000, lng:135.7740, mapQuery:"Kennin-ji Temple Kyoto", photoQuery:"Kennin-ji temple Kyoto", tags:["Iluminação","Zen"], visitMin:90, tier:1, period:"noite",
+        blurb:"Templo zen mais antigo de Kyoto (1202) iluminado à noite — ¥2.000.",
+        detail:"Tem o teto dos Dois Dragões e os biombos dos Deuses do Vento e Trovão, de Tawaraya Sotatsu. A janela do ano passado (29/nov a 13/dez) bate quase exato com sua viagem. ⚠️ As datas de 2026 saem em outubro — confirmar.",
+        bestTime:"~17h30 às 21h. Ingresso separado do diurno.", cost:"¥2.000", booking:"Datas de 2026 saem em outubro — confirmar" },
+      { id:"kodaiji-noite", name:"Kodaiji (projeção mapeada)", city:"Kyoto", district:"Higashiyama", lat:35.0000, lng:135.7810, mapQuery:"Kodai-ji Temple Kyoto", photoQuery:"Kodai-ji temple illumination Kyoto", tags:["Iluminação","Espetáculo"], visitMin:60, tier:2, period:"noite",
+        blurb:"Projeção mapeada no bambu — mais espetáculo que o Kenninji.",
+        detail:"Iluminação noturna com projeção sobre o bosque de bambu do templo. Vai até ~14/dez.",
+        bestTime:"~17h30 às 21h.", cost:"A conferir", booking:"Vai até ~14/dez" },
+      { id:"fushimi-sake", name:"Distrito de saquê de Fushimi", city:"Kyoto", district:"Fushimi", lat:34.9330, lng:135.7600, mapQuery:"Gekkeikan Okura Sake Museum Kyoto", photoQuery:"Fushimi sake district Kyoto", tags:["Saquê","Degustação"], visitMin:120, tier:2, period:"tarde", mealType:"Petisco/Bebida",
+        blurb:"Museu Gekkeikan por ¥600 com degustação, e nama sake no Torisei.",
+        detail:"Fushimi é uma das regiões produtoras de saquê mais importantes do Japão, graças à água da região. Fica perto do Fushimi Inari.",
+        bestTime:"Tarde, emendando com o Fushimi Inari.", cost:"¥600 (museu Gekkeikan, com degustação)" },
+      { id:"arashiyama-macacos", name:"Iwatayama Monkey Park", city:"Kyoto", district:"Arashiyama", lat:35.0128, lng:135.6770, mapQuery:"Iwatayama Monkey Park Kyoto", photoQuery:"Iwatayama monkey park Arashiyama", tags:["Animais","Vista"], visitMin:90, tier:2, period:"manha",
+        blurb:"Complemento natural do bosque de bambu — macacos soltos e vista da cidade.",
+        detail:"Subida de ~20 minutos até o topo, onde macacos japoneses circulam livremente e há vista panorâmica de Kyoto.",
+        bestTime:"Manhã, logo depois do bosque de bambu.", cost:"A conferir" },
+      { id:"uzumasa", name:"Uzumasa Kyoto Village", city:"Kyoto", district:"Uzumasa", lat:35.0180, lng:135.7070, mapQuery:"Toei Kyoto Studio Park", photoQuery:"Toei Kyoto Studio Park samurai", tags:["Temático","Reabriu"], visitMin:180, tier:2, period:"tarde",
+        blurb:"Ex-Toei, reabriu em março de 2026 — ninja e henshin.",
+        detail:"Parque temático montado num estúdio de cinema histórico, com cenários de época, shows de ninja e experiências de transformação (henshin) em personagens.",
+        bestTime:"Tarde. Confirmar horários, já que reabriu recentemente.", cost:"A conferir", booking:"Reabriu em mar/2026 — confirmar horários" },
+
+      // --- Osaka extras ---
+      { id:"usj", name:"Universal Studios Japan", city:"Osaka", district:"Konohana", lat:34.6654, lng:135.4323, mapQuery:"Universal Studios Japan Osaka", photoQuery:"Universal Studios Japan entrance", tags:["Parque","Armadilha"], visitMin:480, tier:2, period:"manha",
+        blurb:"⚠️ Studio Pass NÃO garante entrada na Super Nintendo World.",
+        detail:"A SNW tem capacidade controlada. O timed entry gratuito só aparece no app depois da catraca e some em minutos. A única garantia comprável antes é o Express Pass que inclui SNW (~¥11.800+). A Power-Up Band (¥4.000-4.900) é praticamente obrigatória pra aproveitar a área.",
+        bestTime:"Terça, quarta ou quinta de início de dezembro.", cost:"Studio Pass + Express Pass c/ SNW ~¥11.800+ · Power-Up Band ¥4.000–4.900", booking:"Comprar ao fixar a data — Express Pass é a ÚNICA garantia de entrar na Super Nintendo World" }
+    ],
+    // bairros importantes pra dar destaque no Mapa geral
+    neighborhoods: [
+      { name:"Shinjuku", lat:35.6938, lng:139.7036 },
+      { name:"Kabukicho", lat:35.6952, lng:139.7025 },
+      { name:"Akihabara", lat:35.6984, lng:139.7731 },
+      { name:"Shibuya", lat:35.6595, lng:139.7005 },
+      { name:"Harajuku", lat:35.6702, lng:139.7026 },
+      { name:"Ikebukuro", lat:35.7295, lng:139.7109 },
+      { name:"Nakano", lat:35.7080, lng:139.6655 },
+      { name:"Shimokitazawa", lat:35.6613, lng:139.6680 },
+      { name:"Koenji", lat:35.7056, lng:139.6498 },
+      { name:"Ueno", lat:35.7188, lng:139.7766 },
+      { name:"Ryogoku", lat:35.6967, lng:139.7931 },
+      { name:"Ginza", lat:35.6717, lng:139.7650 },
+      { name:"Odaiba", lat:35.6267, lng:139.7746 },
+      { name:"Fujiyoshida", lat:35.4900, lng:138.8000 },
+      { name:"Shimoyoshida", lat:35.4900, lng:138.8010 },
+      { name:"Kawaguchiko", lat:35.5000, lng:138.7560 },
+      { name:"Hakone-Yumoto", lat:35.2328, lng:139.1058 },
+      { name:"Gora", lat:35.2430, lng:139.0470 },
+      { name:"Owakudani", lat:35.2440, lng:139.0196 },
+      { name:"Lago Ashi", lat:35.2100, lng:139.0150 },
+      { name:"Arashiyama", lat:35.0094, lng:135.6668 },
+      { name:"Gion / Higashiyama", lat:35.0037, lng:135.7752 },
+      { name:"Fushimi", lat:34.9671, lng:135.7727 },
+      { name:"Namba / Dotonbori", lat:34.6687, lng:135.5013 },
+      { name:"Shin Sekai", lat:34.6524, lng:135.5063 }
+    ],
+    // "days" aqui são CLUSTERS montáveis, não dias fixos da viagem.
+    // A ideia é você escolher qual cluster fazer em cada dia, durante a viagem.
+    days: [
+      {
+        label: "Akihabara",
+        lineColor: "#FFB238",
+        slots: [
+          { time:"11:00", stationLabel:"Chegada ao bairro", placeIds:["akihabara"] },
+          { time:"12:00", stationLabel:"Steins;Gate", placeIds:["radiokaikan"] },
+          { time:"13:00", stationLabel:"Almoço", placeIds:["restaurantes-escondidos","sukiya"] },
+          { time:"14:30", stationLabel:"Mangá & colecionáveis", placeIds:["mandarake"] },
+          { time:"16:00", stationLabel:"Santuário (opcional)", placeIds:["kandamyojin"] }
+        ]
+      },
+      {
+        label: "Shinjuku + Kabukicho",
+        lineColor: "#FF6F91",
+        slots: [
+          { time:"15:00", stationLabel:"Compras", placeIds:["uniqlo-shinjuku"] },
+          { time:"16:30", stationLabel:"Café", placeIds:["shinjuku-cafes"] },
+          { time:"19:00", stationLabel:"Noite começa", placeIds:["shinjuku-noite"] },
+          { time:"21:00", stationLabel:"Karaokê", placeIds:["karaoke-chakura"] },
+          { time:"22:30", stationLabel:"Vida noturna", placeIds:["kabukicho"] }
+        ]
+      },
+      {
+        label: "Shibuya + Harajuku",
+        lineColor: "#2EC4B6",
+        slots: [
+          { time:"11:00", stationLabel:"Moda jovem", placeIds:["takeshita"] },
+          { time:"12:30", stationLabel:"Café temático", placeIds:["harajuku-cafes"] },
+          { time:"14:30", stationLabel:"Games", placeIds:["nintendo-shibuya"] },
+          { time:"18:00", stationLabel:"Cruzamento + noite", placeIds:["shibuya-noite"] }
+        ]
+      },
+      {
+        label: "Ginza + Skytree",
+        lineColor: "#C77DFF",
+        slots: [
+          { time:"13:00", stationLabel:"Compras", placeIds:["ginza"] },
+          { time:"14:30", stationLabel:"Lojinhas", placeIds:["gu-ginza","cdg-ginza","muji"] },
+          { time:"16:30", stationLabel:"Vista do pôr do sol", placeIds:["skytree"] }
+        ]
+      },
+      {
+        label: "Ikebukuro + Nakano",
+        lineColor: "#FFD166",
+        slots: [
+          { time:"12:00", stationLabel:"Bairro barato", placeIds:["ikebukuro"] },
+          { time:"15:00", stationLabel:"Colecionáveis", placeIds:["nakano"] }
+        ]
+      },
+      {
+        label: "Odaiba",
+        lineColor: "#4A90E2",
+        slots: [
+          { time:"15:00", stationLabel:"Cafés high-end", placeIds:["odaiba"] }
+        ]
+      },
+      {
+        label: "Se sobrar tempo (Tóquio)",
+        lineColor: "#8B96A8",
+        slots: [
+          { time:"09:00", stationLabel:"Campus", placeIds:["todai"] },
+          { time:"10:30", stationLabel:"Palácio", placeIds:["palacio-tokyo"] }
+        ]
+      },
+      {
+        label: "Yokohama / Saitama",
+        lineColor: "#7D8597",
+        slots: [
+          { time:"14:00", stationLabel:"Fora de Tóquio", placeIds:["yokohama","saitama"] }
+        ]
+      },
+      {
+        label: "Fuji — chegada",
+        lineColor: "#06D6A0",
+        slots: [
+          { time:"15:00", stationLabel:"Rua retrô + Fuji", placeIds:["honcho-street"] },
+          { time:"16:00", stationLabel:"Museu (fecha 16h30!)", placeIds:["fujisan-center"] }
+        ]
+      },
+      {
+        label: "Fuji — amanhecer",
+        lineColor: "#2A9D8F",
+        slots: [
+          { time:"06:30", stationLabel:"Nascer do sol", placeIds:["chureito"] },
+          { time:"10:00", stationLabel:"Se o céu estiver limpo", placeIds:["kachikachi"] }
+        ]
+      },
+      {
+        label: "Hakone — chegada",
+        lineColor: "#7209B7",
+        slots: [
+          { time:"14:00", stationLabel:"Chegada + Free Pass", placeIds:["hakone-yumoto"] },
+          { time:"15:30", stationLabel:"Esculturas + onsen de pés", placeIds:["open-air-museum"] }
+        ]
+      },
+      {
+        label: "Hakone — o loop",
+        lineColor: "#B5179E",
+        slots: [
+          { time:"09:30", stationLabel:"Teleférico", placeIds:["hakone-ropeway"] },
+          { time:"10:15", stationLabel:"Vale vulcânico + ovo preto", placeIds:["owakudani"] },
+          { time:"12:00", stationLabel:"Barco pirata", placeIds:["lake-ashi"] },
+          { time:"13:30", stationLabel:"Torii flutuante", placeIds:["hakone-shrine"] },
+          { time:"15:30", stationLabel:"Onsen antes de seguir", placeIds:["hakone-yuryo"] }
+        ]
+      },
+      {
+        label: "Hakone — alternativas",
+        lineColor: "#9D4EDD",
+        slots: [
+          { time:"10:00", stationLabel:"Se chover", placeIds:["pola-museum"] },
+          { time:"13:00", stationLabel:"Jardim", placeIds:["gora-park"] },
+          { time:"15:00", stationLabel:"Saindo pra Kyoto", placeIds:["odawara-castle"] }
+        ]
+      },
+      {
+        label: "Kyoto — Arashiyama + Fushimi",
+        lineColor: "#E8492A",
+        slots: [
+          { time:"07:30", stationLabel:"Bosque de bambu", placeIds:["bamboo"] },
+          { time:"18:00", stationLabel:"Torii ao entardecer", placeIds:["fushimi"] }
+        ]
+      },
+      {
+        label: "Kyoto — Higashiyama + Gion",
+        lineColor: "#EF476F",
+        slots: [
+          { time:"09:00", stationLabel:"Templo", placeIds:["kiyomizu"] },
+          { time:"15:00", stationLabel:"Santuário", placeIds:["yasaka"] },
+          { time:"16:00", stationLabel:"Perto do Yasaka", placeIds:["heianjingu"] },
+          { time:"18:30", stationLabel:"Distrito histórico", placeIds:["gion"] }
+        ]
+      },
+      {
+        label: "Kyoto — Zen + Castelo",
+        lineColor: "#118AB2",
+        slots: [
+          { time:"08:45", stationLabel:"Castelo (abertura)", placeIds:["nijo"] },
+          { time:"10:00", stationLabel:"Se estiver aberto", placeIds:["palacio-kyoto"] },
+          { time:"14:00", stationLabel:"Jardim zen", placeIds:["ryoanji"] }
+        ]
+      },
+      {
+        label: "Kyoto — Pavilhões (longe)",
+        lineColor: "#F4A261",
+        slots: [
+          { time:"09:00", stationLabel:"Pavilhão Dourado", placeIds:["kinkakuji"] },
+          { time:"13:00", stationLabel:"Pavilhão de Prata", placeIds:["ginkakuji"] }
+        ]
+      },
+      {
+        label: "Osaka — Castelo",
+        lineColor: "#9D4EDD",
+        slots: [
+          { time:"10:00", stationLabel:"Castelo", placeIds:["osakacastle"] },
+          { time:"14:00", stationLabel:"Bebida barata", placeIds:["vending-osaka"] }
+        ]
+      },
+      {
+        label: "Osaka — Noite",
+        lineColor: "#FF6B35",
+        slots: [
+          { time:"18:00", stationLabel:"Bairro retrô", placeIds:["shinsekai"] },
+          { time:"20:00", stationLabel:"Neon + comida", placeIds:["dotonbori"] },
+          { time:"20:30", stationLabel:"Petisco", placeIds:["takoyaki"] },
+          { time:"21:30", stationLabel:"Passeio de barco", placeIds:["barco-osaka"] },
+          { time:"23:00", stationLabel:"Balada", placeIds:["balada-osaka"] }
+        ]
+      },
+      {
+        label: "Shinjuku — Karaokê com locais",
+        lineColor: "#FF5D8F",
+        slots: [
+          { time:"19:00", stationLabel:"Jantar / prédio novo", placeIds:["tokyu-kabukicho"] },
+          { time:"21:00", stationLabel:"Bar de karaokê", placeIds:["chakura"] },
+          { time:"22:30", stationLabel:"Emenda no Golden Gai", placeIds:["champion"] }
+        ]
+      },
+      {
+        label: "Ueno — Museu",
+        lineColor: "#B08968",
+        slots: [
+          { time:"14:00", stationLabel:"Samurai & ukiyo-e", placeIds:["museu-nacional"] }
+        ]
+      },
+      {
+        label: "Bairros alternativos",
+        lineColor: "#A3B18A",
+        slots: [
+          { time:"13:00", stationLabel:"Brechó & live house", placeIds:["shimokitazawa"] },
+          { time:"16:00", stationLabel:"Sentō & brechó", placeIds:["koenji"] }
+        ]
+      },
+      {
+        label: "Experiências (reservar antes)",
+        lineColor: "#457B9D",
+        slots: [
+          { time:"13:00", stationLabel:"Aula de ramen", placeIds:["aula-ramen"] },
+          { time:"19:00", stationLabel:"Basquete", placeIds:["basquete-bleague"] }
+        ]
+      },
+      {
+        label: "Reservas disputadas (Tóquio)",
+        lineColor: "#E07A5F",
+        slots: [
+          { time:"11:00", stationLabel:"Café temático", placeIds:["pokemon-cafe"] },
+          { time:"14:00", stationLabel:"Arte digital", placeIds:["teamlab"] },
+          { time:"15:40", stationLabel:"Pôr do sol (16h28!)", placeIds:["shibuya-sky"] }
+        ]
+      },
+      {
+        label: "Ghibli / Yomiuriland",
+        lineColor: "#81B29A",
+        slots: [
+          { time:"10:00", stationLabel:"Museu Ghibli", placeIds:["ghibli"] },
+          { time:"15:00", stationLabel:"Pokémon + luzes", placeIds:["pokepark"] }
+        ]
+      },
+      {
+        label: "Kyoto — Iluminação noturna",
+        lineColor: "#9B5DE5",
+        slots: [
+          { time:"18:00", stationLabel:"Templo zen iluminado", placeIds:["kenninji-noite"] },
+          { time:"19:30", stationLabel:"Projeção no bambu", placeIds:["kodaiji-noite"] }
+        ]
+      },
+      {
+        label: "Kyoto — Arashiyama completo",
+        lineColor: "#F2CC8F",
+        slots: [
+          { time:"07:00", stationLabel:"Bambu (antes das 7h!)", placeIds:["bamboo"] },
+          { time:"09:00", stationLabel:"Macacos & vista", placeIds:["arashiyama-macacos"] },
+          { time:"14:00", stationLabel:"Ninja & henshin", placeIds:["uzumasa"] }
+        ]
+      },
+      {
+        label: "Kyoto — Fushimi + saquê",
+        lineColor: "#C9184A",
+        slots: [
+          { time:"14:00", stationLabel:"Degustação", placeIds:["fushimi-sake"] },
+          { time:"18:00", stationLabel:"Torii ao entardecer", placeIds:["fushimi"] }
+        ]
+      },
+      {
+        label: "Osaka — USJ",
+        lineColor: "#00B4D8",
+        slots: [
+          { time:"09:00", stationLabel:"Parque (dia inteiro)", placeIds:["usj"] }
+        ]
+      },
+      {
+        label: "Osaka — Den Den Town",
+        lineColor: "#FFB703",
+        slots: [
+          { time:"14:00", stationLabel:"Games & esporte indoor", placeIds:["round1"] }
+        ]
+      },
+      {
+        label: "Nara",
+        lineColor: "#52B788",
+        slots: [
+          { time:"09:00", stationLabel:"Veados", placeIds:["nara"] }
+        ]
+      }
+    ]
+  }
+];
+
+/* ==========================================================
+   ESTADO
+   ========================================================== */
+let currentTripId = TRIPS[0].id;
+let currentView = "map";
+let currentDayIndex = 0;
+let usingGoogle = false;
+let googleReady = false;
+let userLocation = null; // {lat,lng} depois que o navegador autoriza
+
+const selections = {};       // key `${tripId}_${dayIndex}_${slotIndex}` -> placeId
+const photoCache = {};       // placeId -> [url, url, url] | []
+
+// declarados aqui (e não perto de onde são usados) porque o boot roda de forma síncrona
+// mais abaixo no modo sem chave, e "let" fica inacessível até a linha da própria declaração rodar
+let lMapMapa, lMapCrono, lMarkersMapa, lRouteMapa, lMarkersCrono, lRouteCrono;
+let gMapMapa, gMapCrono, gDirectionsSvc, gDirectionsRendMapa, gDirectionsRendCrono, gPlacesSvc;
+let gCronoRenderers = [];
+let gCronoStopMarkers = [];
+let gCronoStopLabels = [];
+let gCronoLegLabels = [];
+function clearCronoRenderers(){
+  gCronoRenderers.forEach(r => r.setMap(null)); gCronoRenderers = [];
+  gCronoStopMarkers.forEach(m => m.setMap(null)); gCronoStopMarkers = [];
+  gCronoStopLabels.forEach(l => l.setMap(null)); gCronoStopLabels = [];
+  gCronoLegLabels.forEach(l => l.setMap(null)); gCronoLegLabels = [];
+}
+// pequena variação de tom pra cada trecho (perna) do trajeto, sem fugir da cor do dia
+function shadeColor(hex, percent){
+  const num = parseInt(hex.replace("#",""), 16);
+  let r = (num >> 16) + Math.round(255 * percent / 100);
+  let g = ((num >> 8) & 0x00FF) + Math.round(255 * percent / 100);
+  let b = (num & 0x0000FF) + Math.round(255 * percent / 100);
+  r = Math.min(255, Math.max(0, r)); g = Math.min(255, Math.max(0, g)); b = Math.min(255, Math.max(0, b));
+  return "#" + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+}
+function legColor(baseColor, i){ return shadeColor(baseColor, [0, -22, 20, -35, 10][i % 5]); }
+function legMidpoint(a, b){ return { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 }; }
+
+function currentTrip(){ return TRIPS.find(t => t.id === currentTripId); }
+function placeById(id){ return currentTrip().places.find(p => p.id === id); }
+
+/* ---------- persistência (localStorage, com fallback silencioso) ---------- */
+function storageGet(key, fallback){
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e){ return fallback; }
+}
+function storageSet(key, value){
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch(e){ /* ambiente sem storage: segue sem persistir */ }
+}
+function hiddenKey(tripId){ return `hidden_places_${tripId}`; }
+function isHidden(placeId){ return storageGet(hiddenKey(currentTripId), []).includes(placeId); }
+function hidePlace(placeId){
+  const list = storageGet(hiddenKey(currentTripId), []);
+  if (!list.includes(placeId)) { list.push(placeId); storageSet(hiddenKey(currentTripId), list); }
+  pushPlaceStatus();
+}
+function unhidePlace(placeId){
+  storageSet(hiddenKey(currentTripId), storageGet(hiddenKey(currentTripId), []).filter(id => id !== placeId));
+  pushPlaceStatus();
+}
+function extraKey(tripId, dayIndex, slotIndex){ return `extra_${tripId}_${dayIndex}_${slotIndex}`; }
+function getExtraIds(dayIndex, slotIndex){ return storageGet(extraKey(currentTripId, dayIndex, slotIndex), []); }
+function addExtraId(dayIndex, slotIndex, placeId){
+  const list = getExtraIds(dayIndex, slotIndex);
+  if (!list.includes(placeId)) { list.push(placeId); storageSet(extraKey(currentTripId, dayIndex, slotIndex), list); }
+}
+function orderKey(dayIndex, slotIndex){ return `order_${currentTripId}_${dayIndex}_${slotIndex}`; }
+function getSlotOrder(dayIndex, slotIndex){ return storageGet(orderKey(dayIndex, slotIndex), slotIndex + 1); }
+function setSlotOrder(dayIndex, slotIndex, newValue){
+  if (newValue !== null) {
+    const day = currentTrip().days[dayIndex];
+    const oldValue = getSlotOrder(dayIndex, slotIndex);
+    for (let i = 0; i < day.slots.length; i++) {
+      if (i === slotIndex) continue;
+      if (getSlotOrder(dayIndex, i) === newValue) {
+        storageSet(orderKey(dayIndex, i), oldValue); // troca: quem tinha esse número herda o antigo
+        break;
+      }
+    }
+  }
+  storageSet(orderKey(dayIndex, slotIndex), newValue);
+}
+
+// bucket simples de horário — usado só pra puxar sugestões que façam sentido pro horário do slot
+// (nenhuma IA aqui, é regra fixa: manhã até 11h, tarde até 18h, senão noite)
+function periodBucketFromTime(timeStr){
+  const hour = parseInt(timeStr.split(":")[0], 10);
+  if (hour < 11) return "manha";
+  if (hour < 18) return "tarde";
+  return "noite";
+}
+
+/* ---------- distância (haversine, km) ---------- */
+function haversine(a, b){
+  const R = 6371, toRad = d => d * Math.PI / 180;
+  const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
+  const x = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+/* ==========================================================
+   BOOT — decide Google Maps real vs. modo alternativo (Leaflet)
+   ========================================================== */
+function boot(){
+  renderTripSelect();
+  renderViewTabs();
+  renderMapView();
+  renderDayTabs();
+  renderTimeline();
+  updateCronoMap();
+  showApiKeyNote();
+  wireCatalogControls();
+  wirePlanControls();
+  wireStayControls();
+  initSupabase();
+  renderAuthBar();
+  requestUserLocation();
+}
+
+if (CONFIG.googleMapsApiKey) {
+  window.onGoogleMapsLoaded = function(){
+    usingGoogle = true; googleReady = true;
+    initGoogleMaps();
+    boot();
+  };
+  const s = document.createElement("script");
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${CONFIG.googleMapsApiKey}&libraries=places&callback=onGoogleMapsLoaded`;
+  s.onerror = () => { usingGoogle = false; initLeafletMaps(); boot(); };
+  document.head.appendChild(s);
+} else {
+  usingGoogle = false;
+  initLeafletMaps();
+  boot();
+}
+
+function showApiKeyNote(){
+  const el = document.getElementById("api-key-note");
+  if (usingGoogle) { el.style.display = "none"; return; }
+  el.innerHTML = `Rodando em modo alternativo (OpenStreetMap), sem chave do Google Maps configurada.
+    Pra ativar mapa completo com busca por endereço e fotos reais dos lugares:
+    Google Cloud Console → crie um projeto → ative "Maps JavaScript API" e "Places API" →
+    crie uma chave em Credenciais → cole em <code>CONFIG.googleMapsApiKey</code> no topo do arquivo.
+    O uso pessoal fica bem dentro da faixa gratuita mensal do Google.`;
+}
+
+/* ==========================================================
+   TRIP SELECT + VIEW TABS
+   ========================================================== */
+function renderTripSelect(){
+  const sel = document.getElementById("trip-select");
+  sel.innerHTML = TRIPS.map(t => `<option value="${t.id}">${t.title}</option>`).join("");
+  sel.value = currentTripId;
+  document.getElementById("trip-title").textContent = currentTrip().title;
+  sel.onchange = () => {
+    currentTripId = sel.value;
+    currentDayIndex = 0;
+    document.getElementById("trip-title").textContent = currentTrip().title;
+    renderMapView();
+    renderDayTabs();
+    renderTimeline();
+    updateCronoMap();
+  };
+}
+
+function renderViewTabs(){
+  document.querySelectorAll(".view-tab").forEach(btn => {
+    btn.onclick = () => {
+      currentView = btn.dataset.view;
+      document.querySelectorAll(".view-tab").forEach(b => b.classList.toggle("active", b === btn));
+      document.getElementById("view-map").classList.toggle("active", currentView === "map");
+      document.getElementById("view-schedule").classList.toggle("active", currentView === "schedule");
+      document.getElementById("view-catalog").classList.toggle("active", currentView === "catalog");
+      document.getElementById("view-myplan").classList.toggle("active", currentView === "myplan");
+      if (currentView === "catalog") renderCatalog();
+      document.getElementById("view-stays").classList.toggle("active", currentView === "stays");
+      if (currentView === "myplan") renderMyPlan();
+      if (currentView === "stays") renderStays();
+      // Leaflet/Google precisam de um resize quando o container volta a ficar visível.
+      // A aba "Atrações" não tem mapa, então não entra aqui.
+      setTimeout(() => {
+        if (["catalog","myplan","stays"].includes(currentView)) return;
+        if (usingGoogle) {
+          google.maps.event.trigger(currentView === "map" ? gMapMapa : gMapCrono, "resize");
+        } else {
+          (currentView === "map" ? lMapMapa : lMapCrono).invalidateSize();
+        }
+      }, 50);
+    };
+  });
+}
+
+/* ==========================================================
+   MAPA VIEW (geral) — todos os lugares recomendados da viagem
+   ========================================================== */
+function initLeafletMaps(){
+  const darkTiles = () => L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19
+  });
+  lMapMapa = L.map("map-mapa").setView([35.6, 137.5], 6);
+  darkTiles().addTo(lMapMapa);
+  lMarkersMapa = L.layerGroup().addTo(lMapMapa);
+  lRouteMapa = L.layerGroup().addTo(lMapMapa);
+
+  lMapCrono = L.map("map-crono").setView([35.68, 139.76], 12);
+  darkTiles().addTo(lMapCrono);
+  lMarkersCrono = L.layerGroup().addTo(lMapCrono);
+  lRouteCrono = L.layerGroup().addTo(lMapCrono);
+}
+
+function initGoogleMaps(){
+  definePlaceLabelClass();
+  const styleDark = [
+    { elementType: "geometry", stylers: [{ color: "#1A2330" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#1A2330" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#8B96A8" }] },
+    { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#2A374A" }] },
+    { featureType: "poi", elementType: "geometry", stylers: [{ color: "#222E3C" }] },
+    { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+    { featureType: "administrative.neighborhood", elementType: "labels", stylers: [{ visibility: "off" }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#1F2E22" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#37435A" }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1A2330" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#4A5A73" }] },
+    { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#3A4A60" }] },
+    { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+    { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2A374A" }] },
+    { featureType: "transit", elementType: "labels", stylers: [{ visibility: "off" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#0B1622" }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#4B6478" }] }
+  ];
+  gMapMapa = new google.maps.Map(document.getElementById("map-mapa"), { center:{lat:35.6,lng:137.5}, zoom:6, styles: styleDark });
+  gMapCrono = new google.maps.Map(document.getElementById("map-crono"), { center:{lat:35.68,lng:139.76}, zoom:12, styles: styleDark });
+  const LABEL_ZOOM_THRESHOLD = 15;
+  gMapMapa.addListener("zoom_changed", () => {
+    const show = gMapMapa.getZoom() >= LABEL_ZOOM_THRESHOLD;
+    (gMapMapa._customLabels || []).forEach(l => l.setVisible(show));
+  });
+  gDirectionsSvc = new google.maps.DirectionsService();
+  gDirectionsRendMapa = new google.maps.DirectionsRenderer({ map: gMapMapa, suppressMarkers: true });
+  gDirectionsRendCrono = new google.maps.DirectionsRenderer({ map: gMapCrono, suppressMarkers: true });
+  gPlacesSvc = new google.maps.places.PlacesService(gMapMapa);
+}
+
+function tierColor(tier){ return tier === 1 ? "#E8492A" : tier === 2 ? "#2EC4B6" : "#8B96A8"; }
+function directionsUrl(place){
+  const q = encodeURIComponent(place.mapQuery);
+  let url = `https://www.google.com/maps/dir/?api=1&destination=${q}&travelmode=transit&language=pt`;
+  if (placeIdCache[place.id]) url += `&destination_place_id=${placeIdCache[place.id]}`;
+  return url;
+}
+function legDirectionsUrl(a, b){
+  if (a.id === "__user__") return directionsUrl(b); // sem origem = Google usa a localização ao vivo do aparelho
+  const qa = encodeURIComponent(a.mapQuery || a.name), qb = encodeURIComponent(b.mapQuery || b.name);
+  let url = `https://www.google.com/maps/dir/?api=1&origin=${qa}&destination=${qb}&travelmode=transit&language=pt`;
+  if (placeIdCache[a.id]) url += `&origin_place_id=${placeIdCache[a.id]}`;
+  if (placeIdCache[b.id]) url += `&destination_place_id=${placeIdCache[b.id]}`;
+  return url;
+}
+// o place_id chega de forma assíncrona (só depois da 1ª busca de fotos); quando isso
+// acontece, atualiza os links "Ver no mapa" que já estão na tela (os "abrir esse trecho"
+// pegam o place_id atualizado na próxima vez que o trajeto for recalculado)
+function refreshMapLinksFor(place){
+  document.querySelectorAll(`a.pin-link[data-pin-for="${place.id}"]`).forEach(a => { a.href = directionsUrl(place); });
+}
+
+const redPinDataUri = (color) => `data:image/svg+xml;utf8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="38" viewBox="0 0 26 38">
+    <path d="M13 0C5.8 0 0 5.8 0 13c0 9.7 13 25 13 25s13-15.3 13-25C26 5.8 20.2 0 13 0z" fill="${color}" stroke="#0E141F" stroke-width="1.5"/>
+    <circle cx="13" cy="13" r="4.5" fill="#0E141F"/>
+  </svg>`
+)}`;
+
+function activeTiers(){
+  return Array.from(document.querySelectorAll(".tier-cb")).filter(cb => cb.checked).map(cb => Number(cb.value));
+}
+
+/* ---------- geolocalização do usuário ---------- */
+/* ---------- localização manual (tem prioridade sobre a do navegador) ----------
+   A geolocalização do navegador erra feio às vezes (VPN, IP de datacenter, wifi
+   mal mapeado). Definir manualmente resolve e fica salvo. */
+function manualLocationKey(){ return `manual_location_${currentTripId}`; }
+function loadManualLocation(){
+  const saved = storageGet(manualLocationKey(), null);
+  if (saved && saved.lat && saved.lng) {
+    userLocation = saved;
+    const inp = document.getElementById("my-location-input");
+    if (inp) inp.value = saved.label || "";
+    return true;
+  }
+  return false;
+}
+async function setManualLocation(){
+  const inp = document.getElementById("my-location-input");
+  const q = inp.value.trim();
+  const info = document.getElementById("route-info");
+  if (!q) {
+    storageSet(manualLocationKey(), null);
+    userLocation = null;
+    info.textContent = "Localização manual removida — voltando a usar a do navegador.";
+    requestUserLocation();
+    return;
+  }
+  info.textContent = "Localizando…";
+  let found = null;
+  if (usingGoogle) {
+    found = await new Promise(resolve => {
+      gPlacesSvc.findPlaceFromQuery({ query: q, fields: ["geometry","name"], language: "pt" }, (r, s) => {
+        if (s === google.maps.places.PlacesServiceStatus.OK && r[0]) {
+          resolve({ lat: r[0].geometry.location.lat(), lng: r[0].geometry.location.lng(), label: r[0].name || q });
+        } else resolve(null);
+      });
+    });
+  } else {
+    const g = await geocodeNominatim(q);
+    if (g) found = { ...g, label: q };
+  }
+  if (!found) { info.textContent = `Não encontrei "${q}". Tente com a cidade junto (ex: "Shinjuku, Tóquio").`; return; }
+  userLocation = found;
+  storageSet(manualLocationKey(), found);
+  inp.value = found.label;
+  const origin = document.getElementById("origin-input");
+  if (origin) origin.value = "Minha localização";
+  info.textContent = `Ponto de partida definido: ${found.label}`;
+  renderUserLocationMarker("mapa");
+  renderUserLocationMarker("crono");
+  updateCronoMap();
+}
+
+function requestUserLocation(){
+  // se você já definiu manualmente, respeitamos isso e nem perguntamos ao navegador
+  if (loadManualLocation()) { renderUserLocationMarker("mapa"); renderUserLocationMarker("crono"); updateCronoMap(); return; }
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      const originInput = document.getElementById("origin-input");
+      if (originInput && !originInput.value) originInput.value = "Minha localização";
+      renderUserLocationMarker("mapa");
+      renderUserLocationMarker("crono");
+      // a localização chega de forma assíncrona, depois do primeiro render — sem isso,
+      // o trecho "a partir de onde você está" fica com um cálculo desatualizado (ou nenhum)
+      updateCronoMap();
+    },
+    () => { /* usuário negou ou não deu — segue sem isso, sem travar o app */ },
+    { enableHighAccuracy: false, timeout: 8000 }
+  );
+}
+let gUserLocationMarkers = { mapa: null, crono: null };
+function renderUserLocationMarker(target = "mapa"){
+  if (!userLocation) return;
+  if (usingGoogle) {
+    const map = target === "mapa" ? gMapMapa : gMapCrono;
+    if (gUserLocationMarkers[target]) gUserLocationMarkers[target].setMap(null);
+    gUserLocationMarkers[target] = new google.maps.Marker({
+      position: userLocation, map, title: "Você está aqui", zIndex: 1000,
+      icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#4A90E2", fillOpacity: 1, strokeColor: "#FFFFFF", strokeWeight: 2 }
+    });
+  } else {
+    const layer = target === "mapa" ? lMarkersMapa : lMarkersCrono;
+    if (layer) {
+      L.circleMarker([userLocation.lat, userLocation.lng], { radius: 8, color:"#fff", weight:2, fillColor:"#4A90E2", fillOpacity:1 })
+        .bindTooltip("Você está aqui").addTo(layer);
+    }
+  }
+}
+
+function renderMapView(){
+  const trip = currentTrip();
+  const tiers = activeTiers();
+  const visiblePlaces = trip.places.filter(p => tiers.includes(p.tier) && !isHidden(p.id));
+
+  if (usingGoogle) {
+    renderGoogleMarkers(gMapMapa, visiblePlaces);
+    renderNeighborhoodLabels(gMapMapa, trip.neighborhoods || []);
+  } else {
+    lMarkersMapa.clearLayers();
+    visiblePlaces.forEach(p => {
+      const icon = L.icon({ iconUrl: redPinDataUri(tierColor(p.tier)), iconSize:[24,34], iconAnchor:[12,34], popupAnchor:[0,-30] });
+      const m = L.marker([p.lat, p.lng], { icon }).addTo(lMarkersMapa);
+      m.on("click", () => openPlaceModal(p));
+      m.bindTooltip(p.name);
+    });
+    (trip.neighborhoods || []).forEach(n => {
+      L.marker([n.lat, n.lng], {
+        icon: L.divIcon({ className: "", html: `<div class="map-neighborhood-label" style="position:static;transform:none;">${n.name}</div>`, iconSize:[0,0] }),
+        interactive: false
+      }).addTo(lMarkersMapa);
+    });
+    if (visiblePlaces.length) lMapMapa.fitBounds(visiblePlaces.map(p => [p.lat, p.lng]), { padding:[30,30] });
+  }
+  renderUserLocationMarker();
+
+  document.querySelectorAll(".tier-cb").forEach(cb => cb.onchange = renderMapView);
+  document.getElementById("route-btn").onclick = handleRouteSearch;
+  const setBtn = document.getElementById("set-location-btn");
+  if (setBtn) {
+    setBtn.onclick = setManualLocation;
+    document.getElementById("my-location-input").onkeydown = (e) => { if (e.key === "Enter") setManualLocation(); };
+  }
+}
+
+function renderNeighborhoodLabels(map, neighborhoods){
+  if (map._neighborhoodLabels) map._neighborhoodLabels.forEach(l => l.setMap(null));
+  map._neighborhoodLabels = neighborhoods.map(n => {
+    const label = new PlaceLabel(new google.maps.LatLng(n.lat, n.lng), n.name, "map-neighborhood-label");
+    label.setMap(map);
+    return label;
+  });
+}
+
+let PlaceLabel; // definida dentro de initGoogleMaps, depois que google.maps existe de verdade
+function definePlaceLabelClass(){
+  PlaceLabel = class extends google.maps.OverlayView {
+    constructor(position, text, className = "map-place-label", style = ""){
+      super();
+      this.position = position;
+      this.text = text;
+      this.className = className;
+      this.style = style;
+      this.div = null;
+    }
+    onAdd(){
+      this.div = document.createElement("div");
+      this.div.className = this.className;
+      if (this.style) this.div.style.cssText += this.style;
+      this.div.textContent = this.text;
+      this.getPanes().overlayLayer.appendChild(this.div);
+    }
+    draw(){
+      const proj = this.getProjection();
+      if (!proj || !this.div) return;
+      const pos = proj.fromLatLngToDivPixel(this.position);
+      this.div.style.left = pos.x + "px";
+      this.div.style.top = pos.y + "px";
+    }
+    onRemove(){
+      if (this.div){ this.div.parentNode.removeChild(this.div); this.div = null; }
+    }
+    setVisible(visible){ if (this.div) this.div.style.display = visible ? "block" : ""; }
+  };
+}
+
+function renderGoogleMarkers(map, places){
+  if (map._customMarkers) map._customMarkers.forEach(m => m.setMap(null));
+  if (map._customLabels) map._customLabels.forEach(l => l.setMap(null));
+  map._customMarkers = places.map(p => {
+    const marker = new google.maps.Marker({
+      position:{lat:p.lat,lng:p.lng}, map, title:p.name,
+      icon: { url: redPinDataUri(tierColor(p.tier)), scaledSize: new google.maps.Size(p.tier === 1 ? 30 : 24, p.tier === 1 ? 43 : 34), anchor: new google.maps.Point(p.tier === 1 ? 15 : 12, p.tier === 1 ? 43 : 34) }
+    });
+    marker.addListener("click", () => openPlaceModal(p));
+    return marker;
+  });
+  map._customLabels = places.map(p => {
+    const label = new PlaceLabel(new google.maps.LatLng(p.lat, p.lng), p.name);
+    label.setMap(map);
+    label.setVisible(map.getZoom() >= 15);
+    return label;
+  });
+  if (places.length) {
+    const bounds = new google.maps.LatLngBounds();
+    places.forEach(p => bounds.extend({lat:p.lat,lng:p.lng}));
+    map.fitBounds(bounds);
+  }
+}
+
+/* ---------- modal de detalhes (carrossel de imagens) ---------- */
+async function openPlaceModal(place){
+  const modal = document.getElementById("place-modal");
+  document.getElementById("modal-title").textContent = place.name;
+  document.getElementById("modal-tags").innerHTML = place.tags.map(t => `<span class="tag">${t}</span>`).join("") + (place.period ? `<span class="tag">${periodLabel(place.period)}</span>` : "");
+  const descParts = [`${place.city} · ~${place.visitMin} min de visita`];
+  if (place.blurb) descParts.push(place.blurb);
+  if (place.detail) descParts.push(place.detail);
+  if (place.bestTime) descParts.push(`🕐 Melhor horário: ${place.bestTime}`);
+  document.getElementById("modal-desc").innerHTML = descParts.map(p => `<p style="margin:4px 0;">${p}</p>`).join("");
+  document.getElementById("modal-pin-link").href = directionsUrl(place);
+  document.getElementById("modal-pin-link").dataset.pinFor = place.id;
+  document.getElementById("modal-hide-btn").onclick = () => { hidePlace(place.id); closePlaceModal(); renderMapView(); renderTimeline(); };
+
+  const carousel = document.getElementById("modal-carousel");
+  const dots = document.getElementById("modal-dots");
+  carousel.innerHTML = `<div class="carousel-slide"><div class="placeholder-big placeholder">${place.name.charAt(0)}</div></div>`;
+  dots.innerHTML = "";
+  modal.classList.add("open");
+
+  const photos = await getPhotos(place);
+  if (photos.length) {
+    carousel.innerHTML = photos.map((url, i) =>
+      `<div class="carousel-slide"><img src="${url}" alt="${place.name}" onerror="this.parentElement.innerHTML='<div class=\\'placeholder-big placeholder\\'>${place.name.charAt(0)}</div>'"></div>`
+    ).join("");
+    dots.innerHTML = photos.map((_, i) => `<span class="${i===0 ? 'active' : ''}"></span>`).join("");
+    carousel.onscroll = () => {
+      const idx = Math.round(carousel.scrollLeft / carousel.clientWidth);
+      dots.querySelectorAll("span").forEach((d, i) => d.classList.toggle("active", i === idx));
+    };
+  }
+}
+function closePlaceModal(){ document.getElementById("place-modal").classList.remove("open"); }
+document.getElementById("modal-close-btn").addEventListener("click", closePlaceModal);
+document.getElementById("place-modal").addEventListener("click", (e) => { if (e.target.id === "place-modal") closePlaceModal(); });
+
+async function handleRouteSearch(){
+  const originText = document.getElementById("origin-input").value.trim();
+  const destText = document.getElementById("dest-input").value.trim();
+  const info = document.getElementById("route-info");
+  if (!originText || !destText) { info.textContent = "Preencha origem e destino."; return; }
+  info.textContent = "Buscando rota…";
+
+  const isMyLocation = originText === "Minha localização" && userLocation;
+  const originForGoogle = isMyLocation ? userLocation : originText;
+
+  if (usingGoogle) {
+    gDirectionsSvc.route({ origin: originForGoogle, destination: destText, travelMode: google.maps.TravelMode.TRANSIT }, (res, status) => {
+      if (status === "OK") {
+        gDirectionsRendMapa.setDirections(res);
+        const leg = res.routes[0].legs[0];
+        info.textContent = `${leg.distance.text} · ${leg.duration.text} (transporte público)`;
+      } else {
+        info.textContent = "Não consegui traçar essa rota (" + status + ").";
+      }
+    });
+  } else {
+    try {
+      const o = isMyLocation ? userLocation : await geocodeNominatim(originText);
+      const d = await geocodeNominatim(destText);
+      if (!o || !d) { info.textContent = "Não encontrei um dos endereços."; return; }
+      lRouteMapa.clearLayers();
+      const route = await osrmRoute([o, d]);
+      if (route) {
+        L.polyline(route.coords, { color: "#2EC4B6", weight: 4 }).addTo(lRouteMapa);
+        lMapMapa.fitBounds(route.coords, { padding:[30,30] });
+        info.textContent = `~${Math.round(route.legs[0].duration/60)} min de carro (estimativa OSRM — sem transporte público no modo alternativo).`;
+      } else {
+        L.polyline([[o.lat,o.lng],[d.lat,d.lng]], { color:"#2EC4B6", weight:3, dashArray:"6 8" }).addTo(lRouteMapa);
+        info.textContent = "Rota real indisponível agora, mostrando linha reta.";
+      }
+    } catch(e) {
+      info.textContent = "Erro ao buscar a rota.";
+    }
+  }
+}
+
+async function geocodeNominatim(query){
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    if (!data.length) return null;
+    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch(e){ return null; }
+}
+
+/* ==========================================================
+   FOTOS — Google Places (real) ou vazio (placeholder no modo alternativo)
+   ========================================================== */
+const placeIdCache = {};
+function cachePlaceId(place, id){
+  if (!id) return;
+  placeIdCache[place.id] = id;
+  storageSet(`placeid_${place.id}`, id);
+}
+
+async function getPhotos(place){
+  // se um dia uma foto automática ficar feia/errada, adicione heroImageOverride: "url"
+  // no lugar em TRIPS e ela entra na frente das fotos do Google, sem precisar mexer em mais nada.
+  const override = place.heroImageOverride ? [place.heroImageOverride] : [];
+  const cachedPid = storageGet(`placeid_${place.id}`, null);
+  if (cachedPid) placeIdCache[place.id] = cachedPid;
+
+  if (photoCache[place.id]) return [...override, ...photoCache[place.id]].slice(0, 3);
+  const cached = storageGet(`photos_${place.id}`, null);
+  if (cached) { photoCache[place.id] = cached; return [...override, ...cached].slice(0, 3); }
+
+  if (!usingGoogle) return override;
+
+  return new Promise(resolve => {
+    gPlacesSvc.findPlaceFromQuery(
+      { query: place.photoQuery || place.mapQuery, fields: ["photos", "place_id"], language: "pt" },
+      (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results[0]) {
+          // só guarda o place_id se a busca foi pelo mapQuery real. Quando usamos photoQuery
+          // (um substituto só pra ter foto decente), o place_id devolvido é do lugar da FOTO,
+          // não do destino — usá-lo mandaria o Google Maps pro endereço errado.
+          if (!place.photoQuery) cachePlaceId(place, results[0].place_id);
+          refreshMapLinksFor(place); // agora que temos o place_id, atualiza os links "Ver no mapa" já renderizados
+          if (results[0].photos) {
+            const urls = results[0].photos.slice(0, 3).map(p => p.getUrl({ maxWidth: 1200, maxHeight: 900 }));
+            photoCache[place.id] = urls;
+            storageSet(`photos_${place.id}`, urls);
+            resolve([...override, ...urls].slice(0, 3));
+            return;
+          }
+        }
+        photoCache[place.id] = [];
+        resolve(override);
+      }
+    );
+  });
+}
+
+/* ==========================================================
+   CRONOGRAMA VIEW
+   ========================================================== */
+/* ==========================================================
+   SUPABASE — sincronização opcional.
+   Regra de ouro: o localStorage continua sendo a fonte de verdade
+   pra leitura. O Supabase é espelho. Assim o app funciona offline
+   (útil no meio de Kyoto sem sinal) e nada quebra se o banco cair.
+   ========================================================== */
+let sb = null;            // cliente supabase
+let sbUser = null;        // usuário logado
+let sbTripId = null;      // uuid da viagem no banco
+let syncState = "off";    // off | on | err
+
+function sbReady(){ return !!(sb && sbUser && sbTripId); }
+
+function initSupabase(){
+  if (!CONFIG.supabaseUrl || !CONFIG.supabaseKey) return;          // não configurado
+  if (CONFIG.supabaseUrl.includes("__SUPABASE")) return;           // placeholder do build não substituído
+  if (typeof window.supabase === "undefined") { console.warn("supabase-js não carregou"); return; }
+  sb = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
+  sb.auth.onAuthStateChange(async (_e, session) => {
+    sbUser = session?.user || null;
+    if (sbUser) await afterLogin();
+    renderAuthBar();
+  });
+  sb.auth.getSession().then(async ({ data }) => {
+    sbUser = data?.session?.user || null;
+    if (sbUser) await afterLogin();
+    renderAuthBar();
+  });
+}
+
+async function afterLogin(){
+  try {
+    // garante que a viagem existe no banco e guarda o uuid dela
+    const { data: found } = await sb.from("trips").select("id").eq("slug", currentTripId).maybeSingle();
+    if (found) sbTripId = found.id;
+    else {
+      const { data: created, error } = await sb.from("trips")
+        .insert({ user_id: sbUser.id, slug: currentTripId, title: currentTrip().title,
+                  start_date: "2026-11-28", end_date: "2026-12-13" })
+        .select("id").single();
+      if (error) throw error;
+      sbTripId = created.id;
+    }
+    await pullFromSupabase();
+    syncState = "on";
+  } catch (e) {
+    console.error("Supabase:", e);
+    syncState = "err";
+  }
+  renderAuthBar();
+}
+
+// traz o que está no banco pro localStorage (o banco vence no login)
+async function pullFromSupabase(){
+  const [stays, items, status] = await Promise.all([
+    sb.from("stays").select("*").eq("trip_id", sbTripId),
+    sb.from("itinerary_items").select("*").eq("trip_id", sbTripId).order("position"),
+    sb.from("place_status").select("*").eq("trip_id", sbTripId)
+  ]);
+  if (stays.data) {
+    saveStays(stays.data.map(r => ({
+      id: r.id, name: r.name, city: r.city, address: r.address, type: r.type,
+      status: r.status, checkin: r.checkin, checkout: r.checkout, price: r.price,
+      bookedOn: r.booked_on, site: r.site, code: r.code, notes: r.notes
+    })));
+  }
+  if (items.data) {
+    const plan = {};
+    items.data.forEach(r => { (plan[r.day_date] = plan[r.day_date] || []).push(r.place_id); });
+    savePlan(plan);
+  }
+  if (status.data) {
+    storageSet(hiddenKey(currentTripId), status.data.filter(r => r.visited).map(r => r.place_id));
+  }
+  if (currentView === "stays") renderStays();
+  if (currentView === "myplan") renderMyPlan();
+  if (currentView === "catalog") renderCatalog();
+  renderTimeline(); renderMapView();
+}
+
+/* ---- espelhamento: chamado depois de cada alteração local ---- */
+async function pushStays(){
+  if (!sbReady()) return;
+  try {
+    const rows = getStays().map(s => ({
+      id: /^[0-9a-f-]{36}$/i.test(s.id) ? s.id : undefined,  // ids locais viram uuid novo no banco
+      user_id: sbUser.id, trip_id: sbTripId,
+      name: s.name, city: s.city || null, address: s.address || null,
+      type: s.type, status: s.status,
+      checkin: s.checkin || null, checkout: s.checkout || null,
+      price: s.price || null, booked_on: s.bookedOn || null,
+      site: s.site || null, code: s.code || null, notes: s.notes || null
+    }));
+    await sb.from("stays").delete().eq("trip_id", sbTripId);
+    if (rows.length) await sb.from("stays").insert(rows);
+    syncState = "on";
+  } catch (e) { console.error(e); syncState = "err"; }
+  renderAuthBar();
+}
+
+async function pushPlan(){
+  if (!sbReady()) return;
+  try {
+    const plan = getPlan();
+    const rows = [];
+    Object.entries(plan).forEach(([day, ids]) =>
+      ids.forEach((pid, i) => rows.push({
+        user_id: sbUser.id, trip_id: sbTripId, day_date: day, place_id: pid, position: i
+      })));
+    await sb.from("itinerary_items").delete().eq("trip_id", sbTripId);
+    if (rows.length) await sb.from("itinerary_items").insert(rows);
+    syncState = "on";
+  } catch (e) { console.error(e); syncState = "err"; }
+  renderAuthBar();
+}
+
+async function pushPlaceStatus(){
+  if (!sbReady()) return;
+  try {
+    const hidden = storageGet(hiddenKey(currentTripId), []);
+    await sb.from("place_status").delete().eq("trip_id", sbTripId);
+    if (hidden.length) {
+      await sb.from("place_status").insert(hidden.map(pid => ({
+        user_id: sbUser.id, trip_id: sbTripId, place_id: pid, visited: true
+      })));
+    }
+    syncState = "on";
+  } catch (e) { console.error(e); syncState = "err"; }
+  renderAuthBar();
+}
+
+/* ---- barra de login ---- */
+function renderAuthBar(){
+  const bar = document.getElementById("auth-bar");
+  if (!bar) return;
+  if (!sb) {
+    bar.innerHTML = `<span class="sync-dot sync-off"></span> Dados salvos só neste navegador (Supabase não configurado)`;
+    return;
+  }
+  if (!sbUser) {
+    bar.innerHTML = `
+      <span class="sync-dot sync-off"></span> Salvo só neste navegador.
+      <input type="email" id="auth-email" placeholder="seu@email.com">
+      <button id="auth-send">Entrar por e-mail</button>`;
+    document.getElementById("auth-send").onclick = async () => {
+      const email = document.getElementById("auth-email").value.trim();
+      if (!email) return;
+      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
+      bar.innerHTML = error
+        ? `<span class="sync-dot sync-err"></span> Erro: ${error.message}`
+        : `<span class="sync-dot sync-off"></span> Link enviado pra ${email} — abra no mesmo aparelho.`;
+    };
+    return;
+  }
+  const dot = syncState === "on" ? "sync-on" : syncState === "err" ? "sync-err" : "sync-off";
+  const txt = syncState === "on" ? "sincronizado" : syncState === "err" ? "erro ao sincronizar (dados locais preservados)" : "conectando…";
+  bar.innerHTML = `<span class="sync-dot ${dot}"></span> ${sbUser.email} · ${txt} <button id="auth-out">Sair</button>`;
+  document.getElementById("auth-out").onclick = async () => {
+    await sb.auth.signOut(); sbUser = null; sbTripId = null; syncState = "off"; renderAuthBar();
+  };
+}
+
+/* ==========================================================
+   HOSPEDAGEM — registro das reservas, com aviso de noite descoberta.
+   ========================================================== */
+function staysKey(){ return `stays_${currentTripId}`; }
+function getStays(){ return storageGet(staysKey(), []); }
+function saveStays(list){ storageSet(staysKey(), list); }
+function saveStaysAndSync(list){ saveStays(list); pushStays(); }
+let editingStayId = null;
+
+function statusColor(s){ return s === "pago" ? "#2EC4B6" : s === "reservado" ? "#FFB238" : "#8B96A8"; }
+function statusLabel(s){ return s === "pago" ? "PAGO" : s === "reservado" ? "RESERVADO" : "IDEIA"; }
+function fmtDate(iso){
+  if (!iso) return "—";
+  const [y,m,d] = iso.split("-");
+  const wd = ["dom","seg","ter","qua","qui","sex","sáb"][new Date(+y, +m-1, +d).getDay()];
+  return `${d}/${m} (${wd})`;
+}
+function nightsBetween(a, b){
+  if (!a || !b) return 0;
+  return Math.max(0, Math.round((new Date(b) - new Date(a)) / 86400000));
+}
+
+function openStayModal(stay){
+  editingStayId = stay ? stay.id : null;
+  document.getElementById("stay-modal-title").textContent = stay ? "Editar reserva" : "Nova reserva";
+  const v = (id, val) => document.getElementById(id).value = val || "";
+  v("stay-name", stay?.name); v("stay-city", stay?.city);
+  v("stay-in", stay?.checkin); v("stay-out", stay?.checkout);
+  v("stay-price", stay?.price); v("stay-booked", stay?.bookedOn);
+  v("stay-site", stay?.site); v("stay-code", stay?.code);
+  v("stay-address", stay?.address); v("stay-notes", stay?.notes);
+  document.getElementById("stay-type").value = stay?.type || "Hostel";
+  document.getElementById("stay-status").value = stay?.status || "ideia";
+  document.getElementById("stay-delete").style.display = stay ? "inline" : "none";
+  document.getElementById("stay-modal").classList.add("open");
+}
+function closeStayModal(){ document.getElementById("stay-modal").classList.remove("open"); editingStayId = null; }
+
+function saveStayFromForm(){
+  const g = id => document.getElementById(id).value.trim();
+  if (!g("stay-name")) { alert("Dê ao menos um nome pra reserva."); return; }
+  if (g("stay-in") && g("stay-out") && g("stay-out") <= g("stay-in")) {
+    alert("O check-out precisa ser depois do check-in."); return;
+  }
+  const list = getStays();
+  const data = {
+    id: editingStayId || `stay_${Date.now()}`,
+    name: g("stay-name"), city: g("stay-city"),
+    checkin: g("stay-in"), checkout: g("stay-out"),
+    type: document.getElementById("stay-type").value,
+    status: document.getElementById("stay-status").value,
+    price: g("stay-price"), bookedOn: g("stay-booked"),
+    site: g("stay-site"), code: g("stay-code"),
+    address: g("stay-address"), notes: g("stay-notes")
+  };
+  const i = list.findIndex(s => s.id === data.id);
+  if (i >= 0) list[i] = data; else list.push(data);
+  saveStaysAndSync(list);
+  closeStayModal();
+  renderStays();
+}
+
+function renderStays(){
+  const list = getStays().sort((a,b) => (a.checkin || "9") .localeCompare(b.checkin || "9"));
+  const body = document.getElementById("stays-body");
+
+  const totalNights = list.reduce((a,s) => a + nightsBetween(s.checkin, s.checkout), 0);
+  const confirmed = list.filter(s => s.status !== "ideia").length;
+  document.getElementById("stays-summary").textContent = list.length
+    ? `${list.length} reservas · ${confirmed} confirmadas · ${totalNights} noites cobertas`
+    : "Nenhuma reserva registrada ainda.";
+
+  // cobertura: quais noites da viagem já têm onde dormir
+  const covered = new Set();
+  list.forEach(s => {
+    if (!s.checkin || !s.checkout) return;
+    let d = new Date(s.checkin);
+    const end = new Date(s.checkout);
+    while (d < end) {
+      covered.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`);
+      d.setDate(d.getDate() + 1);
+    }
+  });
+  const nights = TRIP_DATES.slice(0, -1); // a última data é a saída, não é noite
+  const gaps = nights.filter(n => !covered.has(n.key));
+  document.getElementById("stays-coverage").innerHTML = `
+    <div class="coverage">
+      <div class="coverage-title">Cobertura das noites (28/11 a 12/12)</div>
+      <div class="coverage-bar">
+        ${nights.map(n => `<div class="cov-night ${covered.has(n.key) ? "cov-ok" : "cov-gap"}" title="${n.label} ${n.weekday}">${n.label.split("/")[0]}</div>`).join("")}
+      </div>
+      <div class="coverage-note">${gaps.length
+        ? `⚠️ ${gaps.length} noite(s) sem hospedagem: ${gaps.map(g => g.label).join(", ")}`
+        : "✅ Todas as noites cobertas."}</div>
+    </div>`;
+
+  body.innerHTML = list.length ? list.map(s => {
+    const n = nightsBetween(s.checkin, s.checkout);
+    return `
+      <div class="stay-card" data-stay="${s.id}">
+        <div class="stay-head">
+          <span class="stay-name">${s.name}</span>
+          <span class="stay-status" style="background:${statusColor(s.status)}">${statusLabel(s.status)}</span>
+        </div>
+        <div class="stay-dates">${fmtDate(s.checkin)} → ${fmtDate(s.checkout)}${n ? ` · <b>${n} noite${n>1?"s":""}</b>` : ""}</div>
+        <div class="stay-meta">${[s.type, s.city, s.price].filter(Boolean).join(" · ")}</div>
+        <div class="stay-meta">${[
+          s.site ? `Site: ${s.site}` : "",
+          s.code ? `Código: ${s.code}` : "",
+          s.bookedOn ? `Reservado em ${fmtDate(s.bookedOn)}` : ""
+        ].filter(Boolean).join(" · ") || "—"}</div>
+        ${s.address ? `<div class="stay-meta">📍 ${s.address}</div>` : ""}
+        ${s.notes ? `<div class="stay-notes">${s.notes}</div>` : ""}
+      </div>`;
+  }).join("") : `<div class="cat-empty">Clique em "+ Nova reserva" pra registrar a primeira.</div>`;
+
+  body.querySelectorAll("[data-stay]").forEach(el => el.onclick = () => {
+    openStayModal(getStays().find(s => s.id === el.dataset.stay));
+  });
+}
+
+function wireStayControls(){
+  document.getElementById("stay-new").onclick = () => openStayModal(null);
+  document.getElementById("stay-modal-close").onclick = closeStayModal;
+  document.getElementById("stay-save").onclick = saveStayFromForm;
+  document.getElementById("stay-modal").addEventListener("click", e => { if (e.target.id === "stay-modal") closeStayModal(); });
+  document.getElementById("stay-delete").onclick = () => {
+    if (!editingStayId) return;
+    if (confirm("Excluir esta reserva?")) {
+      saveStaysAndSync(getStays().filter(s => s.id !== editingStayId));
+      closeStayModal(); renderStays();
+    }
+  };
+}
+
+/* ==========================================================
+   MEU ROTEIRO — você monta os dias reais da viagem escolhendo
+   atrações do catálogo. Salvo no navegador, some se limpar o cache.
+   ========================================================== */
+const TRIP_DATES = (() => {
+  // 28/11/2026 (chegada em Narita) até 13/12/2026 (saída)
+  const out = [];
+  const start = new Date(2026, 10, 28);
+  const wd = ["dom","seg","ter","qua","qui","sex","sáb"];
+  for (let i = 0; i < 16; i++) {
+    const d = new Date(start.getTime());
+    d.setDate(start.getDate() + i);
+    out.push({
+      key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`,
+      label: `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`,
+      weekday: wd[d.getDay()]
+    });
+  }
+  return out;
+})();
+
+function planKey(){ return `myplan_${currentTripId}`; }
+function getPlan(){ return storageGet(planKey(), {}); }
+function savePlan(plan){ storageSet(planKey(), plan); }
+function savePlanAndSync(plan){ savePlan(plan); pushPlan(); }
+function planAdd(dateKey, placeId){
+  const plan = getPlan();
+  plan[dateKey] = plan[dateKey] || [];
+  if (!plan[dateKey].includes(placeId)) plan[dateKey].push(placeId);
+  savePlanAndSync(plan);
+}
+function planRemove(dateKey, placeId){
+  const plan = getPlan();
+  plan[dateKey] = (plan[dateKey] || []).filter(id => id !== placeId);
+  savePlanAndSync(plan);
+}
+function planMove(dateKey, placeId, dir){
+  const plan = getPlan();
+  const arr = plan[dateKey] || [];
+  const i = arr.indexOf(placeId);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  savePlanAndSync(plan);
+}
+
+function renderMyPlan(){
+  const trip = currentTrip();
+  const plan = getPlan();
+  const body = document.getElementById("plan-body");
+
+  const totalPicked = Object.values(plan).reduce((a, arr) => a + arr.length, 0);
+  document.getElementById("plan-summary").textContent =
+    totalPicked ? `${totalPicked} atrações distribuídas em ${Object.values(plan).filter(a => a.length).length} dias`
+                : "Nenhuma atração escolhida ainda — use o seletor de cada dia abaixo.";
+
+  const optionsHtml = [...trip.places]
+    .sort((a,b) => (a.city || "").localeCompare(b.city || "") || a.name.localeCompare(b.name))
+    .map(p => `<option value="${p.id}">${p.city} · ${p.name}${p.cost && p.cost !== "A conferir" ? " — " + p.cost : ""}</option>`)
+    .join("");
+
+  body.innerHTML = TRIP_DATES.map((d, idx) => {
+    const ids = plan[d.key] || [];
+    const places = ids.map(placeById).filter(Boolean);
+    const mins = places.reduce((a,p) => a + (p.visitMin || 0), 0);
+    const cities = [...new Set(places.map(p => p.city))].join(" · ");
+    const hrs = mins >= 60 ? `${(mins/60).toFixed(1).replace(".0","")}h de visitas` : mins ? `${mins}min de visitas` : "";
+
+    const items = places.length ? places.map((p, i) => `
+      <div class="plan-item">
+        <div class="plan-item-main">
+          <div class="plan-item-name">${i+1}. ${p.name}</div>
+          <div class="plan-item-meta">${p.city} · ~${p.visitMin}min · ${periodLabel(p.period)}${p.cost ? " · " + p.cost : ""}${p.booking ? " · ⚠️ " + p.booking : ""}</div>
+        </div>
+        <div class="plan-item-actions">
+          <button class="link-btn" data-up="${d.key}|${p.id}" ${i===0?"disabled style=opacity:.3":""}>↑</button>
+          <button class="link-btn" data-down="${d.key}|${p.id}" ${i===places.length-1?"disabled style=opacity:.3":""}>↓</button>
+          <button class="link-btn" data-rm="${d.key}|${p.id}">remover</button>
+        </div>
+      </div>`).join("")
+      : `<div class="plan-empty">Dia livre.</div>`;
+
+    return `
+      <div class="plan-day">
+        <div class="plan-day-head">
+          <div><span class="plan-date">${d.label}</span><span class="plan-weekday">${d.weekday}${idx===0?" · chegada":""}${idx===TRIP_DATES.length-1?" · saída":""}</span></div>
+          <div class="plan-city">${cities}${cities && hrs ? " · " : ""}${hrs}</div>
+        </div>
+        <div class="plan-items">${items}</div>
+        <div class="plan-add">
+          <select data-picker="${d.key}"><option value="">+ adicionar atração...</option>${optionsHtml}</select>
+          <button data-addbtn="${d.key}">Adicionar</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  body.querySelectorAll("[data-addbtn]").forEach(b => b.onclick = () => {
+    const k = b.dataset.addbtn;
+    const sel = body.querySelector(`[data-picker="${k}"]`);
+    if (sel.value) { planAdd(k, sel.value); renderMyPlan(); }
+  });
+  body.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => {
+    const [k, id] = b.dataset.rm.split("|"); planRemove(k, id); renderMyPlan();
+  });
+  body.querySelectorAll("[data-up]").forEach(b => b.onclick = () => {
+    const [k, id] = b.dataset.up.split("|"); planMove(k, id, -1); renderMyPlan();
+  });
+  body.querySelectorAll("[data-down]").forEach(b => b.onclick = () => {
+    const [k, id] = b.dataset.down.split("|"); planMove(k, id, 1); renderMyPlan();
+  });
+}
+
+function wirePlanControls(){
+  document.getElementById("plan-clear").onclick = () => {
+    if (confirm("Apagar todo o roteiro montado?")) { savePlanAndSync({}); renderMyPlan(); }
+  };
+}
+
+/* ==========================================================
+   CATÁLOGO — todas as atrações com todos os detalhes.
+   É a mesma base que alimenta o Mapa e o Cronograma.
+   ========================================================== */
+function tierLabel(t){ return t === 1 ? "ESSENCIAL" : t === 2 ? "SE DER TEMPO" : "BÔNUS"; }
+
+function renderCatalog(){
+  const trip = currentTrip();
+  const body = document.getElementById("catalog-body");
+  const term = (document.getElementById("catalog-search").value || "").toLowerCase().trim();
+  const groupBy = document.getElementById("catalog-group").value;
+  const tiers = Array.from(document.querySelectorAll(".cat-tier-cb")).filter(cb => cb.checked).map(cb => Number(cb.value));
+  const hideVisited = document.getElementById("cat-hide-visited").checked;
+
+  let list = trip.places.filter(p => tiers.includes(p.tier));
+  if (hideVisited) list = list.filter(p => !isHidden(p.id));
+  if (term) {
+    list = list.filter(p => [p.name, p.city, p.district, p.blurb, p.detail, (p.tags||[]).join(" ")]
+      .filter(Boolean).join(" ").toLowerCase().includes(term));
+  }
+
+  if (!list.length) { body.innerHTML = `<div class="cat-empty">Nada encontrado com esses filtros.</div>`; return; }
+
+  const keyOf = p => groupBy === "city" ? p.city
+    : groupBy === "district" ? (p.district && p.district !== "—" ? p.district : "Sem bairro definido")
+    : groupBy === "tier" ? tierLabel(p.tier)
+    : periodLabel(p.period);
+
+  const groups = {};
+  list.forEach(p => { (groups[keyOf(p)] = groups[keyOf(p)] || []).push(p); });
+
+  // ordena grupos: por tier segue a importância; nos demais, alfabético
+  const order = groupBy === "tier" ? ["ESSENCIAL","SE DER TEMPO","BÔNUS"]
+    : groupBy === "period" ? ["Manhã","Tarde","Noite"]
+    : Object.keys(groups).sort();
+
+  body.innerHTML = order.filter(k => groups[k]).map(k => {
+    const cards = groups[k].sort((a,b) => a.tier - b.tier || a.name.localeCompare(b.name)).map(p => {
+      const visited = isHidden(p.id);
+      const rows = [
+        p.bestTime ? `<div class="cat-row"><b>🕐 Quando:</b><span>${p.bestTime}</span></div>` : "",
+        p.cost ? `<div class="cat-row"><b>💴 Custo:</b><span>${p.cost}</span></div>` : "",
+        p.booking ? `<div class="cat-row"><b>📅 Reserva:</b><span>${p.booking}</span></div>` : "",
+        p.mealType ? `<div class="cat-row"><b>🍽 Refeição:</b><span>${p.mealType}</span></div>` : ""
+      ].join("");
+      return `
+        <div class="cat-card ${visited ? "is-visited" : ""}">
+          <div class="cat-head">
+            <span class="cat-name">${p.name}</span>
+            <span class="cat-tier" style="background:${tierColor(p.tier)}">${tierLabel(p.tier)}</span>
+          </div>
+          <div class="cat-meta">${p.city}${p.district && p.district !== "—" ? " · " + p.district : ""} · ~${p.visitMin} min · ${periodLabel(p.period)}</div>
+          ${p.blurb ? `<div class="cat-blurb">${p.blurb}</div>` : ""}
+          ${p.detail ? `<div class="cat-detail">${p.detail}</div>` : ""}
+          ${rows}
+          <div class="tags">${(p.tags||[]).map(t => `<span class="tag">${t}</span>`).join("")}</div>
+          <div class="cat-actions">
+            <a class="pin-link" data-pin-for="${p.id}" target="_blank" rel="noopener" href="${directionsUrl(p)}">Ver no mapa</a>
+            <button class="link-btn" data-cat-photos="${p.id}">Fotos</button>
+            <button class="link-btn" data-cat-hide="${p.id}">${visited ? "Desmarcar" : "Já fui"}</button>
+          </div>
+        </div>`;
+    }).join("");
+    return `<div class="cat-group-title">${k} · ${groups[k].length}</div><div class="cat-grid">${cards}</div>`;
+  }).join("");
+
+  body.querySelectorAll("[data-cat-hide]").forEach(b => b.onclick = () => {
+    const id = b.dataset.catHide;
+    isHidden(id) ? unhidePlace(id) : hidePlace(id);
+    renderCatalog(); renderMapView(); renderTimeline();
+  });
+  body.querySelectorAll("[data-cat-photos]").forEach(b => b.onclick = () => openPlaceModal(placeById(b.dataset.catPhotos)));
+}
+
+function wireCatalogControls(){
+  const rerender = () => renderCatalog();
+  document.getElementById("catalog-search").addEventListener("input", rerender);
+  document.getElementById("catalog-group").addEventListener("change", rerender);
+  document.getElementById("cat-hide-visited").addEventListener("change", rerender);
+  document.querySelectorAll(".cat-tier-cb").forEach(cb => cb.addEventListener("change", rerender));
+}
+
+// período do cluster vem dos horários dos slots: manhã / tarde / noite (ou combinação)
+function clusterPeriodLabel(day){
+  const buckets = new Set(day.slots.map(s => {
+    const h = parseInt(s.time);
+    return h < 11 ? "Manhã" : h < 18 ? "Tarde" : "Noite";
+  }));
+  const ord = ["Manhã","Tarde","Noite"].filter(b => buckets.has(b));
+  return ord.length === 3 ? "Dia inteiro" : ord.join(" + ");
+}
+
+function renderDayTabs(){
+  const trip = currentTrip();
+  const tabs = document.getElementById("day-tabs");
+  tabs.innerHTML = "";
+  trip.days.forEach((day, i) => {
+    const tab = document.createElement("button");
+    tab.className = "day-tab" + (i === currentDayIndex ? " active" : "");
+    tab.style.setProperty("--line-color", day.lineColor);
+    const per = clusterPeriodLabel(day);
+    const mins = day.slots.reduce((a,s)=>{const pl=placeById(s.placeIds[0]);return a+(pl?pl.visitMin:0);},0);
+    const hrs = mins >= 60 ? `${(mins/60).toFixed(1).replace(".0","")}h` : `${mins}min`;
+    tab.innerHTML = `<span class="d-num">${day.label}</span><span>${per} · ~${hrs}</span>`;
+    tab.onclick = () => { currentDayIndex = i; renderDayTabs(); renderTimeline(); updateCronoMap(); };
+    tabs.appendChild(tab);
+  });
+}
+
+function slotOptionIds(dayIndex, slotIndex, baseIds){
+  const extra = getExtraIds(dayIndex, slotIndex);
+  return [...baseIds, ...extra].filter(id => !isHidden(id));
+}
+
+function periodLabel(period){ return { manha:"Manhã", tarde:"Tarde", noite:"Noite" }[period] || ""; }
+
+function renderTimeline(){
+  const trip = currentTrip();
+  const day = trip.days[currentDayIndex];
+  const timeline = document.getElementById("timeline");
+  timeline.style.setProperty("--line-color", day.lineColor);
+  timeline.innerHTML = "";
+  const maxOrder = Math.max(10, day.slots.length);
+
+  day.slots.forEach((slot, slotIndex) => {
+    const key = `${trip.id}_${currentDayIndex}_${slotIndex}`;
+    const optionIds = slotOptionIds(currentDayIndex, slotIndex, slot.placeIds);
+    if (!optionIds.length) return; // tudo escondido nesse slot
+
+    if (!selections[key] || !optionIds.includes(selections[key])) selections[key] = optionIds[0];
+    const order = getSlotOrder(currentDayIndex, slotIndex);
+
+    const stop = document.createElement("div");
+    stop.className = "stop";
+    stop.innerHTML = `<span class="stop-time">${slot.time}<span class="stop-meta">${slot.stationLabel}</span></span>`;
+
+    const optionsEl = document.createElement("div");
+    optionsEl.className = "options";
+
+    optionIds.forEach(id => {
+      const place = placeById(id);
+      if (!place) return;
+      const isSelected = selections[key] === id;
+      const card = document.createElement("div");
+      card.className = "card" + (isSelected ? " selected" : "") + (isSelected && order === null ? " excluded" : "");
+      card.style.setProperty("--line-color", day.lineColor);
+      const orderOptionsHtml = [`<option value="">—</option>`]
+        .concat(Array.from({length:maxOrder}, (_, n) => n+1).map(n => `<option value="${n}" ${order===n?"selected":""}>${n}</option>`))
+        .join("");
+      card.innerHTML = `
+        <div class="hero-img" data-place="${id}">
+          <div class="placeholder">${place.name.charAt(0)}</div>
+        </div>
+        <div class="card-title-row">
+          <span class="card-title">${place.name}</span>
+          <span class="check"></span>
+        </div>
+        <p class="card-desc">${place.city} · ~${place.visitMin} min de visita<span class="transit-tag" data-transit-for="${id}"></span></p>
+        ${place.bestTime ? `<p class="card-desc">🕐 Melhor horário: ${place.bestTime}</p>` : ""}
+        <a class="leg-link" data-leglink-for="${id}" target="_blank" rel="noopener" style="display:none;"></a>
+        ${place.blurb ? `<p class="card-blurb">${place.blurb}</p>` : ""}
+        ${place.detail ? `<button class="link-btn detail-toggle" data-detail-toggle="${id}">mais</button><p class="card-detail" data-detail="${id}" style="display:none;">${place.detail}</p>` : ""}
+        <div class="tags">${place.tags.map(t => `<span class="tag">${t}</span>`).join("")}${place.period ? `<span class="tag">${periodLabel(place.period)}</span>` : ""}${place.mealType ? `<span class="tag">🍽 ${place.mealType}</span>` : ""}</div>
+        <div class="card-actions">
+          <label class="include-toggle" data-toggle-wrap>Ordem no trajeto:
+            <select class="order-select" data-order="${id}">${orderOptionsHtml}</select>
+          </label>
+          <a class="pin-link" data-pin-for="${id}" target="_blank" rel="noopener" href="${directionsUrl(place)}">Ver no mapa</a>
+          <button class="link-btn" data-hide="${id}">Já fui</button>
+        </div>
+      `;
+      card.addEventListener("click", (e) => {
+        if (e.target.closest("a") || e.target.closest("button") || e.target.closest("[data-toggle-wrap]")) return;
+        if (e.target.closest(".hero-img")) { openPlaceModal(place); return; }
+        selections[key] = id;
+        renderTimeline();
+        updateCronoMap();
+      });
+      card.querySelector("[data-hide]").addEventListener("click", (e) => {
+        e.stopPropagation();
+        hidePlace(id);
+        renderTimeline();
+        updateCronoMap();
+      });
+      const detailBtn = card.querySelector("[data-detail-toggle]");
+      if (detailBtn) {
+        detailBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const p = card.querySelector(`[data-detail="${id}"]`);
+          const showing = p.style.display !== "none";
+          p.style.display = showing ? "none" : "block";
+          detailBtn.textContent = showing ? "mais" : "menos";
+        });
+      }
+      card.querySelector("[data-order]").addEventListener("click", (e) => e.stopPropagation());
+      card.querySelector("[data-order]").addEventListener("change", (e) => {
+        const val = e.target.value === "" ? null : Number(e.target.value);
+        setSlotOrder(currentDayIndex, slotIndex, val);
+        renderTimeline();
+        updateCronoMap();
+      });
+      optionsEl.appendChild(card);
+      loadHeroImage(place);
+    });
+
+    const moreBtn = document.createElement("button");
+    moreBtn.className = "link-btn more-options";
+    moreBtn.textContent = "+ mais opções perto daqui, pro horário";
+    moreBtn.onclick = () => addNearbyOption(currentDayIndex, slotIndex, optionIds, slot.time);
+    optionsEl.appendChild(moreBtn);
+
+    stop.appendChild(optionsEl);
+    timeline.appendChild(stop);
+  });
+}
+
+async function loadHeroImage(place){
+  const photos = await getPhotos(place);
+  if (!photos.length) return;
+  document.querySelectorAll(`.hero-img[data-place="${place.id}"]`).forEach(hero => {
+    const originalPlaceholder = hero.firstElementChild; // captura ANTES de limpar — é pra isso que volta se a foto falhar
+    const img = document.createElement("img");
+    img.alt = place.name;
+    img.onerror = () => {
+      hero.innerHTML = "";
+      hero.appendChild(originalPlaceholder);
+    };
+    img.src = photos[0];
+    hero.innerHTML = "";
+    hero.appendChild(img);
+    if (photos.length > 1) {
+      const badge = document.createElement("div");
+      badge.className = "photo-count";
+      badge.textContent = `+${photos.length - 1} fotos`;
+      hero.appendChild(badge);
+    }
+  });
+}
+
+function addNearbyOption(dayIndex, slotIndex, currentIds, slotTime){
+  const trip = currentTrip();
+  const refPlace = placeById(currentIds[0]);
+  if (!refPlace) return;
+  const targetPeriod = periodBucketFromTime(slotTime);
+  const candidates = trip.places
+    .filter(p => !currentIds.includes(p.id) && !isHidden(p.id))
+    .map(p => ({ p, d: haversine(refPlace, p), periodMatch: p.period === targetPeriod ? 0 : 1 }))
+    // prioriza lugares com período compatível com o horário do slot; empate é resolvido por distância
+    .sort((a,b) => (a.periodMatch - b.periodMatch) || (a.d - b.d));
+  if (!candidates.length) return;
+  addExtraId(dayIndex, slotIndex, candidates[0].p.id);
+  renderTimeline();
+}
+
+/* ---------- mapa do cronograma (sincronizado com a seleção) ---------- */
+let cronoMapRequestToken = 0;
+async function updateCronoMap(){
+  const myToken = ++cronoMapRequestToken;
+  const trip = currentTrip();
+  const day = trip.days[currentDayIndex];
+  const stops = day.slots
+    .map((slot, i) => ({ order: getSlotOrder(currentDayIndex, i), placeId: selections[`${trip.id}_${currentDayIndex}_${i}`] }))
+    .filter(x => x.order !== null && x.placeId)
+    .sort((a, b) => a.order - b.order)
+    .map(x => placeById(x.placeId))
+    .filter(Boolean);
+
+  document.querySelectorAll(".transit-tag").forEach(el => el.textContent = "");
+  document.querySelectorAll(".leg-link").forEach(el => { el.style.display = "none"; el.textContent = ""; });
+
+  // se a localização foi liberada, o trajeto começa dali — não só do primeiro lugar do dia
+  const chain = userLocation ? [{ ...userLocation, id: "__user__", name: "Você" }, ...stops] : stops;
+
+  const setTagAndLink = (fromNode, toPlace, text) => {
+    const tag = document.querySelector(`[data-transit-for="${toPlace.id}"]`);
+    if (tag) tag.textContent = text;
+    const link = document.querySelector(`[data-leglink-for="${toPlace.id}"]`);
+    if (link) {
+      link.href = legDirectionsUrl(fromNode, toPlace);
+      link.textContent = fromNode.id === "__user__" ? "Abrir esse trecho (de onde você está) no Google Maps" : `Abrir esse trecho no Google Maps`;
+      link.style.display = "block";
+    }
+  };
+
+  if (usingGoogle) {
+    clearCronoRenderers();
+    renderUserLocationMarker("crono");
+    if (chain.length < 2) {
+      document.getElementById("eta-value").textContent = "—";
+      // sem trajeto pra enquadrar: foca na cidade do(s) lugar(es) planejados pro dia, não no mundo inteiro
+      const dayPlaceIds = day.slots.map(s => s.placeIds[0]).filter(Boolean).map(placeById).filter(Boolean);
+      if (dayPlaceIds.length) {
+        const b = new google.maps.LatLngBounds();
+        dayPlaceIds.forEach(p => b.extend({lat:p.lat,lng:p.lng}));
+        gMapCrono.fitBounds(b);
+      }
+      return;
+    }
+    document.getElementById("eta-value").textContent = "calculando…";
+
+    const bounds = new google.maps.LatLngBounds();
+    chain.forEach(s => bounds.extend({lat:s.lat,lng:s.lng}));
+    gMapCrono.fitBounds(bounds);
+
+    // numera e nomeia só as paradas reais (a bolinha azul já identifica "você")
+    stops.forEach((s, i) => {
+      const marker = new google.maps.Marker({
+        position: {lat:s.lat,lng:s.lng}, map: gMapCrono, label: { text: String(i+1), color:"#0E141F", fontWeight:"700", fontSize:"12px" },
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 12, fillColor: day.lineColor, fillOpacity: 1, strokeColor: "#0E141F", strokeWeight: 2 },
+        zIndex: 999
+      });
+      gCronoStopMarkers.push(marker);
+      const label = new PlaceLabel(new google.maps.LatLng(s.lat, s.lng), s.name, "map-place-label", "display:block;transform:translate(12px,-50%);");
+      label.setMap(gMapCrono);
+      gCronoStopLabels.push(label);
+    });
+
+    let totalMin = 0;
+    let anyFail = false;
+    // transit no Google só aceita origem+destino (sem paradas no meio),
+    // então cada trecho do dia vira um pedido separado. Trechos curtos
+    // (mesma vizinhança) pedem "a pé"; o Google não devolve transporte
+    // público pra distâncias muito pequenas.
+    const requestRoute = (a, b, mode) => new Promise(resolve => {
+      gDirectionsSvc.route({
+        origin: {lat:a.lat,lng:a.lng}, destination: {lat:b.lat,lng:b.lng}, travelMode: mode
+      }, (result, status) => resolve(status === "OK" ? result : null));
+    });
+
+    for (let i = 0; i < chain.length - 1; i++) {
+      const distKm = haversine(chain[i], chain[i+1]);
+      const primaryMode = distKm <= 1.2 ? google.maps.TravelMode.WALKING : google.maps.TravelMode.TRANSIT;
+      let res = await requestRoute(chain[i], chain[i+1], primaryMode);
+      if (myToken !== cronoMapRequestToken) return; // uma edição mais nova já assumiu, para por aqui
+      if (!res) {
+        const fallbackMode = primaryMode === google.maps.TravelMode.WALKING ? google.maps.TravelMode.TRANSIT : google.maps.TravelMode.WALKING;
+        res = await requestRoute(chain[i], chain[i+1], fallbackMode);
+        if (myToken !== cronoMapRequestToken) return;
+      }
+      if (res) {
+        const color = legColor(day.lineColor, i);
+        const renderer = new google.maps.DirectionsRenderer({
+          map: gMapCrono, suppressMarkers: true, preserveViewport: true,
+          polylineOptions: { strokeColor: color, strokeWeight: 5, strokeOpacity: 0.85 }
+        });
+        renderer.setDirections(res);
+        gCronoRenderers.push(renderer);
+        const legMin = Math.round(res.routes[0].legs[0].duration.value / 60);
+        totalMin += legMin;
+        setTagAndLink(chain[i], chain[i+1], chain[i].id === "__user__" ? ` · ${legMin} min a partir de onde você está` : ` · ${legMin} min de trajeto até aqui`);
+
+        const mid = legMidpoint(chain[i], chain[i+1]);
+        const legLabel = new PlaceLabel(new google.maps.LatLng(mid.lat, mid.lng), `${legMin} min`, "map-leg-label", `background:${color};`);
+        legLabel.setMap(gMapCrono);
+        gCronoLegLabels.push(legLabel);
+      } else {
+        anyFail = true;
+        setTagAndLink(chain[i], chain[i+1], " · trajeto indisponível");
+      }
+    }
+    document.getElementById("eta-value").textContent = anyFail
+      ? `~${totalMin} min (parcial — algum trecho sem transporte público direto)`
+      : `~${totalMin} min de trajeto no total`;
+  } else {
+    lMarkersCrono.clearLayers(); lRouteCrono.clearLayers();
+    renderUserLocationMarker("crono");
+    stops.forEach((s, i) => {
+      L.circleMarker([s.lat,s.lng], { radius:8, color: day.lineColor, fillColor: day.lineColor, fillOpacity:.9, weight:2 })
+        .bindTooltip(`${i+1}. ${s.name}`).addTo(lMarkersCrono);
+    });
+    if (chain.length > 1) lMapCrono.fitBounds(chain.map(s=>[s.lat,s.lng]), { padding:[40,40] });
+    else if (chain.length === 1) lMapCrono.setView([chain[0].lat, chain[0].lng], 15);
+
+    if (chain.length < 2) { document.getElementById("eta-value").textContent = "—"; return; }
+    document.getElementById("eta-value").textContent = "calculando…";
+    const route = await osrmRoute(chain);
+    if (myToken !== cronoMapRequestToken) return; // idem no modo alternativo
+    if (route) {
+      L.polyline(route.coords, { color: day.lineColor, weight:4, opacity:.85 }).addTo(lRouteCrono);
+      let totalMin = 0;
+      route.legs.forEach((leg, i) => {
+        const legMin = Math.round(leg.duration/60);
+        totalMin += legMin;
+        setTagAndLink(chain[i], chain[i+1], chain[i].id === "__user__" ? ` · ~${legMin} min a partir de onde você está` : ` · ~${legMin} min de trajeto até aqui`);
+        const mid = legMidpoint(chain[i], chain[i+1]);
+        L.marker([mid.lat, mid.lng], {
+          icon: L.divIcon({ className:"", html:`<div class="map-leg-label" style="position:static;transform:none;background:${legColor(day.lineColor,i)};">${legMin} min</div>`, iconSize:[0,0] }),
+          interactive:false
+        }).addTo(lRouteCrono);
+      });
+      document.getElementById("eta-value").textContent = `~${totalMin} min de trajeto no total (estimativa de carro — modo alternativo)`;
+    } else {
+      L.polyline(chain.map(s=>[s.lat,s.lng]), { color: day.lineColor, weight:3, opacity:.6, dashArray:"6 8" }).addTo(lRouteCrono);
+      document.getElementById("eta-value").textContent = "estimativa indisponível";
+    }
+  }
+
+  document.getElementById("gmaps-btn").onclick = () => {
+    if (chain.length < 2) { if (chain[0]) window.open(directionsUrl(chain[0]), "_blank"); return; }
+    const hasUserOrigin = chain[0].id === "__user__";
+    const realStops = hasUserOrigin ? chain.slice(1) : chain;
+    const nameOf = s => encodeURIComponent(s.mapQuery || s.name);
+    const pidOf = s => placeIdCache[s.id];
+
+    const url = new URL("https://www.google.com/maps/dir/");
+    url.searchParams.set("api", "1");
+    url.searchParams.set("language", "pt");
+    // transporte público não aceita paradas intermediárias em NENHUMA versão do Google Maps —
+    // então essa visão geral com todas as paradas vai de "a pé", que é o único modo com suporte
+    // real a waypoints. Pra navegar de trem/ônibus trecho a trecho, use os links individuais
+    // "abrir esse trecho" de cada card (esses sim usam transit corretamente, perna por perna).
+    url.searchParams.set("travelmode", "walking");
+    if (!hasUserOrigin) {
+      url.searchParams.set("origin", nameOf(realStops[0]));
+      if (pidOf(realStops[0])) url.searchParams.set("origin_place_id", pidOf(realStops[0]));
+    }
+    const destination = realStops[realStops.length - 1];
+    url.searchParams.set("destination", nameOf(destination));
+    if (pidOf(destination)) url.searchParams.set("destination_place_id", pidOf(destination));
+
+    const middle = hasUserOrigin ? realStops.slice(0, -1) : realStops.slice(1, -1);
+    if (middle.length) {
+      url.searchParams.set("waypoints", middle.map(nameOf).join("|"));
+      const pids = middle.map(pidOf);
+      if (pids.every(Boolean)) url.searchParams.set("waypoint_place_ids", pids.join("|"));
+    }
+    window.open(url.toString(), "_blank");
+  };
+}
+
+/* ---------- OSRM (rota real no modo alternativo, com fallback) ---------- */
+async function osrmRoute(stops){
+  const coordStr = stops.map(s => `${s.lng},${s.lat}`).join(";");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`, { signal: controller.signal });
+    clearTimeout(timeout);
+    const data = await res.json();
+    const route = data.routes && data.routes[0];
+    if (!route) return null;
+    return { coords: route.geometry.coordinates.map(c => [c[1], c[0]]), legs: route.legs };
+  } catch(e) { clearTimeout(timeout); return null; }
+}
+</script>
+</body>
+</html>
