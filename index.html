@@ -116,6 +116,17 @@
   .cov-night{ flex:1; height:30px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#0E141F; }
   .cov-ok{ background:var(--accent); }
   .cov-gap{ background:#4A3038; color:#FF8FA3; border:1px dashed #FF6F91; }
+  .mode-results{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+  .mode-row{ display:flex; align-items:center; gap:10px; font-size:13px; padding:7px 10px; background:var(--panel); border:1px solid var(--border); border-radius:8px; cursor:pointer; }
+  .mode-row:hover{ border-color:var(--accent); }
+  .mode-row.active{ border-color:var(--accent); box-shadow:inset 3px 0 0 var(--accent); }
+  .mode-row .m-ico{ font-size:16px; }
+  .mode-row .m-name{ font-weight:600; flex:0 0 130px; }
+  .mode-row .m-time{ color:var(--text); font-weight:700; }
+  .mode-row .m-dist{ color:var(--text-muted); font-size:12px; }
+  .mode-row.fail{ opacity:.55; cursor:default; }
+  .mode-row.fail:hover{ border-color:var(--border); }
+  .transit-warn{ font-size:12px; color:#FFB238; margin-top:8px; line-height:1.45; }
   .coverage-note{ font-size:12px; color:var(--text-muted); margin-top:8px; }
 
   /* ---------- MEU ROTEIRO ---------- */
@@ -323,6 +334,13 @@
     <button id="set-location-btn">Definir</button>
     <input type="text" id="origin-input" placeholder="De onde (cidade ou atração)">
     <input type="text" id="dest-input" placeholder="Para onde (cidade ou atração)">
+    <select id="route-mode">
+      <option value="ALL">Comparar todos os modos</option>
+      <option value="WALKING">A pé</option>
+      <option value="DRIVING">De carro / táxi</option>
+      <option value="BICYCLING">De bicicleta</option>
+      <option value="TRANSIT">Transporte público</option>
+    </select>
     <button id="route-btn">Traçar rota</button>
   </div>
   <div class="tier-filters">
@@ -742,7 +760,7 @@ const TRIPS = [
         blurb:"Castelo com 'assoalho rouxinol' que cantava pra avisar de invasores.",
         detail:"Construído em 1603 como residência de Tokugawa Ieyasu, Patrimônio da UNESCO. Os corredores rangem de propósito — segurança antiga contra assassinos.",
         bestTime:"Abertura (8h45), antes dos ônibus de excursão.", cost:"A conferir" },
-      { id:"palacio-kyoto", name:"Palácio Imperial de Kyoto", city:"Kyoto", district:"Centro", lat:35.0254, lng:135.7622, mapQuery:"Kyoto Imperial Palace", tags:["Nem sempre abre"], visitMin:60, tier:3, period:"manha",
+      { id:"palacio-kyoto", name:"Palácio Imperial de Kyoto", city:"Kyoto", district:"Centro", lat:35.0254, lng:135.7622, mapQuery:"Kyoto Imperial Palace", tags:["Nem sempre abre"], visitMin:60, tier:2, period:"manha",
         blurb:"É lindo, mas nem sempre ele abre — confirme antes de ir.",
         detail:"Foi residência da família imperial até 1868. Cercado por um parque público extenso.",
         bestTime:"Manhã, e só depois de confirmar online — fecha às segundas.", cost:"A conferir", booking:"Nem sempre abre — confirmar antes" },
@@ -1456,7 +1474,7 @@ function initGoogleMaps(){
 function tierColor(tier){ return tier === 1 ? "#E8492A" : tier === 2 ? "#2EC4B6" : "#8B96A8"; }
 function directionsUrl(place){
   const q = encodeURIComponent(place.mapQuery);
-  let url = `https://www.google.com/maps/dir/?api=1&destination=${q}&travelmode=transit&language=pt`;
+  let url = `https://www.google.com/maps/dir/?api=1&destination=${q}&travelmode=transit&language=pt`; // o APP do Google Maps tem transporte público do Japão (a API não)
   if (placeIdCache[place.id]) url += `&destination_place_id=${placeIdCache[place.id]}`;
   return url;
 }
@@ -1715,24 +1733,15 @@ document.getElementById("place-modal").addEventListener("click", (e) => { if (e.
 async function handleRouteSearch(){
   const originText = document.getElementById("origin-input").value.trim();
   const destText = document.getElementById("dest-input").value.trim();
+  const chosen = document.getElementById("route-mode").value;
   const info = document.getElementById("route-info");
   if (!originText || !destText) { info.textContent = "Preencha origem e destino."; return; }
-  info.textContent = "Buscando rota…";
+  info.textContent = "Buscando…";
 
   const isMyLocation = originText === "Minha localização" && userLocation;
   const originForGoogle = isMyLocation ? userLocation : originText;
 
-  if (usingGoogle) {
-    gDirectionsSvc.route({ origin: originForGoogle, destination: destText, travelMode: google.maps.TravelMode.TRANSIT }, (res, status) => {
-      if (status === "OK") {
-        gDirectionsRendMapa.setDirections(res);
-        const leg = res.routes[0].legs[0];
-        info.textContent = `${leg.distance.text} · ${leg.duration.text} (transporte público)`;
-      } else {
-        info.textContent = "Não consegui traçar essa rota (" + status + ").";
-      }
-    });
-  } else {
+  if (!usingGoogle) {
     try {
       const o = isMyLocation ? userLocation : await geocodeNominatim(originText);
       const d = await geocodeNominatim(destText);
@@ -1742,15 +1751,57 @@ async function handleRouteSearch(){
       if (route) {
         L.polyline(route.coords, { color: "#2EC4B6", weight: 4 }).addTo(lRouteMapa);
         lMapMapa.fitBounds(route.coords, { padding:[30,30] });
-        info.textContent = `~${Math.round(route.legs[0].duration/60)} min de carro (estimativa OSRM — sem transporte público no modo alternativo).`;
+        info.textContent = `~${Math.round(route.legs[0].duration/60)} min de carro (estimativa OSRM).`;
       } else {
         L.polyline([[o.lat,o.lng],[d.lat,d.lng]], { color:"#2EC4B6", weight:3, dashArray:"6 8" }).addTo(lRouteMapa);
         info.textContent = "Rota real indisponível agora, mostrando linha reta.";
       }
-    } catch(e) {
-      info.textContent = "Erro ao buscar a rota.";
-    }
+    } catch(e) { info.textContent = "Erro ao buscar a rota."; }
+    return;
   }
+
+  const MODES = [
+    { id:"WALKING",   ico:"🚶", name:"A pé" },
+    { id:"BICYCLING", ico:"🚲", name:"De bicicleta" },
+    { id:"DRIVING",   ico:"🚗", name:"Carro / táxi" },
+    { id:"TRANSIT",   ico:"🚆", name:"Transporte público" }
+  ];
+  const wanted = chosen === "ALL" ? MODES : MODES.filter(m => m.id === chosen);
+
+  const ask = (mode) => new Promise(resolve => {
+    gDirectionsSvc.route({ origin: originForGoogle, destination: destText, travelMode: google.maps.TravelMode[mode] },
+      (res, status) => resolve(status === "OK" ? res : null));
+  });
+
+  const results = await Promise.all(wanted.map(async m => ({ ...m, res: await ask(m.id) })));
+  const ok = results.filter(r => r.res);
+
+  if (!ok.length) {
+    info.innerHTML = `Não achei rota entre esses pontos. Tente nomes mais específicos (ex: "Estação de Akihabara, Tóquio").`;
+    return;
+  }
+
+  // desenha a primeira que funcionou
+  const draw = (r) => {
+    gDirectionsRendMapa.setDirections(r.res);
+    document.querySelectorAll(".mode-row").forEach(el => el.classList.toggle("active", el.dataset.mode === r.id));
+  };
+  draw(ok[0]);
+
+  const transitFailed = wanted.some(m => m.id === "TRANSIT") && !ok.some(r => r.id === "TRANSIT");
+  info.innerHTML = `
+    <div class="mode-results">
+      ${results.map(r => {
+        if (!r.res) return `<div class="mode-row fail"><span class="m-ico">${r.ico}</span><span class="m-name">${r.name}</span><span class="m-dist">sem rota disponível</span></div>`;
+        const leg = r.res.routes[0].legs[0];
+        return `<div class="mode-row" data-mode="${r.id}"><span class="m-ico">${r.ico}</span><span class="m-name">${r.name}</span><span class="m-time">${leg.duration.text}</span><span class="m-dist">${leg.distance.text}</span></div>`;
+      }).join("")}
+    </div>
+    ${transitFailed ? `<div class="transit-warn">⚠️ O Google não fornece dados de transporte público do Japão pela API (só no app do celular). Para trem/metrô, consulte o <b>Japan Transit Planner</b> ou o app do Google Maps.</div>` : ""}`;
+
+  info.querySelectorAll(".mode-row[data-mode]").forEach(el => {
+    el.onclick = () => draw(ok.find(r => r.id === el.dataset.mode));
+  });
 }
 
 async function geocodeNominatim(query){
@@ -2559,11 +2610,14 @@ async function updateCronoMap(){
 
     for (let i = 0; i < chain.length - 1; i++) {
       const distKm = haversine(chain[i], chain[i+1]);
-      const primaryMode = distKm <= 1.2 ? google.maps.TravelMode.WALKING : google.maps.TravelMode.TRANSIT;
+      // ⚠️ A Directions API NÃO tem transporte público do Japão (retorna ZERO_RESULTS
+      // em qualquer rota, de Shibuya→Skytree a Tóquio→Osaka). Usar TRANSIT aqui dava
+      // tempos falsos. Então: curto = a pé (real), longo = carro (referência honesta).
+      const primaryMode = distKm <= 1.5 ? google.maps.TravelMode.WALKING : google.maps.TravelMode.DRIVING;
       let res = await requestRoute(chain[i], chain[i+1], primaryMode);
       if (myToken !== cronoMapRequestToken) return; // uma edição mais nova já assumiu, para por aqui
       if (!res) {
-        const fallbackMode = primaryMode === google.maps.TravelMode.WALKING ? google.maps.TravelMode.TRANSIT : google.maps.TravelMode.WALKING;
+        const fallbackMode = primaryMode === google.maps.TravelMode.WALKING ? google.maps.TravelMode.DRIVING : google.maps.TravelMode.WALKING;
         res = await requestRoute(chain[i], chain[i+1], fallbackMode);
         if (myToken !== cronoMapRequestToken) return;
       }
@@ -2589,8 +2643,8 @@ async function updateCronoMap(){
       }
     }
     document.getElementById("eta-value").textContent = anyFail
-      ? `~${totalMin} min (parcial — algum trecho sem transporte público direto)`
-      : `~${totalMin} min de trajeto no total`;
+      ? `~${totalMin} min (parcial — algum trecho sem rota)`
+      : `~${totalMin} min (a pé/carro — trem não é coberto pela API)`;
   } else {
     lMarkersCrono.clearLayers(); lRouteCrono.clearLayers();
     renderUserLocationMarker("crono");
