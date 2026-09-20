@@ -4,6 +4,22 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 1.2.0 — 2026-09-20
+
+Login por **e-mail e senha**, numa tela própria, no lugar do link mágico.
+
+- O link mágico dependia de redirect configurado no painel do Supabase, e era exatamente
+  aí que quebrava: o token era emitido, mas entregue em `http://localhost:3000`. Senha não
+  redireciona, então some a classe inteira de problema.
+- Tela de login na abertura, com "Entrar" e "Criar conta". Mensagens de erro traduzidas —
+  "Invalid login credentials" virou algo que dá pra agir.
+- Escape "usar só neste navegador", pra não travar o app quando não há conta ou internet.
+  O botão "Entrar" no topo traz a tela de volta; "Sair" também.
+
+Nota de escopo: isto é a arquitetura de login. Os dados do usuário (roteiro, hospedagem,
+status) já ficam por conta, via RLS. As viagens em si ainda são fixas no JS — criar viagens
+novas pela interface exige mover a definição das viagens pro banco, que é um passo à parte.
+
 ## 1.1.0 — 2026-09-19
 
 O cronograma planejado saiu da aba "Meu roteiro", que ninguém associava a cronograma, e

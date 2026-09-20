@@ -97,6 +97,34 @@
   .sync-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
   .sync-on{ background:#2EC4B6; } .sync-off{ background:#8B96A8; } .sync-err{ background:#E8492A; }
 
+  /* ---------- TELA DE LOGIN ---------- */
+  .login-gate{
+    position:fixed; inset:0; z-index:400; background:var(--bg);
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .login-gate.open{ display:flex; }
+  .login-card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:26px 24px; width:100%; max-width:380px;
+  }
+  .login-card h2{ margin:0 0 4px; font-size:21px; }
+  .login-sub{ font-size:13px; color:var(--text-muted); margin-bottom:18px; }
+  .login-card label{ display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--text-muted); margin-bottom:12px; }
+  .login-card input{
+    background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:10px 11px; font-size:14px;
+  }
+  .login-actions{ display:flex; gap:10px; margin-top:4px; }
+  .login-actions button{
+    flex:1; background:var(--accent); color:#0E141F; font-weight:700; font-size:13px;
+    border:none; border-radius:8px; padding:11px; cursor:pointer;
+  }
+  .login-actions button.secondary{ background:var(--panel-2); color:var(--text); border:1px solid var(--border); }
+  .login-msg{ font-size:12px; margin-top:12px; min-height:16px; color:var(--text-muted); }
+  .login-msg.err{ color:#E8492A; }
+  .login-msg.ok{ color:var(--accent); }
+  .login-skip{ margin-top:16px; text-align:center; }
+
   /* ---------- HOSPEDAGEM ---------- */
   .stay-form{ display:flex; flex-direction:column; gap:10px; margin:8px 0 14px; }
   .stay-form label{ display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--text-muted); flex:1; }
@@ -336,6 +364,21 @@
 </head>
 <body>
 
+<div class="login-gate" id="login-gate">
+  <div class="login-card">
+    <h2>Journey Planner</h2>
+    <div class="login-sub">Entre pra salvar suas viagens na conta e abrir de qualquer aparelho.</div>
+    <label>E-mail<input type="email" id="login-email" autocomplete="email" placeholder="seu@email.com"></label>
+    <label>Senha<input type="password" id="login-password" autocomplete="current-password" placeholder="mínimo 6 caracteres"></label>
+    <div class="login-actions">
+      <button id="login-in">Entrar</button>
+      <button id="login-up" class="secondary">Criar conta</button>
+    </div>
+    <div class="login-msg" id="login-msg"></div>
+    <div class="login-skip"><button class="link-btn" id="login-skip">usar só neste navegador</button></div>
+  </div>
+</div>
+
 <header class="top">
   <div class="title-row">
     <div class="title-group">
@@ -547,7 +590,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.2.0";
 
 const CONFIG = {
   googleMapsApiKey: "AIzaSyBorvHlS1t_wka3R3-zing2YzUkTrWn6FI",
@@ -1407,6 +1450,7 @@ function boot(){
   wireCatalogControls();
   wirePlanControls();
   wireStayControls();
+  wireLoginGate();
   initSupabase();
   renderAuthBar();
   requestUserLocation();
@@ -1965,14 +2009,71 @@ function initSupabase(){
   sb = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
   sb.auth.onAuthStateChange(async (_e, session) => {
     sbUser = session?.user || null;
-    if (sbUser) await afterLogin();
+    if (sbUser) { showLoginGate(false); await afterLogin(); }
     renderAuthBar();
   });
   sb.auth.getSession().then(async ({ data }) => {
     sbUser = data?.session?.user || null;
     if (sbUser) await afterLogin();
+    else if (!storageGet(LOCAL_ONLY_KEY, false)) showLoginGate(true);
     renderAuthBar();
   });
+}
+
+/* ---- tela de login (e-mail + senha) ----
+   Senha em vez de link mágico porque o link depende de redirect configurado
+   no painel do Supabase, e é aí que o fluxo quebrava. Senha não redireciona. */
+const LOCAL_ONLY_KEY = "local_only";
+
+function showLoginGate(show){
+  document.getElementById("login-gate").classList.toggle("open", show);
+}
+
+function loginMsg(text, kind){
+  const el = document.getElementById("login-msg");
+  el.textContent = text || "";
+  el.className = "login-msg" + (kind ? " " + kind : "");
+}
+
+function authErrorText(error){
+  const m = (error.message || "").toLowerCase();
+  if (m.includes("invalid login credentials")) return "E-mail ou senha incorretos. Se ainda não tem conta, use “Criar conta”.";
+  if (m.includes("already registered")) return "Esse e-mail já tem conta — use “Entrar”.";
+  if (m.includes("password should be")) return "A senha precisa de pelo menos 6 caracteres.";
+  if (m.includes("email not confirmed")) return "Confirme o e-mail antes de entrar.";
+  return `${error.message}${error.status ? ` (${error.status})` : ""}`;
+}
+
+function wireLoginGate(){
+  const email = () => document.getElementById("login-email").value.trim();
+  const pass  = () => document.getElementById("login-password").value;
+
+  document.getElementById("login-in").onclick = async () => {
+    if (!email() || !pass()) return loginMsg("Preencha e-mail e senha.", "err");
+    loginMsg("Entrando…");
+    const { error } = await sb.auth.signInWithPassword({ email: email(), password: pass() });
+    if (error) { console.error("Supabase auth:", error); loginMsg(authErrorText(error), "err"); }
+    // no sucesso, onAuthStateChange fecha o portão
+  };
+
+  document.getElementById("login-up").onclick = async () => {
+    if (!email() || !pass()) return loginMsg("Preencha e-mail e senha.", "err");
+    if (pass().length < 6) return loginMsg("A senha precisa de pelo menos 6 caracteres.", "err");
+    loginMsg("Criando conta…");
+    const { data, error } = await sb.auth.signUp({ email: email(), password: pass() });
+    if (error) { console.error("Supabase auth:", error); return loginMsg(authErrorText(error), "err"); }
+    // projeto com confirmação de e-mail ligada não devolve sessão na hora
+    if (!data.session) loginMsg("Conta criada. Confirme pelo e-mail e depois entre.", "ok");
+  };
+
+  document.getElementById("login-skip").onclick = () => {
+    storageSet(LOCAL_ONLY_KEY, true);
+    showLoginGate(false);
+  };
+
+  document.getElementById("login-password").onkeydown = e => {
+    if (e.key === "Enter") document.getElementById("login-in").click();
+  };
 }
 
 async function afterLogin(){
@@ -2092,35 +2193,20 @@ function renderAuthBar(){
     return;
   }
   if (!sbUser) {
-    // O link mágico volta pra uma URL http(s); abrindo o arquivo direto do disco
-    // não há pra onde voltar, e o Supabase recusa o redirect.
-    if (location.protocol === "file:") {
-      bar.innerHTML = `<span class="sync-dot sync-err"></span> Login por e-mail não funciona abrindo o arquivo direto (file://) — precisa ser pela versão publicada em http/https.`;
-      return;
-    }
-    bar.innerHTML = `
-      <span class="sync-dot sync-off"></span> Salvo só neste navegador.
-      <input type="email" id="auth-email" placeholder="seu@email.com">
-      <button id="auth-send">Entrar por e-mail</button>`;
-    document.getElementById("auth-send").onclick = async () => {
-      const email = document.getElementById("auth-email").value.trim();
-      if (!email) return;
-      const redirectTo = location.origin + location.pathname;
-      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
-      if (error) {
-        console.error("Supabase auth:", error);
-        bar.innerHTML = `<span class="sync-dot sync-err"></span> Erro ${error.status || ""} — ${error.message}<br><small>redirect usado: ${redirectTo} (precisa estar na allowlist em Auth → URL Configuration)</small>`;
-      } else {
-        bar.innerHTML = `<span class="sync-dot sync-off"></span> Link enviado pra ${email} — abra no mesmo aparelho.`;
-      }
-    };
+    bar.innerHTML = `<span class="sync-dot sync-off"></span> Salvo só neste navegador. <button id="auth-open">Entrar</button>`;
+    document.getElementById("auth-open").onclick = () => { loginMsg(""); showLoginGate(true); };
     return;
   }
   const dot = syncState === "on" ? "sync-on" : syncState === "err" ? "sync-err" : "sync-off";
   const txt = syncState === "on" ? "sincronizado" : syncState === "err" ? "erro ao sincronizar (dados locais preservados)" : "conectando…";
   bar.innerHTML = `<span class="sync-dot ${dot}"></span> ${sbUser.email} · ${txt} <button id="auth-out">Sair</button>`;
   document.getElementById("auth-out").onclick = async () => {
-    await sb.auth.signOut(); sbUser = null; sbTripId = null; syncState = "off"; renderAuthBar();
+    await sb.auth.signOut();
+    sbUser = null; sbTripId = null; syncState = "off";
+    storageSet(LOCAL_ONLY_KEY, false);
+    renderAuthBar();
+    loginMsg("");
+    showLoginGate(true);
   };
 }
 
