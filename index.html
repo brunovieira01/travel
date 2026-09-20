@@ -499,7 +499,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.0.1";
 
 const CONFIG = {
   googleMapsApiKey: "AIzaSyBorvHlS1t_wka3R3-zing2YzUkTrWn6FI",
@@ -2018,6 +2018,12 @@ function renderAuthBar(){
     return;
   }
   if (!sbUser) {
+    // O link mágico volta pra uma URL http(s); abrindo o arquivo direto do disco
+    // não há pra onde voltar, e o Supabase recusa o redirect.
+    if (location.protocol === "file:") {
+      bar.innerHTML = `<span class="sync-dot sync-err"></span> Login por e-mail não funciona abrindo o arquivo direto (file://) — precisa ser pela versão publicada em http/https.`;
+      return;
+    }
     bar.innerHTML = `
       <span class="sync-dot sync-off"></span> Salvo só neste navegador.
       <input type="email" id="auth-email" placeholder="seu@email.com">
@@ -2025,10 +2031,14 @@ function renderAuthBar(){
     document.getElementById("auth-send").onclick = async () => {
       const email = document.getElementById("auth-email").value.trim();
       if (!email) return;
-      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
-      bar.innerHTML = error
-        ? `<span class="sync-dot sync-err"></span> Erro: ${error.message}`
-        : `<span class="sync-dot sync-off"></span> Link enviado pra ${email} — abra no mesmo aparelho.`;
+      const redirectTo = location.origin + location.pathname;
+      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
+      if (error) {
+        console.error("Supabase auth:", error);
+        bar.innerHTML = `<span class="sync-dot sync-err"></span> Erro ${error.status || ""} — ${error.message}<br><small>redirect usado: ${redirectTo} (precisa estar na allowlist em Auth → URL Configuration)</small>`;
+      } else {
+        bar.innerHTML = `<span class="sync-dot sync-off"></span> Link enviado pra ${email} — abra no mesmo aparelho.`;
+      }
     };
     return;
   }
