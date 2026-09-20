@@ -190,6 +190,44 @@
   .plan-time.empty{ color:var(--text-muted); font-weight:400; }
   .plan-item-notes{ font-size:12px; color:var(--text); opacity:.75; margin-top:4px; white-space:pre-wrap; }
   .plan-free{ border-left:2px solid var(--accent); }
+  .plan-leg{ font-size:12px; color:var(--text-muted); padding:1px 0 1px 14px; display:flex; align-items:center; gap:8px; }
+  .plan-leg-est{ font-size:10px; border:1px solid var(--border); border-radius:999px; padding:1px 6px; }
+  .plan-warn{
+    margin:0 20px 12px; padding:9px 12px; border-radius:8px; font-size:12px;
+    background:rgba(232,73,42,.10); border:1px solid rgba(232,73,42,.45); color:#F0A594;
+  }
+  .day-map-panel{ display:none; border-bottom:1px solid var(--border); }
+  .day-map-panel.open{ display:block; }
+  #day-map{ height:320px; width:100%; background:var(--panel-2); }
+  #day-map .leaflet-tile-pane{ filter: invert(1) hue-rotate(180deg) saturate(.25) brightness(.82) contrast(.95); }
+  .day-map-caption{ font-size:12px; color:var(--text-muted); padding:9px 20px 12px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+
+  /* ---------- CHECKLIST ---------- */
+  .check-section{ border-bottom:1px solid var(--border); }
+  .check-section-head{ padding:14px 20px 8px; display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+  .check-section-name{ font-weight:800; font-size:14px; }
+  .check-section-count{ font-size:12px; color:var(--text-muted); }
+  .check-items{ padding:0 20px 14px; display:flex; flex-direction:column; gap:8px; }
+  .check-item{
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    padding:10px 12px; display:flex; gap:11px; align-items:flex-start;
+  }
+  .check-box{
+    flex:0 0 auto; width:19px; height:19px; margin-top:1px; border-radius:5px; cursor:pointer;
+    border:1px solid var(--border); background:var(--panel-2); color:#0E141F;
+    font-size:13px; font-weight:800; line-height:17px; text-align:center; padding:0;
+  }
+  .check-box.on{ background:var(--accent); border-color:var(--accent); }
+  .check-main{ flex:1; min-width:0; }
+  .check-title{ font-weight:600; font-size:14px; }
+  .check-item.done .check-title{ text-decoration:line-through; color:var(--text-muted); }
+  .check-notes{ font-size:12px; color:var(--text); opacity:.72; margin-top:4px; white-space:pre-wrap; }
+  .check-actions{ flex:0 0 auto; }
+  .check-progress{ margin-top:7px; }
+  .check-bar{ height:6px; border-radius:999px; background:var(--panel-2); border:1px solid var(--border); overflow:hidden; }
+  .check-bar-fill{ height:100%; background:var(--accent); }
+  .check-progress-text{ font-size:12px; color:var(--text-muted); margin-top:4px; font-variant-numeric:tabular-nums; }
+  .check-hint{ font-size:11px; color:var(--text-muted); margin-top:-2px; }
 
   /* ---------- SUB-ABAS (dentro do Cronograma) ---------- */
   .sub-tabs{ display:flex; gap:18px; padding:12px 20px 0; border-bottom:1px solid var(--border); }
@@ -393,6 +431,7 @@
     <button class="view-tab" data-view="schedule">Cronograma</button>
     <button class="view-tab" data-view="catalog">Atrações</button>
     <button class="view-tab" data-view="stays">Hospedagem</button>
+    <button class="view-tab" data-view="checklist">Checklist</button>
   </div>
 </header>
 
@@ -455,6 +494,10 @@
         <button class="gmaps-btn" id="plan-new">+ Entrada livre</button>
         <button class="link-btn" id="plan-clear">Limpar tudo</button>
       </div>
+    </div>
+    <div class="day-map-panel" id="day-map-panel">
+      <div id="day-map"></div>
+      <div class="day-map-caption" id="day-map-caption"></div>
     </div>
     <div id="plan-body"></div>
   </div>
@@ -538,6 +581,45 @@
   </div>
 </div>
 
+<!-- ================= CHECKLIST ================= -->
+<section class="view" id="view-checklist">
+  <div class="plan-toolbar">
+    <span id="check-summary" class="plan-summary"></span>
+    <div class="plan-toolbar-actions">
+      <button class="gmaps-btn" id="check-new">+ Novo item</button>
+      <button class="link-btn" id="check-reset">Restaurar lista original</button>
+    </div>
+  </div>
+  <div id="check-body"></div>
+</section>
+
+<div class="modal-backdrop" id="check-modal">
+  <div class="modal-sheet" style="position:relative;">
+    <button class="modal-close" id="check-modal-close">✕</button>
+    <div class="modal-body">
+      <div class="modal-title" id="check-modal-title">Novo item</div>
+      <div class="stay-form">
+        <label>O quê<input type="text" id="check-title" placeholder="Ex: Reservar o ryokan em Hakone"></label>
+        <label>Quando / seção
+          <input type="text" id="check-section" list="check-sections" placeholder="Ex: Durante outubro">
+          <datalist id="check-sections"></datalist>
+        </label>
+        <label>Observações<textarea id="check-notes" rows="3" placeholder="Links, preços, avisos, o que você já descobriu"></textarea></label>
+        <div class="stay-row2">
+          <label>Já tenho<input type="text" id="check-amount" inputmode="decimal" placeholder="Ex: 60000"></label>
+          <label>Meta<input type="text" id="check-target" inputmode="decimal" placeholder="Ex: 245000"></label>
+          <label>Unidade<input type="text" id="check-unit" placeholder="Ex: ¥"></label>
+        </div>
+        <div class="check-hint">Preencha "Já tenho" e "Meta" só quando o item for acúmulo (dinheiro guardado, por exemplo) em vez de sim/não. Aí ele vira barra de progresso.</div>
+      </div>
+      <div class="modal-actions">
+        <button class="gmaps-btn" id="check-save">Salvar</button>
+        <button class="link-btn" id="check-delete" style="display:none;">Excluir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= CATÁLOGO DE ATRAÇÕES ================= -->
 <section class="view" id="view-catalog">
   <div class="catalog-toolbar">
@@ -590,7 +672,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.3.0";
 
 const CONFIG = {
   googleMapsApiKey: "AIzaSyBorvHlS1t_wka3R3-zing2YzUkTrWn6FI",
@@ -1450,6 +1532,7 @@ function boot(){
   wireCatalogControls();
   wirePlanControls();
   wireStayControls();
+  wireCheckControls();
   wireLoginGate();
   initSupabase();
   renderAuthBar();
@@ -1511,12 +1594,14 @@ function renderViewTabs(){
       document.getElementById("view-catalog").classList.toggle("active", currentView === "catalog");
       if (currentView === "catalog") renderCatalog();
       document.getElementById("view-stays").classList.toggle("active", currentView === "stays");
+      document.getElementById("view-checklist").classList.toggle("active", currentView === "checklist");
       if (currentView === "schedule" && currentSubView === "dias") renderMyPlan();
       if (currentView === "stays") renderStays();
+      if (currentView === "checklist") renderChecklist();
       // Leaflet/Google precisam de um resize quando o container volta a ficar visível.
-      // A aba "Atrações" não tem mapa, então não entra aqui.
+      // As abas sem mapa não entram aqui.
       setTimeout(() => {
-        if (["catalog","stays"].includes(currentView)) return;
+        if (["catalog","stays","checklist"].includes(currentView)) return;
         if (usingGoogle) {
           google.maps.event.trigger(currentView === "map" ? gMapMapa : gMapCrono, "resize");
         } else {
@@ -2100,10 +2185,11 @@ async function afterLogin(){
 
 // traz o que está no banco pro localStorage (o banco vence no login)
 async function pullFromSupabase(){
-  const [stays, items, status] = await Promise.all([
+  const [stays, items, status, checks] = await Promise.all([
     sb.from("stays").select("*").eq("trip_id", sbTripId),
     sb.from("itinerary_items").select("*").eq("trip_id", sbTripId).order("position"),
-    sb.from("place_status").select("*").eq("trip_id", sbTripId)
+    sb.from("place_status").select("*").eq("trip_id", sbTripId),
+    sb.from("checklist_items").select("*").eq("trip_id", sbTripId).order("position")
   ]);
   if (stays.data) {
     saveStays(stays.data.map(r => ({
@@ -2125,9 +2211,17 @@ async function pullFromSupabase(){
   if (status.data) {
     storageSet(hiddenKey(currentTripId), status.data.filter(r => r.visited).map(r => r.place_id));
   }
+  // lista vazia no banco = viagem nova, aí a semente local continua valendo
+  if (checks.data && checks.data.length) {
+    saveChecklist(checks.data.map(r => ({
+      id: r.id, section: r.section || "Sem seção", title: r.title, notes: r.notes || "",
+      done: !!r.done, amount: r.amount, target: r.target, unit: r.unit || "", position: r.position
+    })));
+  }
   if (currentView === "stays") renderStays();
   if (currentView === "schedule" && currentSubView === "dias") renderMyPlan();
   if (currentView === "catalog") renderCatalog();
+  if (currentView === "checklist") renderChecklist();
   renderTimeline(); renderMapView();
 }
 
@@ -2164,6 +2258,26 @@ async function pushPlan(){
       })));
     await sb.from("itinerary_items").delete().eq("trip_id", sbTripId);
     if (rows.length) await sb.from("itinerary_items").insert(rows);
+    syncState = "on";
+  } catch (e) { console.error(e); syncState = "err"; }
+  renderAuthBar();
+}
+
+async function pushChecklist(){
+  if (!sbReady()) return;
+  try {
+    const rows = getChecklist().map((it, i) => ({
+      user_id: sbUser.id, trip_id: sbTripId,
+      section: it.section || null, title: it.title, notes: it.notes || null,
+      done: !!it.done, amount: it.amount, target: it.target, unit: it.unit || null,
+      position: i
+    }));
+    await sb.from("checklist_items").delete().eq("trip_id", sbTripId);
+    if (rows.length) {
+      // checa o erro aqui porque a tabela só existe depois da migração 1.3.0
+      const { error } = await sb.from("checklist_items").insert(rows);
+      if (error) throw error;
+    }
     syncState = "on";
   } catch (e) { console.error(e); syncState = "err"; }
   renderAuthBar();
@@ -2427,6 +2541,87 @@ function planMove(dateKey, itemId, dir){
   savePlanAndSync(plan);
 }
 
+/* A Directions API não devolve transporte público do Japão (ZERO_RESULTS em qualquer
+   rota) — e é de trem que se anda em Tóquio. Então em vez de gastar quota pra receber
+   tempo de carro, estima-se em cima da distância reta, com fator pro caminho real.
+   Vale offline, que é o caso no meio de Kyoto sem sinal. */
+function estimateLegMin(a, b){
+  const straight = haversine(a, b);
+  if (straight * 1.3 <= 1.2) return Math.max(3, Math.round(straight * 1.3 / 4.5 * 60));  // a pé
+  if (straight <= 30) return Math.round(straight * 1.3 / 20 * 60) + 8;   // metrô/trem urbano, com baldeação
+  return Math.round(straight * 1.15 / 150 * 60) + 30;                    // shinkansen, com acesso à estação
+}
+function legMode(a, b){
+  const straight = haversine(a, b);
+  if (straight * 1.3 <= 1.2) return "a pé";
+  return straight <= 30 ? "de trem" : "de shinkansen";
+}
+function fmtMin(m){
+  if (m < 90) return `${m} min`;
+  const h = Math.floor(m / 60), r = m % 60;
+  return r ? `${h}h${String(r).padStart(2, "0")}` : `${h}h`;
+}
+
+function normCity(s){ return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
+
+function stayForNight(dateKey){
+  return getStays().find(s => s.checkin && s.checkout && s.checkin <= dateKey && dateKey < s.checkout) || null;
+}
+
+// Avisa quando o dia foi montado numa cidade diferente da que você dorme nessa noite.
+function dayCityWarning(dateKey, places){
+  const stay = stayForNight(dateKey);
+  if (!stay || !stay.city || !places.length) return "";
+  const sc = normCity(stay.city);
+  const off = [...new Set(places.map(p => p.city))].filter(c => c && !sc.includes(normCity(c)));
+  if (!off.length) return "";
+  return `Nessa noite você dorme em ${esc(stay.city)}, mas o dia tem parada em ${off.map(esc).join(" · ")}.`;
+}
+
+let dayMap = null, dayMapLayer = null;
+
+function showDayOnMap(dateKey){
+  document.getElementById("day-map-panel").classList.add("open");
+  if (!dayMap) {
+    dayMap = L.map("day-map");
+    // As tiles escuras da CARTO passaram a exigir chave (estampam "API KEY REQUIRED").
+    // OSM padrão é livre; o tom escuro vem de um filtro CSS sobre as tiles.
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap", maxZoom: 19
+    }).addTo(dayMap);
+    dayMapLayer = L.layerGroup().addTo(dayMap);
+  }
+  dayMapLayer.clearLayers();
+
+  const d = TRIP_DATES.find(x => x.key === dateKey);
+  const places = planItems(dateKey).map(i => i.placeId ? placeById(i.placeId) : null).filter(Boolean);
+  const caption = document.getElementById("day-map-caption");
+
+  if (!places.length) {
+    caption.textContent = `${d.label} — nenhuma parada com localização nesse dia.`;
+    dayMap.setView([35.68, 139.76], 11);
+    setTimeout(() => dayMap.invalidateSize(), 60);
+    return;
+  }
+
+  const pts = places.map(p => [p.lat, p.lng]);
+  places.forEach((p, i) => {
+    L.circleMarker([p.lat, p.lng], { radius:9, color:"#2EC4B6", fillColor:"#2EC4B6", fillOpacity:.9, weight:2 })
+      .bindTooltip(`${i+1}. ${p.name}`).addTo(dayMapLayer);
+  });
+  if (pts.length > 1) L.polyline(pts, { color:"#2EC4B6", weight:3, opacity:.55, dashArray:"6 6" }).addTo(dayMapLayer);
+
+  let travel = 0;
+  for (let i = 0; i < places.length - 1; i++) travel += estimateLegMin(places[i], places[i+1]);
+  caption.innerHTML = `<span><b>${d.label} (${d.weekday})</b> · ${places.length} parada${places.length>1?"s":""}${travel ? ` · ~${fmtMin(travel)} de deslocamento` : ""}</span>
+    <span>linha reta entre paradas — não é o trajeto real do trem</span>`;
+
+  setTimeout(() => {
+    dayMap.invalidateSize();
+    dayMap.fitBounds(L.latLngBounds(pts), { padding:[40,40], maxZoom:15 });
+  }, 60);
+}
+
 function renderMyPlan(){
   const trip = currentTrip();
   const plan = getPlan();
@@ -2452,8 +2647,16 @@ function renderMyPlan(){
     const hrs = mins >= 60 ? `${(mins/60).toFixed(1).replace(".0","")}h de visitas` : mins ? `${mins}min de visitas` : "";
 
     const loose = items.filter(i => !i.start);
+    let prevPlace = null, travelMin = 0;
     const rows = items.length ? items.map(it => {
       const p = it.placeId ? placeById(it.placeId) : null;
+      let leg = "";
+      if (p && prevPlace) {
+        const m = estimateLegMin(prevPlace, p);
+        travelMin += m;
+        leg = `<div class="plan-leg">↓ ~${fmtMin(m)} ${legMode(prevPlace, p)} <span class="plan-leg-est">estimativa</span></div>`;
+      }
+      if (p) prevPlace = p;
       const name = p ? esc(p.name) : (esc(it.title) || "(sem título)");
       const meta = p
         ? `${esc(p.city)} · ~${p.visitMin}min · ${periodLabel(p.period)}${p.cost ? " · " + esc(p.cost) : ""}${p.booking ? " · ⚠️ " + esc(p.booking) : ""}`
@@ -2462,7 +2665,7 @@ function renderMyPlan(){
       const arrows = it.start ? "" : `
           <button class="link-btn" data-up="${d.key}|${it.id}" ${li > 0 ? "" : "disabled style=opacity:.3"}>↑</button>
           <button class="link-btn" data-down="${d.key}|${it.id}" ${li < loose.length - 1 ? "" : "disabled style=opacity:.3"}>↓</button>`;
-      return `
+      return `${leg}
       <div class="plan-item ${p ? "" : "plan-free"}">
         <div class="plan-time ${it.start ? "" : "empty"}">${it.start || "—"}</div>
         <div class="plan-item-main">
@@ -2477,12 +2680,19 @@ function renderMyPlan(){
       </div>`;
     }).join("") : `<div class="plan-empty">Dia livre.</div>`;
 
+    const warn = dayCityWarning(d.key, places);
+    const meta = [cities, hrs, travelMin ? `~${fmtMin(travelMin)} de deslocamento` : ""].filter(Boolean).join(" · ");
+
     return `
       <div class="plan-day">
         <div class="plan-day-head">
-          <div><span class="plan-date">${d.label}</span><span class="plan-weekday">${d.weekday}${idx===0?" · chegada":""}${idx===TRIP_DATES.length-1?" · saída":""}</span></div>
-          <div class="plan-city">${cities}${cities && hrs ? " · " : ""}${hrs}</div>
+          <div>
+            <span class="plan-date">${d.label}</span><span class="plan-weekday">${d.weekday}${idx===0?" · chegada":""}${idx===TRIP_DATES.length-1?" · saída":""}</span>
+            ${places.length ? `<button class="link-btn" data-daymap="${d.key}" style="margin-left:10px;">ver no mapa</button>` : ""}
+          </div>
+          <div class="plan-city">${meta}</div>
         </div>
+        ${warn ? `<div class="plan-warn">⚠️ ${warn}</div>` : ""}
         <div class="plan-items">${rows}</div>
         <div class="plan-add">
           <select data-picker="${d.key}"><option value="">+ adicionar atração...</option>${optionsHtml}</select>
@@ -2498,6 +2708,7 @@ function renderMyPlan(){
     if (sel.value) { planAdd(k, sel.value); renderMyPlan(); }
   });
   body.querySelectorAll("[data-freebtn]").forEach(b => b.onclick = () => openPlanModal(b.dataset.freebtn, null));
+  body.querySelectorAll("[data-daymap]").forEach(b => b.onclick = () => showDayOnMap(b.dataset.daymap));
   body.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => {
     const [k, id] = b.dataset.edit.split("|");
     openPlanModal(k, (getPlan()[k] || []).find(i => i.id === id));
@@ -2561,6 +2772,202 @@ function wirePlanControls(){
   document.getElementById("plan-delete").onclick = () => {
     if (!editingPlanItem) return;
     if (confirm("Excluir esta entrada?")) { planRemove(editingPlanItem.id); closePlanModal(); renderMyPlan(); }
+  };
+}
+
+/* ==========================================================
+   CHECKLIST — o que fazer antes e durante a viagem.
+   Semeado a partir do checklist_mestre.md; daqui em diante é editável,
+   e as edições substituem a semente.
+   ========================================================== */
+const CHECKLIST_SEED = [
+  { section:"Agora (setembro)", title:"Reservar o ryokan em Hakone (02→03/12)",
+    notes:"~¥50.000 — confirmar se é por pessoa e se inclui jantar kaiseki + café. Buscar em Jalan, JAPANiCAN, Rakuten Travel, Selected Onsen Ryokan. Booking/Agoda são fracos em ryokan. Se apertar: ryokan simples + onsen de uso diurno (Hakone Yuryo, Tenzan, Yunessun)." },
+  { section:"Agora (setembro)", title:"Comprar o Hakone Free Pass na chegada",
+    notes:"Cobre trem de montanha, teleférico, ônibus e o barco do lago." },
+  { section:"Agora (setembro)", title:"Férias na Cubo Itaú", done:true },
+  { section:"Agora (setembro)", title:"Conferir validade do passaporte", done:true },
+  { section:"Agora (setembro)", title:"Pedir o cartão físico da Revolut", notes:"Leva semanas pra chegar." },
+  { section:"Agora (setembro)", title:"Definir quantas noites em cada ponta de Tóquio" },
+  { section:"Agora (setembro)", title:"Reservar hostels",
+    notes:"Priorizar área comum, bar e programação social; filtrar avaliações por atmosfera; preferir quarto compartilhado.\nTóquio: The Citan (Akihabara, bar no subsolo, 8.8★) · um a 5 min do Golden Gai (8.3★).\nOsaka: Hostel Chillax (Nipponbashi) · Mad Cat Hostel & Bar · Backstage Osaka.\nBairro em Tóquio: Shinjuku ou Shibuya pra noite; Asakusa é mais quieto." },
+  { section:"Agora (setembro)", title:"Pré-reservar o resto com cancelamento grátis",
+    notes:"Tóquio início, Kyoto, Osaka, Tóquio fim (capsule perto do aeroporto) e Paris. Booking · Agoda (melhor preço na Ásia) · Rakuten Travel." },
+  { section:"Agora (setembro)", title:"Confirmar com o amigo qual era o karaokê recomendado" },
+
+  { section:"1º de outubro — data marcada", title:"teamLab Borderless — abre a venda dos ingressos de dezembro" },
+
+  { section:"Durante outubro", title:"2º aporte BRL→JPY na Revolut",
+    notes:"Você optou por esperar o iene cair — lembrar que isso é aposta de câmbio, não a média que a estratégia original buscava." },
+  { section:"Durante outubro", title:"Confirmar as datas 2026 da iluminação noturna do Kenninji",
+    notes:"Saem em outubro. A janela do ano passado (29/nov–13/dez) bate quase exato com a viagem." },
+  { section:"Durante outubro", title:"Resolver a internet no Japão",
+    notes:"O plano da Vivo provavelmente não cobre bem. Ligar e perguntar cobertura e custo; comparar com eSIM (Ubigi, Airalo, Sakura Mobile, Holafly) ou pocket wifi. Checar se o celular aceita eSIM." },
+  { section:"Durante outubro", title:"Reconferir se o ETIAS segue adiado",
+    notes:"Previsão agora é 2027, e ainda haveria 6 meses de tolerância." },
+  { section:"Durante outubro", title:"Reservar Shinkansen Tóquio→Kyoto e Osaka→Tóquio via smartEX",
+    notes:"JR Pass não compensa: ~¥28–31.000 avulso contra ¥50.000 o passe." },
+  { section:"Durante outubro", title:"Se for de mala grande: planejar takkyubin (Yamato) entre hotéis" },
+
+  { section:"10 de novembro, 10h JST — data e hora marcadas", title:"Museu Ghibli",
+    notes:"Só pela Lawson, interface em japonês, esgota em segundos. Deixar tudo preparado antes." },
+
+  { section:"Início de novembro", title:"3º aporte BRL→JPY na Revolut",
+    notes:"Último momento confortável — depois disso some a margem de manobra." },
+  { section:"Início de novembro", title:"Trem Fuji Excursion",
+    notes:"Reserva obrigatória, abre 1 mês antes às 10h JST. Não existe vagão livre." },
+  { section:"Início de novembro", title:"USJ (se for) — Studio Pass + Express Pass com Super Nintendo World",
+    notes:"O Studio Pass sozinho NÃO garante entrada na SNW. Power-Up Band ¥4.000–4.900 é praticamente obrigatória. Melhores dias: ter/qua/qui do início de dezembro." },
+  { section:"Início de novembro", title:"Pokémon Café", notes:"Reserva abre 31 dias antes, às 18h JST." },
+  { section:"Início de novembro", title:"Comprar e testar o eSIM ainda no Brasil", notes:"A ativação costuma exigir internet." },
+  { section:"Início de novembro", title:"Providenciar euros pro dia em Paris" },
+
+  { section:"2 semanas antes (meados de novembro)", title:"Shibuya Sky",
+    notes:"Abre 14 dias antes; o slot do pôr do sol some em horas. Entrar entre 15h40 e 16h (pôr do sol é 16h28 em dezembro)." },
+  { section:"2 semanas antes (meados de novembro)", title:"Baixar o app do Suica e adicionar à carteira do celular" },
+  { section:"2 semanas antes (meados de novembro)", title:"Baixar Japan Transit Planner, Tabelog e o mapa offline no Google Maps" },
+  { section:"2 semanas antes (meados de novembro)", title:"Reservar restaurantes concorridos pelo Tabelog" },
+  { section:"2 semanas antes (meados de novembro)", title:"Conferir o tempo de conexão em Frankfurt",
+    notes:"O sistema biométrico EES causa filas longas nas fronteiras Schengen desde abril/2026, e é sua primeira entrada no espaço (digitais e foto)." },
+
+  { section:"Na viagem", title:"Levar ¥20.000 em espécie como reserva",
+    notes:"Sacar em ATM de 7-Eleven/Family Mart, recusando a conversão oferecida pela máquina." },
+  { section:"Na viagem", title:"Tentar pegar o cartão Suica físico ao chegar" },
+
+  { section:"Dinheiro", title:"Iene comprado", amount:60000, target:245000, unit:"¥",
+    notes:"Estimativa pra 15 noites: ¥245.000–423.000 conforme o padrão. Os aportes (set/out/nov) existem pra diluir o risco de câmbio em vez de converter tudo de uma vez." },
+
+  { section:"Avisos que mudam decisões", title:"Kart de rua está fora",
+    notes:"A PID brasileira não vale no Japão — Brasil assinou Viena 1968, Japão só aceita Genebra 1949." },
+  { section:"Avisos que mudam decisões", title:"Kabukicho: combinar preço antes de entrar onde não há cardápio visível" },
+  { section:"Avisos que mudam decisões", title:"Gion: foto proibida nas vielas de Hanamikoji", notes:"Multa ¥10.000." },
+  { section:"Avisos que mudam decisões", title:"Conferir horários de inverno",
+    notes:"Fujisan World Heritage Center abre só 9h–16h30 em dezembro. Chureito Pagoda: ~400 degraus, pode ter gelo. Kachi Kachi Ropeway: só em céu limpo, até ~17h. Owakudani: conferir o teleférico, atividade vulcânica às vezes suspende." },
+  { section:"Avisos que mudam decisões", title:"Já fecharam (guias desatualizados ainda listam)",
+    notes:"Contact, Sound Museum Vision, Immersive Fort Tokyo, Unicorn Gundam de Odaiba, GiGO Akihabara prédio 1, Square Enix Café de Akiba." }
+];
+
+function checkKey(){ return `checklist_${currentTripId}`; }
+
+function getChecklist(){
+  const saved = storageGet(checkKey(), null);
+  if (saved) return saved;
+  const seeded = CHECKLIST_SEED.map((it, i) => ({
+    id: newItemId(), position: i, done:false, notes:"", amount:null, target:null, unit:"", ...it
+  }));
+  storageSet(checkKey(), seeded);
+  return seeded;
+}
+function saveChecklist(list){ storageSet(checkKey(), list); }
+function saveChecklistAndSync(list){ saveChecklist(list); pushChecklist(); }
+function fmtNum(n){ return Number(n || 0).toLocaleString("pt-BR"); }
+
+function renderChecklist(){
+  const list = getChecklist();
+  const body = document.getElementById("check-body");
+
+  const done = list.filter(i => i.done).length;
+  const money = list.filter(i => i.target);
+  document.getElementById("check-summary").textContent =
+    `${done} de ${list.length} feitos` +
+    (money.length ? ` · ${money.map(m => `${m.unit || ""}${fmtNum(m.amount)} de ${m.unit || ""}${fmtNum(m.target)}`).join(" · ")}` : "");
+
+  const sections = [];
+  list.forEach(i => { const s = i.section || "Sem seção"; if (!sections.includes(s)) sections.push(s); });
+
+  body.innerHTML = sections.map(sec => {
+    const items = list.filter(i => (i.section || "Sem seção") === sec);
+    return `
+      <div class="check-section">
+        <div class="check-section-head">
+          <span class="check-section-name">${esc(sec)}</span>
+          <span class="check-section-count">${items.filter(i => i.done).length}/${items.length}</span>
+        </div>
+        <div class="check-items">
+          ${items.map(it => {
+            const pct = it.target ? Math.min(100, Math.round((Number(it.amount || 0) / Number(it.target)) * 100)) : null;
+            return `
+            <div class="check-item ${it.done ? "done" : ""}">
+              <button class="check-box ${it.done ? "on" : ""}" data-toggle="${it.id}" title="marcar como feito">${it.done ? "✓" : ""}</button>
+              <div class="check-main">
+                <div class="check-title">${esc(it.title)}</div>
+                ${it.notes ? `<div class="check-notes">${esc(it.notes)}</div>` : ""}
+                ${pct !== null ? `
+                <div class="check-progress">
+                  <div class="check-bar"><div class="check-bar-fill" style="width:${pct}%"></div></div>
+                  <div class="check-progress-text">${esc(it.unit || "")}${fmtNum(it.amount)} de ${esc(it.unit || "")}${fmtNum(it.target)} · ${pct}%</div>
+                </div>` : ""}
+              </div>
+              <div class="check-actions"><button class="link-btn" data-checkedit="${it.id}">editar</button></div>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>`;
+  }).join("");
+
+  body.querySelectorAll("[data-toggle]").forEach(b => b.onclick = () => {
+    const l = getChecklist();
+    const it = l.find(x => x.id === b.dataset.toggle);
+    if (it) { it.done = !it.done; saveChecklistAndSync(l); renderChecklist(); }
+  });
+  body.querySelectorAll("[data-checkedit]").forEach(b => b.onclick = () =>
+    openCheckModal(getChecklist().find(x => x.id === b.dataset.checkedit)));
+}
+
+let editingCheckId = null;
+
+function openCheckModal(item){
+  editingCheckId = item ? item.id : null;
+  document.getElementById("check-modal-title").textContent = item ? "Editar item" : "Novo item";
+  const v = (id, val) => document.getElementById(id).value = (val ?? "");
+  v("check-title", item?.title); v("check-section", item?.section);
+  v("check-notes", item?.notes); v("check-amount", item?.amount);
+  v("check-target", item?.target); v("check-unit", item?.unit);
+  document.getElementById("check-sections").innerHTML =
+    [...new Set(getChecklist().map(i => i.section).filter(Boolean))].map(s => `<option value="${esc(s)}">`).join("");
+  document.getElementById("check-delete").style.display = item ? "inline" : "none";
+  document.getElementById("check-modal").classList.add("open");
+}
+function closeCheckModal(){ document.getElementById("check-modal").classList.remove("open"); editingCheckId = null; }
+
+function saveCheckFromForm(){
+  const g = id => document.getElementById(id).value.trim();
+  if (!g("check-title")) { alert("Dê um nome ao item."); return; }
+  const num = s => { if (!s) return null; const n = Number(s.replace(/\./g, "").replace(",", ".")); return isNaN(n) ? null : n; };
+  const list = getChecklist();
+  const existing = list.find(i => i.id === editingCheckId);
+  const data = {
+    id: editingCheckId || newItemId(),
+    section: g("check-section") || "Sem seção",
+    title: g("check-title"), notes: g("check-notes"),
+    amount: num(g("check-amount")), target: num(g("check-target")), unit: g("check-unit"),
+    done: existing ? existing.done : false,
+    position: existing ? existing.position : list.length
+  };
+  if (existing) list[list.indexOf(existing)] = data; else list.push(data);
+  saveChecklistAndSync(list);
+  closeCheckModal();
+  renderChecklist();
+}
+
+function wireCheckControls(){
+  document.getElementById("check-new").onclick = () => openCheckModal(null);
+  document.getElementById("check-modal-close").onclick = closeCheckModal;
+  document.getElementById("check-save").onclick = saveCheckFromForm;
+  document.getElementById("check-modal").addEventListener("click", e => { if (e.target.id === "check-modal") closeCheckModal(); });
+  document.getElementById("check-delete").onclick = () => {
+    if (!editingCheckId) return;
+    if (confirm("Excluir este item?")) {
+      saveChecklistAndSync(getChecklist().filter(i => i.id !== editingCheckId));
+      closeCheckModal(); renderChecklist();
+    }
+  };
+  document.getElementById("check-reset").onclick = () => {
+    if (confirm("Restaurar a lista original? As suas marcações e edições no checklist se perdem.")) {
+      storageSet(checkKey(), null);
+      renderChecklist();
+      pushChecklist();
+    }
   };
 }
 

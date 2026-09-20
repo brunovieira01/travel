@@ -4,6 +4,36 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 1.3.0 — 2026-09-20
+
+**Mapa do dia e tempo de deslocamento** em "Meus dias":
+
+- Cada dia tem "ver no mapa" — abre um mapa com as paradas na ordem do dia.
+- Entre entradas consecutivas aparece a estimativa de trajeto, e o cabeçalho do dia soma
+  o deslocamento total.
+- A estimativa **não** usa a Directions API de propósito: ela não cobre transporte público
+  do Japão (devolve `ZERO_RESULTS` em qualquer rota, como o próprio código já anotava), e
+  é de trem que se anda em Tóquio. Então o cálculo é em cima da distância, em três faixas
+  — a pé, trem urbano, shinkansen. Custa zero de quota e funciona offline, que é o caso no
+  meio de Kyoto sem sinal. É estimativa, e a interface diz isso.
+
+**Aviso de conflito com a hospedagem.** Se o dia tem parada numa cidade diferente da que
+você dorme naquela noite, o dia mostra um alerta. Cruza com a aba Hospedagem.
+
+**Aba Checklist nova**, semeada com o conteúdo do `checklist_mestre.md`:
+
+- Botão de check por item, agrupado por seção, com contador por seção.
+- Edição em modal: título, seção, observações.
+- Itens de **acúmulo** viram barra de progresso — é o caso do iene comprado (¥60.000 de
+  ¥245.000). Basta preencher "já tenho" e "meta".
+- Dá pra criar itens novos e restaurar a lista original.
+
+Correção: as tiles escuras da CARTO passaram a exigir chave e estampavam "API KEY
+REQUIRED" no mapa. O mapa do dia usa OSM, que é livre, com o tom escuro vindo de filtro CSS.
+
+Exige rodar `supabase_migration_1.3.0.sql` pro checklist sincronizar com a conta. Sem isso
+ele funciona, mas fica só neste navegador.
+
 ## 1.2.0 — 2026-09-20
 
 Login por **e-mail e senha**, numa tela própria, no lugar do link mágico.
