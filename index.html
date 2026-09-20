@@ -138,6 +138,7 @@
   /* ---------- MEU ROTEIRO ---------- */
   .plan-toolbar{ padding:14px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
   .plan-summary{ font-size:13px; color:var(--text-muted); }
+  .plan-toolbar-actions{ display:flex; gap:14px; align-items:center; }
   .plan-day{ border-bottom:1px solid var(--border); }
   .plan-day-head{
     padding:14px 20px 10px; display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap;
@@ -150,10 +151,27 @@
     background:var(--panel); border:1px solid var(--border); border-radius:8px;
     padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:10px;
   }
-  .plan-item-main{ min-width:0; }
+  .plan-item-main{ min-width:0; flex:1; }
   .plan-item-name{ font-weight:600; font-size:14px; }
   .plan-item-meta{ font-size:12px; color:var(--text-muted); }
   .plan-item-actions{ display:flex; gap:8px; align-items:center; flex:0 0 auto; }
+  .plan-time{
+    flex:0 0 auto; font-weight:800; font-size:13px; color:var(--accent);
+    font-variant-numeric:tabular-nums; min-width:44px;
+  }
+  .plan-time.empty{ color:var(--text-muted); font-weight:400; }
+  .plan-item-notes{ font-size:12px; color:var(--text); opacity:.75; margin-top:4px; white-space:pre-wrap; }
+  .plan-free{ border-left:2px solid var(--accent); }
+
+  /* ---------- SUB-ABAS (dentro do Cronograma) ---------- */
+  .sub-tabs{ display:flex; gap:18px; padding:12px 20px 0; border-bottom:1px solid var(--border); }
+  .sub-tab{
+    background:transparent; border:none; color:var(--text-muted); cursor:pointer;
+    font-size:13px; font-weight:600; padding:6px 2px 10px; border-bottom:2px solid transparent;
+  }
+  .sub-tab.active{ color:var(--text); border-bottom-color:var(--accent); }
+  .sub-view{ display:none; }
+  .sub-view.active{ display:block; }
   .plan-empty{ font-size:13px; color:var(--text-muted); font-style:italic; padding:2px 0 6px; }
   .plan-add{ display:flex; gap:8px; padding:0 20px 16px; flex-wrap:wrap; }
   .plan-add select{
@@ -331,7 +349,6 @@
     <button class="view-tab active" data-view="map">Mapa</button>
     <button class="view-tab" data-view="schedule">Cronograma</button>
     <button class="view-tab" data-view="catalog">Atrações</button>
-    <button class="view-tab" data-view="myplan">Meu roteiro</button>
     <button class="view-tab" data-view="stays">Hospedagem</button>
   </div>
 </header>
@@ -364,23 +381,63 @@
 
 <!-- ================= CRONOGRAMA VIEW ================= -->
 <section class="view" id="view-schedule">
-  <nav class="day-tabs" id="day-tabs"></nav>
-  <main class="crono">
-    <div class="timeline-wrap">
-      <div class="timeline" id="timeline"></div>
-      <div class="todo-note">
- Cada aba acima é um <b>bloco</b> — atrações próximas entre si, agrupadas pelo período do dia em que fazem sentido. Não é um dia da viagem: você pode combinar dois ou três blocos num dia só, ou espalhar um bloco em dias diferentes.
+  <nav class="sub-tabs">
+    <button class="sub-tab active" data-sub="blocos">Blocos</button>
+    <button class="sub-tab" data-sub="dias">Meus dias</button>
+  </nav>
+
+  <div class="sub-view active" id="sub-blocos">
+    <nav class="day-tabs" id="day-tabs"></nav>
+    <main class="crono">
+      <div class="timeline-wrap">
+        <div class="timeline" id="timeline"></div>
+        <div class="todo-note">
+ Cada aba acima é um <b>bloco</b> — atrações próximas entre si, agrupadas pelo período do dia em que fazem sentido. Não é um dia da viagem: você pode combinar dois ou três blocos num dia só, ou espalhar um bloco em dias diferentes. Pra montar os dias de verdade, use a aba <b>Meus dias</b>.
+        </div>
+      </div>
+      <div id="map-crono-wrap">
+        <div id="map-crono"></div>
+        <div class="map-footer">
+          <div class="eta">Trajeto: <b id="eta-value">—</b></div>
+          <button class="gmaps-btn" id="gmaps-btn" title="Transporte público não permite várias paradas no Google Maps — use os links 'abrir esse trecho' de cada card pra navegar de trem/ônibus">Ver trajeto completo a pé</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="sub-view" id="sub-dias">
+    <div class="plan-toolbar">
+      <span id="plan-summary" class="plan-summary"></span>
+      <div class="plan-toolbar-actions">
+        <button class="gmaps-btn" id="plan-new">+ Entrada livre</button>
+        <button class="link-btn" id="plan-clear">Limpar tudo</button>
       </div>
     </div>
-    <div id="map-crono-wrap">
-      <div id="map-crono"></div>
-      <div class="map-footer">
-        <div class="eta">Trajeto: <b id="eta-value">—</b></div>
-        <button class="gmaps-btn" id="gmaps-btn" title="Transporte público não permite várias paradas no Google Maps — use os links 'abrir esse trecho' de cada card pra navegar de trem/ônibus">Ver trajeto completo a pé</button>
-      </div>
-    </div>
-  </main>
+    <div id="plan-body"></div>
+  </div>
 </section>
+
+<div class="modal-backdrop" id="plan-modal">
+  <div class="modal-sheet" style="position:relative;">
+    <button class="modal-close" id="plan-modal-close">✕</button>
+    <div class="modal-body">
+      <div class="modal-title" id="plan-modal-title">Nova entrada</div>
+      <div class="stay-form">
+        <div class="stay-row2">
+          <label>Dia<select id="plan-day"></select></label>
+          <label>Horário<input type="time" id="plan-start"></label>
+        </div>
+        <label>Atração do catálogo<select id="plan-place"></select></label>
+        <label>Ou um título livre<input type="text" id="plan-title" placeholder="Ex: Trem pra Kyoto / Almoço com a Yuki"></label>
+        <label>Notas<textarea id="plan-notes" rows="2" placeholder="Reserva às 19h / levar dinheiro vivo / etc"></textarea></label>
+      </div>
+      <div class="modal-actions">
+        <button class="gmaps-btn" id="plan-save">Salvar</button>
+        <button class="link-btn" id="plan-delete" style="display:none;">Excluir</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ================= HOSPEDAGEM ================= -->
 <section class="view" id="view-stays">
@@ -438,15 +495,6 @@
   </div>
 </div>
 
-<!-- ================= MEU ROTEIRO ================= -->
-<section class="view" id="view-myplan">
-  <div class="plan-toolbar">
-    <span id="plan-summary" class="plan-summary"></span>
-    <button class="link-btn" id="plan-clear">Limpar tudo</button>
-  </div>
-  <div id="plan-body"></div>
-</section>
-
 <!-- ================= CATÁLOGO DE ATRAÇÕES ================= -->
 <section class="view" id="view-catalog">
   <div class="catalog-toolbar">
@@ -499,7 +547,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "1.0.1";
+const APP_VERSION = "1.1.0";
 
 const CONFIG = {
   googleMapsApiKey: "AIzaSyBorvHlS1t_wka3R3-zing2YzUkTrWn6FI",
@@ -1245,6 +1293,7 @@ const TRIPS = [
    ========================================================== */
 let currentTripId = TRIPS[0].id;
 let currentView = "map";
+let currentSubView = "blocos";   // sub-aba do Cronograma: blocos | dias
 let currentDayIndex = 0;
 let usingGoogle = false;
 let googleReady = false;
@@ -1346,8 +1395,10 @@ function haversine(a, b){
    ========================================================== */
 function boot(){
   document.getElementById("version-badge").textContent = "v" + APP_VERSION;
+  migratePlanFormat();
   renderTripSelect();
   renderViewTabs();
+  renderSubTabs();
   renderMapView();
   renderDayTabs();
   renderTimeline();
@@ -1414,20 +1465,36 @@ function renderViewTabs(){
       document.getElementById("view-map").classList.toggle("active", currentView === "map");
       document.getElementById("view-schedule").classList.toggle("active", currentView === "schedule");
       document.getElementById("view-catalog").classList.toggle("active", currentView === "catalog");
-      document.getElementById("view-myplan").classList.toggle("active", currentView === "myplan");
       if (currentView === "catalog") renderCatalog();
       document.getElementById("view-stays").classList.toggle("active", currentView === "stays");
-      if (currentView === "myplan") renderMyPlan();
+      if (currentView === "schedule" && currentSubView === "dias") renderMyPlan();
       if (currentView === "stays") renderStays();
       // Leaflet/Google precisam de um resize quando o container volta a ficar visível.
       // A aba "Atrações" não tem mapa, então não entra aqui.
       setTimeout(() => {
-        if (["catalog","myplan","stays"].includes(currentView)) return;
+        if (["catalog","stays"].includes(currentView)) return;
         if (usingGoogle) {
           google.maps.event.trigger(currentView === "map" ? gMapMapa : gMapCrono, "resize");
         } else {
           (currentView === "map" ? lMapMapa : lMapCrono).invalidateSize();
         }
+      }, 50);
+    };
+  });
+}
+
+function renderSubTabs(){
+  document.querySelectorAll(".sub-tab").forEach(btn => {
+    btn.onclick = () => {
+      currentSubView = btn.dataset.sub;
+      document.querySelectorAll(".sub-tab").forEach(b => b.classList.toggle("active", b === btn));
+      document.getElementById("sub-blocos").classList.toggle("active", currentSubView === "blocos");
+      document.getElementById("sub-dias").classList.toggle("active", currentSubView === "dias");
+      if (currentSubView === "dias") renderMyPlan();
+      else setTimeout(() => {
+        // o mapa dos blocos estava escondido; sem resize ele renderiza cinza
+        if (usingGoogle) google.maps.event.trigger(gMapCrono, "resize");
+        else lMapCrono.invalidateSize();
       }, 50);
     };
   });
@@ -1946,14 +2013,19 @@ async function pullFromSupabase(){
   }
   if (items.data) {
     const plan = {};
-    items.data.forEach(r => { (plan[r.day_date] = plan[r.day_date] || []).push(r.place_id); });
+    items.data.forEach(r => {
+      (plan[r.day_date] = plan[r.day_date] || []).push({
+        id: r.id, placeId: r.place_id || "", title: r.title || "",
+        start: (r.start_time || "").slice(0, 5), notes: r.notes || ""
+      });
+    });
     savePlan(plan);
   }
   if (status.data) {
     storageSet(hiddenKey(currentTripId), status.data.filter(r => r.visited).map(r => r.place_id));
   }
   if (currentView === "stays") renderStays();
-  if (currentView === "myplan") renderMyPlan();
+  if (currentView === "schedule" && currentSubView === "dias") renderMyPlan();
   if (currentView === "catalog") renderCatalog();
   renderTimeline(); renderMapView();
 }
@@ -1983,9 +2055,11 @@ async function pushPlan(){
   try {
     const plan = getPlan();
     const rows = [];
-    Object.entries(plan).forEach(([day, ids]) =>
-      ids.forEach((pid, i) => rows.push({
-        user_id: sbUser.id, trip_id: sbTripId, day_date: day, place_id: pid, position: i
+    Object.entries(plan).forEach(([day, items]) =>
+      items.forEach((it, i) => rows.push({
+        user_id: sbUser.id, trip_id: sbTripId, day_date: day,
+        place_id: it.placeId || null, title: it.title || null,
+        start_time: it.start || null, notes: it.notes || null, position: i
       })));
     await sb.from("itinerary_items").delete().eq("trip_id", sbTripId);
     if (rows.length) await sb.from("itinerary_items").insert(rows);
@@ -2210,24 +2284,60 @@ function planKey(){ return `myplan_${currentTripId}`; }
 function getPlan(){ return storageGet(planKey(), {}); }
 function savePlan(plan){ storageSet(planKey(), plan); }
 function savePlanAndSync(plan){ savePlan(plan); pushPlan(); }
-function planAdd(dateKey, placeId){
+function newItemId(){ return `it_${Date.now().toString(36)}${Math.random().toString(36).slice(2,7)}`; }
+function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+// Formato antigo guardava só o id da atração: plan[dia] = ["kinkakuji", ...].
+// Agora cada entrada é um objeto, pra caber horário, notas e título livre.
+function migratePlanFormat(){
   const plan = getPlan();
+  let changed = false;
+  Object.entries(plan).forEach(([day, arr]) => {
+    plan[day] = (arr || []).map(v => {
+      if (typeof v !== "string") return v;
+      changed = true;
+      return { id: newItemId(), placeId: v, title: "", start: "", notes: "" };
+    });
+  });
+  if (changed) savePlan(plan);
+}
+
+// Quem tem horário manda na ordem; o resto fica depois, na ordem manual (↑↓).
+function planItems(dateKey){
+  const arr = getPlan()[dateKey] || [];
+  const timed = arr.filter(i => i.start).sort((a,b) => a.start.localeCompare(b.start));
+  return [...timed, ...arr.filter(i => !i.start)];
+}
+
+function planUpsert(dateKey, item){
+  const plan = getPlan();
+  Object.keys(plan).forEach(d => { plan[d] = (plan[d] || []).filter(i => i.id !== item.id); });
   plan[dateKey] = plan[dateKey] || [];
-  if (!plan[dateKey].includes(placeId)) plan[dateKey].push(placeId);
+  plan[dateKey].push(item);
   savePlanAndSync(plan);
 }
-function planRemove(dateKey, placeId){
+
+function planAdd(dateKey, placeId){
+  planUpsert(dateKey, { id: newItemId(), placeId, title: "", start: "", notes: "" });
+}
+
+function planRemove(itemId){
   const plan = getPlan();
-  plan[dateKey] = (plan[dateKey] || []).filter(id => id !== placeId);
+  Object.keys(plan).forEach(d => { plan[d] = (plan[d] || []).filter(i => i.id !== itemId); });
   savePlanAndSync(plan);
 }
-function planMove(dateKey, placeId, dir){
+
+function planMove(dateKey, itemId, dir){
   const plan = getPlan();
   const arr = plan[dateKey] || [];
-  const i = arr.indexOf(placeId);
-  const j = i + dir;
-  if (i < 0 || j < 0 || j >= arr.length) return;
-  [arr[i], arr[j]] = [arr[j], arr[i]];
+  // Só os sem horário se reordenam à mão — trocar dois vizinhos na lista exibida
+  // significa trocar as posições que eles ocupam no array cru.
+  const loose = arr.filter(i => !i.start);
+  const a = loose.findIndex(i => i.id === itemId);
+  const b = a + dir;
+  if (a < 0 || b < 0 || b >= loose.length) return;
+  const ia = arr.indexOf(loose[a]), ib = arr.indexOf(loose[b]);
+  [arr[ia], arr[ib]] = [arr[ib], arr[ia]];
   savePlanAndSync(plan);
 }
 
@@ -2236,36 +2346,50 @@ function renderMyPlan(){
   const plan = getPlan();
   const body = document.getElementById("plan-body");
 
-  const totalPicked = Object.values(plan).reduce((a, arr) => a + arr.length, 0);
-  document.getElementById("plan-summary").textContent =
-    totalPicked ? `${totalPicked} atrações distribuídas em ${Object.values(plan).filter(a => a.length).length} dias`
-                : "Nenhuma atração escolhida ainda — use o seletor de cada dia abaixo.";
+  const all = Object.values(plan).flat();
+  const withTime = all.filter(i => i.start).length;
+  const days = Object.values(plan).filter(a => a.length).length;
+  document.getElementById("plan-summary").textContent = all.length
+    ? `${all.length} entrada${all.length > 1 ? "s" : ""} em ${days} dia${days > 1 ? "s" : ""} · ${withTime} com horário`
+    : "Nenhuma entrada ainda — escolha uma atração no dia, ou use “+ Entrada livre”.";
 
   const optionsHtml = [...trip.places]
     .sort((a,b) => (a.city || "").localeCompare(b.city || "") || a.name.localeCompare(b.name))
-    .map(p => `<option value="${p.id}">${p.city} · ${p.name}${p.cost && p.cost !== "A conferir" ? " — " + p.cost : ""}</option>`)
+    .map(p => `<option value="${p.id}">${esc(p.city)} · ${esc(p.name)}${p.cost && p.cost !== "A conferir" ? " — " + esc(p.cost) : ""}</option>`)
     .join("");
 
   body.innerHTML = TRIP_DATES.map((d, idx) => {
-    const ids = plan[d.key] || [];
-    const places = ids.map(placeById).filter(Boolean);
+    const items = planItems(d.key);
+    const places = items.map(i => i.placeId ? placeById(i.placeId) : null).filter(Boolean);
     const mins = places.reduce((a,p) => a + (p.visitMin || 0), 0);
     const cities = [...new Set(places.map(p => p.city))].join(" · ");
     const hrs = mins >= 60 ? `${(mins/60).toFixed(1).replace(".0","")}h de visitas` : mins ? `${mins}min de visitas` : "";
 
-    const items = places.length ? places.map((p, i) => `
-      <div class="plan-item">
+    const loose = items.filter(i => !i.start);
+    const rows = items.length ? items.map(it => {
+      const p = it.placeId ? placeById(it.placeId) : null;
+      const name = p ? esc(p.name) : (esc(it.title) || "(sem título)");
+      const meta = p
+        ? `${esc(p.city)} · ~${p.visitMin}min · ${periodLabel(p.period)}${p.cost ? " · " + esc(p.cost) : ""}${p.booking ? " · ⚠️ " + esc(p.booking) : ""}`
+        : "entrada livre";
+      const li = loose.indexOf(it);
+      const arrows = it.start ? "" : `
+          <button class="link-btn" data-up="${d.key}|${it.id}" ${li > 0 ? "" : "disabled style=opacity:.3"}>↑</button>
+          <button class="link-btn" data-down="${d.key}|${it.id}" ${li < loose.length - 1 ? "" : "disabled style=opacity:.3"}>↓</button>`;
+      return `
+      <div class="plan-item ${p ? "" : "plan-free"}">
+        <div class="plan-time ${it.start ? "" : "empty"}">${it.start || "—"}</div>
         <div class="plan-item-main">
-          <div class="plan-item-name">${i+1}. ${p.name}</div>
-          <div class="plan-item-meta">${p.city} · ~${p.visitMin}min · ${periodLabel(p.period)}${p.cost ? " · " + p.cost : ""}${p.booking ? " · ⚠️ " + p.booking : ""}</div>
+          <div class="plan-item-name">${name}</div>
+          <div class="plan-item-meta">${meta}</div>
+          ${it.notes ? `<div class="plan-item-notes">${esc(it.notes)}</div>` : ""}
         </div>
-        <div class="plan-item-actions">
-          <button class="link-btn" data-up="${d.key}|${p.id}" ${i===0?"disabled style=opacity:.3":""}>↑</button>
-          <button class="link-btn" data-down="${d.key}|${p.id}" ${i===places.length-1?"disabled style=opacity:.3":""}>↓</button>
-          <button class="link-btn" data-rm="${d.key}|${p.id}">remover</button>
+        <div class="plan-item-actions">${arrows}
+          <button class="link-btn" data-edit="${d.key}|${it.id}">editar</button>
+          <button class="link-btn" data-rm="${it.id}">remover</button>
         </div>
-      </div>`).join("")
-      : `<div class="plan-empty">Dia livre.</div>`;
+      </div>`;
+    }).join("") : `<div class="plan-empty">Dia livre.</div>`;
 
     return `
       <div class="plan-day">
@@ -2273,10 +2397,11 @@ function renderMyPlan(){
           <div><span class="plan-date">${d.label}</span><span class="plan-weekday">${d.weekday}${idx===0?" · chegada":""}${idx===TRIP_DATES.length-1?" · saída":""}</span></div>
           <div class="plan-city">${cities}${cities && hrs ? " · " : ""}${hrs}</div>
         </div>
-        <div class="plan-items">${items}</div>
+        <div class="plan-items">${rows}</div>
         <div class="plan-add">
           <select data-picker="${d.key}"><option value="">+ adicionar atração...</option>${optionsHtml}</select>
           <button data-addbtn="${d.key}">Adicionar</button>
+          <button data-freebtn="${d.key}">+ Entrada livre</button>
         </div>
       </div>`;
   }).join("");
@@ -2286,9 +2411,12 @@ function renderMyPlan(){
     const sel = body.querySelector(`[data-picker="${k}"]`);
     if (sel.value) { planAdd(k, sel.value); renderMyPlan(); }
   });
-  body.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => {
-    const [k, id] = b.dataset.rm.split("|"); planRemove(k, id); renderMyPlan();
+  body.querySelectorAll("[data-freebtn]").forEach(b => b.onclick = () => openPlanModal(b.dataset.freebtn, null));
+  body.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => {
+    const [k, id] = b.dataset.edit.split("|");
+    openPlanModal(k, (getPlan()[k] || []).find(i => i.id === id));
   });
+  body.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { planRemove(b.dataset.rm); renderMyPlan(); });
   body.querySelectorAll("[data-up]").forEach(b => b.onclick = () => {
     const [k, id] = b.dataset.up.split("|"); planMove(k, id, -1); renderMyPlan();
   });
@@ -2297,9 +2425,56 @@ function renderMyPlan(){
   });
 }
 
+let editingPlanItem = null;
+
+function openPlanModal(dateKey, item){
+  editingPlanItem = item || null;
+  document.getElementById("plan-modal-title").textContent = item ? "Editar entrada" : "Nova entrada";
+
+  const daySel = document.getElementById("plan-day");
+  daySel.innerHTML = TRIP_DATES.map(d => `<option value="${d.key}">${d.label} (${d.weekday})</option>`).join("");
+  daySel.value = dateKey || TRIP_DATES[0].key;
+
+  const placeSel = document.getElementById("plan-place");
+  placeSel.innerHTML = `<option value="">— nenhuma (entrada livre) —</option>` + [...currentTrip().places]
+    .sort((a,b) => (a.city || "").localeCompare(b.city || "") || a.name.localeCompare(b.name))
+    .map(p => `<option value="${p.id}">${esc(p.city)} · ${esc(p.name)}</option>`).join("");
+  placeSel.value = item?.placeId || "";
+
+  document.getElementById("plan-start").value = item?.start || "";
+  document.getElementById("plan-title").value = item?.title || "";
+  document.getElementById("plan-notes").value = item?.notes || "";
+  document.getElementById("plan-delete").style.display = item ? "inline" : "none";
+  document.getElementById("plan-modal").classList.add("open");
+}
+
+function closePlanModal(){ document.getElementById("plan-modal").classList.remove("open"); editingPlanItem = null; }
+
+function savePlanFromForm(){
+  const placeId = document.getElementById("plan-place").value;
+  const title = document.getElementById("plan-title").value.trim();
+  if (!placeId && !title) { alert("Escolha uma atração do catálogo ou escreva um título livre."); return; }
+  planUpsert(document.getElementById("plan-day").value, {
+    id: editingPlanItem?.id || newItemId(),
+    placeId, title,
+    start: document.getElementById("plan-start").value,
+    notes: document.getElementById("plan-notes").value.trim()
+  });
+  closePlanModal();
+  renderMyPlan();
+}
+
 function wirePlanControls(){
   document.getElementById("plan-clear").onclick = () => {
     if (confirm("Apagar todo o roteiro montado?")) { savePlanAndSync({}); renderMyPlan(); }
+  };
+  document.getElementById("plan-new").onclick = () => openPlanModal(TRIP_DATES[0].key, null);
+  document.getElementById("plan-modal-close").onclick = closePlanModal;
+  document.getElementById("plan-save").onclick = savePlanFromForm;
+  document.getElementById("plan-modal").addEventListener("click", e => { if (e.target.id === "plan-modal") closePlanModal(); });
+  document.getElementById("plan-delete").onclick = () => {
+    if (!editingPlanItem) return;
+    if (confirm("Excluir esta entrada?")) { planRemove(editingPlanItem.id); closePlanModal(); renderMyPlan(); }
   };
 }
 
