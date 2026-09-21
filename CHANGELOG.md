@@ -4,6 +4,37 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 1.4.0 — 2026-09-20
+
+**Imagem de capa curada para 74 das 85 atrações**, vinda do Wikimedia Commons.
+
+Por que as antigas eram ruins: o app pede uma foto ao Google Places com uma busca em
+texto, ele devolve **um** estabelecimento e usa as **fotos enviadas por usuários** dele.
+Para nomes próprios (Kiyomizu-dera) funciona. Mas 17 atrações usavam buscas genéricas —
+`"karaoke room Japan"`, `"7-Eleven storefront Japan"`, `"basketball arena Japan"` — e aí
+vinha um comércio qualquer com foto de cliente: interior, cardápio, foto tremida. Ruim por
+construção, não por azar.
+
+Agora cada atração tem `heroImageOverride` com uma foto do Commons, que entra na frente
+das do Google. As do Google continuam como secundárias ("+2 fotos"), então nada se perdeu.
+
+Como foram escolhidas, porque o método importa pra confiar no resultado:
+
+- Imagem principal do artigo correspondente na Wikipedia, normalizada pra um thumb de
+  1280px (ou o original, quando ele é menor — pedir thumb do tamanho do original faz o
+  MediaWiki devolver página de erro).
+- **Cada URL foi verificada com requisição real**, confirmando que responde imagem.
+- **Todas foram olhadas numa folha de contato**, e 9 que passaram na verificação mas
+  estavam erradas ou fracas foram trocadas por escolha manual no Commons: o Bosque de
+  Bambu mostrava o rio e não o bambu; teamLab mostrava o logotipo; Den Den Town mostrava
+  um prédio corporativo; Hakone-Yumoto repetia a foto do Lago Ashi; Shibuya Sky mostrava a
+  torre por fora em vez da vista; "Shinjuku à noite" estava de dia.
+
+Ficaram sem capa curada, de propósito: Muji, B.League e Pokémon Café (na Wikipedia só há
+logotipo), Mandarake e Gora Park (sem artigo ou sem imagem), distrito de saquê de Fushimi e
+o teleférico Kachi Kachi (sem candidata boa no Commons). Essas seguem com o Google, que
+para lojas e lugares específicos costuma acertar.
+
 ## 1.3.0 — 2026-09-20
 
 **Mapa do dia e tempo de deslocamento** em "Meus dias":
