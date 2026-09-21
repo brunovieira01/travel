@@ -4,6 +4,32 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 1.5.1 — 2026-09-21
+
+**Login concluía mas a interface não saía do estado deslogado.** A conta era criada e a
+sessão estabelecida, mas a barra continuava em "Salvo só neste navegador", sem erro nenhum
+no console.
+
+Causa: `renderAuthBar()` estava **depois** de `await afterLogin()`, dentro do callback de
+`onAuthStateChange`. O `afterLogin` consulta a tabela `trips`, e essa chamada ficava
+pendurada — provavelmente o lock que o supabase-js v2 mantém durante o callback, que trava
+quando outra operação do Supabase é chamada lá dentro. Com a promessa nunca resolvendo,
+nada depois do `await` executava e a barra nunca era redesenhada.
+
+Não deu pra reproduzir em teste isolado: sem uma sessão real não há como disparar o
+callback, e a allowlist impede criar conta de teste. O diagnóstico vem do comportamento
+observado — se `afterLogin` lançasse erro, o `catch` redesenharia a barra e o e-mail
+apareceria com "erro ao sincronizar"; como não aparece, ele está pendurado, não falhando.
+
+O que mudou, e vale independentemente da causa exata do travamento:
+
+- O estado é atualizado e a barra desenhada **antes** de qualquer trabalho de banco; o
+  `afterLogin` sai do callback via `setTimeout`.
+- `afterLogin` ganhou teto de 15 segundos, pra um travamento virar erro visível em vez de
+  ficar eternamente em "conectando…".
+- Guarda contra `afterLogin` rodar duas vezes (o evento de auth e o `getSession` podiam
+  disparar juntos e criar duas linhas em `trips` para a mesma viagem).
+
 ## 1.5.0 — 2026-09-21
 
 **Correção grave: o primeiro login apagaria os dados locais.** Em `pullFromSupabase`, o

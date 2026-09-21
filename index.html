@@ -672,7 +672,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.5.1";
 
 const CONFIG = {
   googleMapsApiKey: "AIzaSyBorvHlS1t_wka3R3-zing2YzUkTrWn6FI",
@@ -2092,16 +2092,22 @@ function initSupabase(){
   if (CONFIG.supabaseUrl.includes("__SUPABASE")) return;           // placeholder do build não substituído
   if (typeof window.supabase === "undefined") { console.warn("supabase-js não carregou"); return; }
   sb = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
-  sb.auth.onAuthStateChange(async (_e, session) => {
+  // O supabase-js v2 segura um lock enquanto roda este callback. Chamar outra
+  // operação do Supabase aqui dentro (afterLogin consulta a tabela trips) trava o
+  // cliente: a promessa nunca resolve e nada depois do await executa. Por isso o
+  // estado é atualizado e desenhado de imediato, e o trabalho de banco sai do lock
+  // com setTimeout.
+  sb.auth.onAuthStateChange((_e, session) => {
     sbUser = session?.user || null;
-    if (sbUser) { showLoginGate(false); await afterLogin(); }
+    if (sbUser) showLoginGate(false);
     renderAuthBar();
+    if (sbUser) setTimeout(afterLogin, 0);
   });
-  sb.auth.getSession().then(async ({ data }) => {
+  sb.auth.getSession().then(({ data }) => {
     sbUser = data?.session?.user || null;
-    if (sbUser) await afterLogin();
-    else if (!storageGet(LOCAL_ONLY_KEY, false)) showLoginGate(true);
+    if (!sbUser && !storageGet(LOCAL_ONLY_KEY, false)) showLoginGate(true);
     renderAuthBar();
+    if (sbUser) setTimeout(afterLogin, 0);
   });
 }
 
@@ -2161,7 +2167,13 @@ function wireLoginGate(){
   };
 }
 
+// onAuthStateChange e getSession podem disparar isto quase ao mesmo tempo; sem a
+// guarda, duas execuções simultâneas criariam duas linhas em trips pra mesma viagem.
+let afterLoginFor = null;
+
 async function afterLogin(){
+  if (!sbUser || afterLoginFor === sbUser.id) return;
+  afterLoginFor = sbUser.id;
   try {
     // garante que a viagem existe no banco e guarda o uuid dela
     const { data: found } = await sb.from("trips").select("id").eq("slug", currentTripId).maybeSingle();
@@ -2174,11 +2186,17 @@ async function afterLogin(){
       if (error) throw error;
       sbTripId = created.id;
     }
-    await pullFromSupabase();
+    // Sem teto de tempo, um travamento aqui deixa a barra em "conectando…" pra sempre
+    // e não há como saber que algo empacou. Melhor virar erro visível.
+    await Promise.race([
+      pullFromSupabase(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("tempo esgotado ao sincronizar")), 15000))
+    ]);
     syncState = "on";
   } catch (e) {
     console.error("Supabase:", e);
     syncState = "err";
+    afterLoginFor = null;   // deixa tentar de novo no próximo evento de auth
   }
   renderAuthBar();
 }
@@ -2325,7 +2343,7 @@ function renderAuthBar(){
   bar.innerHTML = `<span class="sync-dot ${dot}"></span> ${sbUser.email} · ${txt} <button id="auth-out">Sair</button>`;
   document.getElementById("auth-out").onclick = async () => {
     await sb.auth.signOut();
-    sbUser = null; sbTripId = null; syncState = "off";
+    sbUser = null; sbTripId = null; syncState = "off"; afterLoginFor = null;
     storageSet(LOCAL_ONLY_KEY, false);
     renderAuthBar();
     loginMsg("");
