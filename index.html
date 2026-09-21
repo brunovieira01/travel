@@ -672,7 +672,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "1.4.0";
+const APP_VERSION = "1.5.0";
 
 const CONFIG = {
   googleMapsApiKey: "AIzaSyBorvHlS1t_wka3R3-zing2YzUkTrWn6FI",
@@ -2191,14 +2191,24 @@ async function pullFromSupabase(){
     sb.from("place_status").select("*").eq("trip_id", sbTripId),
     sb.from("checklist_items").select("*").eq("trip_id", sbTripId).order("position")
   ]);
-  if (stays.data) {
+  // Banco vazio nesta viagem = primeira entrada. Aí o que vale é o que está local:
+  // sobe. Sem isso, a lista vazia do banco sobrescreveria tudo que foi montado aqui
+  // (array vazio é truthy, então os `if` abaixo não protegem sozinhos).
+  const bancoVazio = !stays.data?.length && !items.data?.length
+                  && !status.data?.length && !checks.data?.length;
+  if (bancoVazio) {
+    await Promise.all([pushStays(), pushPlan(), pushPlaceStatus(), pushChecklist()]);
+    return;
+  }
+
+  if (stays.data?.length) {
     saveStays(stays.data.map(r => ({
       id: r.id, name: r.name, city: r.city, address: r.address, type: r.type,
       status: r.status, checkin: r.checkin, checkout: r.checkout, price: r.price,
       bookedOn: r.booked_on, site: r.site, code: r.code, notes: r.notes
     })));
   }
-  if (items.data) {
+  if (items.data?.length) {
     const plan = {};
     items.data.forEach(r => {
       (plan[r.day_date] = plan[r.day_date] || []).push({
@@ -2208,11 +2218,10 @@ async function pullFromSupabase(){
     });
     savePlan(plan);
   }
-  if (status.data) {
+  if (status.data?.length) {
     storageSet(hiddenKey(currentTripId), status.data.filter(r => r.visited).map(r => r.place_id));
   }
-  // lista vazia no banco = viagem nova, aí a semente local continua valendo
-  if (checks.data && checks.data.length) {
+  if (checks.data?.length) {
     saveChecklist(checks.data.map(r => ({
       id: r.id, section: r.section || "Sem seção", title: r.title, notes: r.notes || "",
       done: !!r.done, amount: r.amount, target: r.target, unit: r.unit || "", position: r.position
@@ -2328,7 +2337,29 @@ function renderAuthBar(){
    HOSPEDAGEM — registro das reservas, com aviso de noite descoberta.
    ========================================================== */
 function staysKey(){ return `stays_${currentTripId}`; }
-function getStays(){ return storageGet(staysKey(), []); }
+// Reservas já fechadas, que vêm junto com a viagem. Depois de semeadas viram
+// dados normais: dá pra editar e excluir pela interface como qualquer outra.
+const STAYS_SEED = {
+  "japan-2026": [{
+    id: "stay-fukuzumiro",
+    name: "Fukuzumiro",
+    city: "Hakone, Tonosawa",
+    address: "74 Tonosawa, Hakone-machi, Ashigarashimo-gun, Kanagawa 250-0315",
+    type: "Ryokan",
+    status: "reservado",
+    checkin: "2026-12-02", checkout: "2026-12-03",
+    price: "", bookedOn: "", site: "", code: "",
+    notes: "1x quarto japonês (tipo Sekirei). Check-in 15:00, check-out 10:00.\nCancelamento grátis até 29/11/2026.\nNota 4,6 (151 avaliações)."
+  }]
+};
+
+function getStays(){
+  const saved = storageGet(staysKey(), null);
+  if (saved) return saved;
+  const seeded = STAYS_SEED[currentTripId] || [];
+  storageSet(staysKey(), seeded);
+  return seeded;
+}
 function saveStays(list){ storageSet(staysKey(), list); }
 function saveStaysAndSync(list){ saveStays(list); pushStays(); }
 let editingStayId = null;
@@ -2340,6 +2371,10 @@ function fmtDate(iso){
   const [y,m,d] = iso.split("-");
   const wd = ["dom","seg","ter","qua","qui","sex","sáb"][new Date(+y, +m-1, +d).getDay()];
   return `${d}/${m} (${wd})`;
+}
+function parseLocalDate(iso){
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
 }
 function nightsBetween(a, b){
   if (!a || !b) return 0;
@@ -2400,8 +2435,10 @@ function renderStays(){
   const covered = new Set();
   list.forEach(s => {
     if (!s.checkin || !s.checkout) return;
-    let d = new Date(s.checkin);
-    const end = new Date(s.checkout);
+    // "2026-12-02" cru vira meia-noite UTC; lido com getters locais em UTC-3 retrocede
+    // um dia e a noite marcada saía errada. Monta a data em horário local.
+    let d = parseLocalDate(s.checkin);
+    const end = parseLocalDate(s.checkout);
     while (d < end) {
       covered.add(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`);
       d.setDate(d.getDate() + 1);
@@ -2781,8 +2818,8 @@ function wirePlanControls(){
    e as edições substituem a semente.
    ========================================================== */
 const CHECKLIST_SEED = [
-  { section:"Agora (setembro)", title:"Reservar o ryokan em Hakone (02→03/12)",
-    notes:"~¥50.000 — confirmar se é por pessoa e se inclui jantar kaiseki + café. Buscar em Jalan, JAPANiCAN, Rakuten Travel, Selected Onsen Ryokan. Booking/Agoda são fracos em ryokan. Se apertar: ryokan simples + onsen de uso diurno (Hakone Yuryo, Tenzan, Yunessun)." },
+  { section:"Agora (setembro)", title:"Reservar o ryokan em Hakone (02→03/12)", done:true,
+    notes:"Fechado: Fukuzumiro, em Tonosawa. Quarto japonês tipo Sekirei, 02→03/12.\nCancelamento grátis até 29/11/2026 — se mudar de ideia, é até essa data.\nConfirmar se o jantar kaiseki e o café estão inclusos." },
   { section:"Agora (setembro)", title:"Comprar o Hakone Free Pass na chegada",
     notes:"Cobre trem de montanha, teleférico, ônibus e o barco do lago." },
   { section:"Agora (setembro)", title:"Férias na Cubo Itaú", done:true },

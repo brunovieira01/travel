@@ -4,6 +4,23 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 1.5.0 — 2026-09-21
+
+**Correção grave: o primeiro login apagaria os dados locais.** Em `pullFromSupabase`, o
+teste era `if (stays.data)` — e array vazio é *truthy* em JavaScript. Com o banco ainda
+sem nenhuma linha, o primeiro login puxaria listas vazias por cima de tudo que tinha sido
+montado no navegador: hospedagem e roteiro iriam junto. Agora, quando o banco não tem nada
+para a viagem, a primeira sincronização vai no sentido contrário — o que está local sobe.
+
+**Correção de fuso na cobertura das noites.** `new Date("2026-12-02")` é meia-noite **UTC**;
+lido com getters locais em UTC-3, retrocedia um dia, e uma reserva de 02→03/12 marcava a
+noite de 01/12 como coberta. As datas agora são montadas em horário local.
+
+**Primeira reserva embutida na viagem:** Fukuzumiro, ryokan em Tonosawa (Hakone), 02→03/12,
+quarto japonês tipo Sekirei, cancelamento grátis até 29/11/2026. Depois de semeada é um
+dado comum — dá pra editar e excluir pela interface. O item correspondente do checklist
+("Reservar o ryokan em Hakone") já vem marcado como feito.
+
 ## 1.4.0 — 2026-09-20
 
 **Imagem de capa curada para 74 das 85 atrações**, vinda do Wikimedia Commons.
