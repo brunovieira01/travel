@@ -4,6 +4,34 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 1.6.0 — 2026-09-23
+
+**Detalhes do Google no modal da atração**: nota e número de avaliações, faixa de preço,
+resumo editorial, horário de funcionamento da semana, até 3 avaliações e links para site
+oficial, Google Maps e telefone.
+
+**Aviso de horário incompatível.** O dado de horário é cruzado com os horários que você
+marcou em "Meus dias": se você agendou Kinkakuji às 20:00 e ele fecha às 17:00, o modal
+avisa. Isso é o que transforma a informação em decisão — foi por isso que **não** foi usado
+o "aberto agora" do Google: para uma viagem em dezembro planejada em setembro, saber se
+está aberto neste instante não serve para nada.
+
+**Menu não existe na API.** Verificado na resposta real do Places: não há nenhum campo de
+menu, comida ou prato. O mais próximo é o link do site oficial, que está incluído.
+
+**`business_status`** marca lugares fechados permanente ou temporariamente — útil porque o
+próprio checklist já lista seis lugares que fecharam e ainda aparecem em guias.
+
+Notas técnicas:
+
+- O `place_id` agora é resolvido pelo `mapQuery`, que é o destino real. Antes só era
+  guardado quando o lugar não tinha `photoQuery` — ou seja, 55 dos 85 nunca tinham
+  `place_id`. Isso também corrige os links "Ver no mapa" desses 55, que caíam na busca por
+  texto em vez do lugar exato.
+- A busca só acontece quando o modal abre, nunca para os 85 de uma vez, e o resultado fica
+  guardado por 30 dias. Isso limita o custo (a faixa com nota e avaliações é a mais cara da
+  API) e faz o modal funcionar offline depois da primeira abertura.
+
 ## 1.5.1 — 2026-09-21
 
 **Login concluía mas a interface não saía do estado deslogado.** A conta era criada e a

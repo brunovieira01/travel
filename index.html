@@ -229,6 +229,29 @@
   .check-progress-text{ font-size:12px; color:var(--text-muted); margin-top:4px; font-variant-numeric:tabular-nums; }
   .check-hint{ font-size:11px; color:var(--text-muted); margin-top:-2px; }
 
+  /* ---------- DETALHES DO GOOGLE (dentro do modal do lugar) ---------- */
+  .gd{ margin-top:14px; }
+  .gd-loading{ font-size:12px; color:var(--text-muted); }
+  .gd-head{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+  .gd-rating{ font-weight:800; font-size:15px; color:#FFB238; font-variant-numeric:tabular-nums; }
+  .gd-count, .gd-price{ font-size:12px; color:var(--text-muted); }
+  .gd-summary{ font-size:13px; margin:6px 0 10px; opacity:.85; }
+  .gd-closed{
+    font-size:12px; padding:8px 11px; border-radius:8px; margin-bottom:10px;
+    background:rgba(232,73,42,.12); border:1px solid rgba(232,73,42,.5); color:#F0A594;
+  }
+  .gd-block-title{ font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin:12px 0 5px; }
+  .gd-hours{ font-size:12px; display:grid; grid-template-columns:auto 1fr; gap:2px 12px; }
+  .gd-hours .d{ color:var(--text-muted); }
+  .gd-hours .today{ color:var(--accent); font-weight:700; }
+  .gd-review{ border-top:1px solid var(--border); padding:8px 0 0; margin-top:8px; font-size:12px; }
+  .gd-review-head{ display:flex; gap:8px; align-items:baseline; color:var(--text-muted); margin-bottom:3px; }
+  .gd-review-stars{ color:#FFB238; font-weight:700; }
+  .gd-review-text{ opacity:.85; white-space:pre-wrap; }
+  .gd-links{ display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:12px; }
+  .gd-links a{ color:var(--accent); }
+  .gd-note{ font-size:11px; color:var(--text-muted); margin-top:9px; font-style:italic; }
+
   /* ---------- SUB-ABAS (dentro do Cronograma) ---------- */
   .sub-tabs{ display:flex; gap:18px; padding:12px 20px 0; border-bottom:1px solid var(--border); }
   .sub-tab{
@@ -649,6 +672,7 @@
       <div class="modal-title" id="modal-title"></div>
       <div class="tags" id="modal-tags"></div>
       <div class="modal-desc" id="modal-desc"></div>
+      <div class="gd" id="modal-google"></div>
       <div class="modal-actions">
         <a class="pin-link" id="modal-pin-link" target="_blank" rel="noopener">Ver no mapa</a>
         <button class="link-btn" id="modal-hide-btn">Já fui</button>
@@ -672,7 +696,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "1.5.1";
+const APP_VERSION = "1.6.0";
 
 const CONFIG = {
   googleMapsApiKey: "AIzaSyBorvHlS1t_wka3R3-zing2YzUkTrWn6FI",
@@ -1922,7 +1946,12 @@ async function openPlaceModal(place){
   const dots = document.getElementById("modal-dots");
   carousel.innerHTML = `<div class="carousel-slide"><div class="placeholder-big placeholder">${place.name.charAt(0)}</div></div>`;
   dots.innerHTML = "";
+  document.getElementById("modal-google").innerHTML = `<div class="gd-loading">Buscando nota, horário e avaliações…</div>`;
   modal.classList.add("open");
+
+  getPlaceDetails(place)
+    .then(d => renderGoogleDetails(place, d))
+    .catch(e => { console.error("Places details:", e); renderGoogleDetails(place, null); });
 
   const photos = await getPhotos(place);
   if (photos.length) {
@@ -2069,6 +2098,167 @@ async function getPhotos(place){
       }
     );
   });
+}
+
+/* ==========================================================
+   DETALHES DO GOOGLE — nota, avaliações, horário de funcionamento.
+   Buscado só quando o modal do lugar abre (não nos 85 de uma vez) e
+   guardado por 30 dias, pra não gastar cota a cada abertura e pra
+   continuar funcionando offline.
+   O Places NÃO expõe menu — não existe campo. O mais perto é o site.
+   ========================================================== */
+const GD_FIELDS = ["rating","user_ratings_total","price_level","business_status",
+                   "opening_hours","website","formatted_phone_number","url",
+                   "editorial_summary","reviews"];
+const GD_TTL = 30 * 86400000;
+
+// O place_id vem do mapQuery, que é o destino real. O photoQuery aponta pro lugar
+// da FOTO, que muitas vezes é outro endereço — usá-lo aqui traria horário alheio.
+function resolvePlaceId(place){
+  const cached = storageGet(`placeid_${place.id}`, null);
+  if (cached) { placeIdCache[place.id] = cached; return Promise.resolve(cached); }
+  if (!usingGoogle) return Promise.resolve(null);
+  return new Promise(resolve => {
+    gPlacesSvc.findPlaceFromQuery(
+      { query: place.mapQuery || place.name, fields: ["place_id"], language: "pt" },
+      (results, status) => {
+        const ok = status === google.maps.places.PlacesServiceStatus.OK && results && results[0];
+        const id = ok ? results[0].place_id : null;
+        if (id) { cachePlaceId(place, id); refreshMapLinksFor(place); }
+        resolve(id);
+      }
+    );
+  });
+}
+
+async function getPlaceDetails(place){
+  const key = `gdetails_${place.id}`;
+  const cached = storageGet(key, null);
+  if (cached && cached.at && Date.now() - cached.at < GD_TTL) return cached.data;
+  if (!usingGoogle) return null;
+  const pid = await resolvePlaceId(place);
+  if (!pid) return null;
+  return new Promise(resolve => {
+    gPlacesSvc.getDetails({ placeId: pid, fields: GD_FIELDS, language: "pt" }, (res, status) => {
+      if (status !== google.maps.places.PlacesServiceStatus.OK || !res) { resolve(null); return; }
+      const data = {
+        rating: res.rating ?? null,
+        total: res.user_ratings_total ?? null,
+        price: typeof res.price_level === "number" ? res.price_level : null,
+        bizStatus: res.business_status || null,
+        hours: res.opening_hours?.weekday_text || null,
+        periods: (res.opening_hours?.periods || []).map(p => ({
+          od: p.open?.day, ot: p.open?.time, ct: p.close?.time
+        })),
+        website: res.website || null,
+        phone: res.formatted_phone_number || null,
+        url: res.url || null,
+        summary: res.editorial_summary?.overview || null,
+        reviews: (res.reviews || []).slice(0, 3).map(r => ({
+          author: r.author_name, rating: r.rating,
+          text: (r.text || "").slice(0, 320), when: r.relative_time_description
+        }))
+      };
+      storageSet(key, { at: Date.now(), data });
+      resolve(data);
+    });
+  });
+}
+
+// null = sem dado suficiente pra afirmar. Só devolve false quando dá pra ter certeza.
+function isOpenAt(periods, weekday, hhmm){
+  if (!periods || !periods.length) return null;
+  if (periods.length === 1 && periods[0].ot === "0000" && !periods[0].ct) return true;  // 24h
+  const doDia = periods.filter(p => p.od === weekday);
+  if (!doDia.length) return false;
+  const t = hhmm.replace(":", "");
+  return doDia.some(p => {
+    if (!p.ct) return true;
+    return p.ct > p.ot ? (t >= p.ot && t < p.ct)   // faixa no mesmo dia
+                       : (t >= p.ot || t < p.ct);  // fecha depois da meia-noite
+  });
+}
+
+// Onde este lugar aparece no "Meus dias", pra conferir horário contra o funcionamento.
+function scheduledSlotsFor(placeId){
+  const out = [];
+  Object.entries(getPlan()).forEach(([dateKey, items]) => {
+    (items || []).forEach(it => { if (it.placeId === placeId) out.push({ dateKey, start: it.start }); });
+  });
+  return out;
+}
+
+function renderGoogleDetails(place, d){
+  const box = document.getElementById("modal-google");
+  if (!d) {
+    box.innerHTML = usingGoogle
+      ? `<div class="gd-loading">Sem dados do Google para este lugar.</div>`
+      : `<div class="gd-loading">Detalhes do Google indisponíveis no modo alternativo.</div>`;
+    return;
+  }
+
+  const estrelas = n => "★".repeat(Math.round(n)) + "☆".repeat(5 - Math.round(n));
+  const hoje = new Date().getDay();
+  // weekday_text começa na segunda; getDay() começa no domingo
+  const idxParaGetDay = i => (i + 1) % 7;
+
+  const fechado = d.bizStatus && d.bizStatus !== "OPERATIONAL"
+    ? `<div class="gd-closed">⚠️ O Google marca este lugar como <b>${
+        d.bizStatus === "CLOSED_PERMANENTLY" ? "fechado permanentemente" : "temporariamente fechado"
+      }</b>. Confirmar antes de contar com ele no roteiro.</div>` : "";
+
+  // conflito entre o horário que você marcou e o funcionamento
+  const conflitos = [];
+  scheduledSlotsFor(place.id).forEach(s => {
+    if (!s.start) return;
+    const dia = TRIP_DATES.find(x => x.key === s.dateKey);
+    if (!dia) return;
+    const wd = parseLocalDate(s.dateKey).getDay();
+    if (isOpenAt(d.periods, wd, s.start) === false) {
+      conflitos.push(`${dia.label} às ${s.start}`);
+    }
+  });
+  const aviso = conflitos.length
+    ? `<div class="gd-closed">⚠️ Você marcou <b>${conflitos.join(" · ")}</b>, e pelo horário do Google está fechado nesse momento.</div>`
+    : "";
+
+  const cabecalho = [
+    d.rating ? `<span class="gd-rating">${d.rating.toFixed(1)} ${estrelas(d.rating)}</span>` : "",
+    d.total ? `<span class="gd-count">${d.total.toLocaleString("pt-BR")} avaliações</span>` : "",
+    d.price !== null ? `<span class="gd-price">preço ${"¥".repeat(Math.max(1, d.price))}</span>` : ""
+  ].filter(Boolean).join("");
+
+  const horario = d.hours?.length ? `
+    <div class="gd-block-title">Horário de funcionamento</div>
+    <div class="gd-hours">${d.hours.map((linha, i) => {
+      const [dia, ...resto] = linha.split(": ");
+      const ehHoje = idxParaGetDay(i) === hoje;
+      return `<span class="d ${ehHoje ? "today" : ""}">${esc(dia)}</span><span class="${ehHoje ? "today" : ""}">${esc(resto.join(": "))}</span>`;
+    }).join("")}</div>
+    <div class="gd-note">Horário de hoje em destaque. Confirmar perto da viagem — muita coisa no Japão muda em dezembro e no Ano Novo.</div>` : "";
+
+  const resenhas = d.reviews?.length ? `
+    <div class="gd-block-title">O que dizem</div>
+    ${d.reviews.map(r => `
+      <div class="gd-review">
+        <div class="gd-review-head">
+          <span class="gd-review-stars">${estrelas(r.rating)}</span>
+          <span>${esc(r.author)}</span><span>· ${esc(r.when || "")}</span>
+        </div>
+        <div class="gd-review-text">${esc(r.text)}</div>
+      </div>`).join("")}` : "";
+
+  const links = [
+    d.website ? `<a href="${esc(d.website)}" target="_blank" rel="noopener">Site oficial</a>` : "",
+    d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">Ver no Google</a>` : "",
+    d.phone ? `<span class="gd-count">${esc(d.phone)}</span>` : ""
+  ].filter(Boolean).join("");
+
+  box.innerHTML = fechado + aviso
+    + (cabecalho ? `<div class="gd-head">${cabecalho}</div>` : "")
+    + (d.summary ? `<div class="gd-summary">${esc(d.summary)}</div>` : "")
+    + horario + resenhas
+    + (links ? `<div class="gd-links">${links}</div>` : "");
 }
 
 /* ==========================================================
