@@ -4,6 +4,92 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.0.0 — 2026-09-25
+
+**Redesenho completo na direção "editorial".** Nenhuma funcionalidade saiu: mapa, blocos,
+meus dias, atrações, hospedagem, checklist, login, sincronização e detalhes do Google
+continuam todos lá, com a mesma lógica. O que mudou foi a casca — e três defeitos reais
+que o redesenho expôs.
+
+### Por que mexer no visual
+
+A auditoria do layout antigo mediu o problema em vez de opinar sobre ele:
+
+- **70 das ~103 declarações de `font-size` eram 12px ou 13px.** A interface inteira morava
+  numa faixa de um pixel, então nada conseguia ser mais importante que nada. Era por isso
+  que parecia um paredão cinza.
+- **48 valores distintos de `padding`** e **11 de `border-radius`** — enquanto o token
+  `--radius`, que existia, era usado 3 vezes. Não havia sistema, havia hábito.
+- **Zero transições** no arquivo todo.
+- **Zero media queries.**
+
+Contraste era a única coisa que já estava certa: todos os pares de texto passavam no AA.
+A paleta não era o problema; o uso dela era. Por isso a paleta nova também foi medida
+antes de entrar — `--seal` (#C4392A) só aparece como preenchimento, porque como texto
+pequeno dá 3.34:1; texto na cor do selo usa `--seal-lite`, que dá 5.81:1.
+
+### O que o app ganhou
+
+- **As 85 atrações agora têm capa.** Esta é a mudança central. As 74 imagens curadas na
+  v1.4.0 só apareciam nos Blocos — na aba Atrações, que é onde se escolhe para onde ir,
+  não havia imagem nenhuma. Agora o card é a foto, com nome e cidade por cima dela.
+- **Escala de tipos de verdade**, com serifa (Instrument Serif) nos nomes e títulos e sans
+  (Manrope) na interface. Escala de espaço de 4 e um conjunto único de cantos.
+- **O tier deixou de gritar.** Antes a pílula "ESSENCIAL" era a coisa mais visível do card,
+  mais que o nome do lugar. Agora é um selo pequeno no canto da foto.
+- **Detalhe longo colapsa** atrás de "Detalhes", em vez de despejar tudo de uma vez.
+- **Ícones SVG no lugar dos emojis** na interface (relógio, dinheiro, reserva, refeição,
+  aviso, modos de transporte). Emoji muda de desenho em cada sistema e não acompanha a cor
+  do texto. Os ⚠️ que estão dentro das suas descrições continuam lá — aquilo é conteúdo seu,
+  não enfeite da interface.
+
+### Ideias trazidas da direção "field tool"
+
+- **Barra de abas embaixo no telefone**, com alvos de toque de 44px+. As abas de cima
+  somem abaixo de 760px. Os botões reusam a classe `view-tab` e o `data-view`, então a
+  função que já existia passou a controlá-los sem uma linha de JS nova.
+- **Marcador de "hoje"** na aba Meus dias. Só aparece durante a viagem — hoje é setembro,
+  então ainda não aparece nada, e isso está correto. A data é montada em horário local, e
+  não com `toISOString()`, que é UTC e em UTC-3 marcaria o dia errado a noite inteira.
+- **Horários em fonte monoespaçada** com números tabulares, nos dias e nos blocos.
+
+### Três defeitos encontrados no caminho
+
+**1. O app rolava de lado em qualquer celular.** O layout tinha piso de largura de 477px:
+`.catalog-toolbar` exigia 477px e `.view-tabs` 447px, e nenhum dos dois encolhia. Num
+telefone de 390px isso vazava quase 90px — os selos de tier ficavam cortados e a aba
+Checklist ficava fora da tela. Agora as barras de aba rolam na horizontal, a grade vira
+uma coluna e existem breakpoints. Medido depois: **zero elementos estourando a 390px e a
+360px**, nas quatro abas.
+
+**2. A capa curada dependia do Google — e sumia junto com ele.** Quando o Places carrega
+mas não autoriza (chave errada, quota estourada, referrer que não bate),
+`findPlaceFromQuery` simplesmente **nunca chama o callback**. `getPhotos` ficava pendurada
+para sempre e nenhuma capa era desenhada, mesmo com a URL do Commons pronta dentro do
+próprio objeto do lugar. Medido: `usingGoogle=true`, `gPlacesSvc=true`, a promessa nunca
+resolveu, 0 imagens no DOM. Agora a capa curada é pintada **na hora**, sem esperar rede
+nenhuma, e as fotos do Google só melhoram o resultado depois; além disso `getPhotos` tem
+teto de 6 segundos, para nunca mais ficar pendurada.
+
+**3. As capas pesavam 4,7x mais do que precisavam.** Cada imagem pedia 1280px de largura
+para preencher um espaço de ~190px de altura, sem `loading="lazy"` — cerca de 432 KB por
+foto, ~31 MB no conjunto. Isso importa porque o app vai ser usado no Japão, com dado móvel.
+
+A correção óbvia seria trocar 1280 por 640 na URL. **Não funciona**: o Wikimedia passou a
+servir só uma lista fixa de larguras, e 640 devolve HTTP 400. As que funcionam são
+120/250/330/500/960/1280. Ficou em **500px — 91 KB em média, verificado em 12 URLs reais
+suas** — o que leva o conjunto de ~31 MB para ~6,8 MB, somado ao `loading="lazy"`, que faz
+o app só baixar o que entra na tela. A troca é feita em tempo de execução por `thumbUrl()`,
+então as URLs originais continuam intactas no arquivo; e se algum arquivo não tiver a
+versão de 500px, o `onerror` tenta a original antes de desistir. De quebra, os `?utm_*`
+que vieram da API do Commons saem da URL.
+
+### Nota
+
+As fontes vêm do Google Fonts. Sem internet elas caem para a serifa e a sans do sistema —
+o texto continua legível, só perde o desenho. Depois da primeira visita o navegador guarda
+em cache, então em viagem isso não deve aparecer.
+
 ## 1.6.0 — 2026-09-23
 
 **Detalhes do Google no modal da atração**: nota e número de avaliações, faixa de preço,
