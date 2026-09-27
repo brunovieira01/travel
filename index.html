@@ -1069,7 +1069,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.0.1";
+const APP_VERSION = "2.1.0";
 
 /* ---------- ícones (SVG em vez de emoji: o emoji muda de cara em cada
    sistema e não acompanha a cor do texto) ---------- */
@@ -2016,7 +2016,9 @@ function renderViewTabs(){
   document.querySelectorAll(".view-tab").forEach(btn => {
     btn.onclick = () => {
       currentView = btn.dataset.view;
-      document.querySelectorAll(".view-tab").forEach(b => b.classList.toggle("active", b === btn));
+      // compara pelo data-view, não pelo elemento: a aba do topo e a barra de baixo
+      // são dois botões diferentes pra mesma seção, e as duas têm que concordar.
+      document.querySelectorAll(".view-tab").forEach(b => b.classList.toggle("active", b.dataset.view === btn.dataset.view));
       document.getElementById("view-map").classList.toggle("active", currentView === "map");
       document.getElementById("view-schedule").classList.toggle("active", currentView === "schedule");
       document.getElementById("view-catalog").classList.toggle("active", currentView === "catalog");
@@ -2684,6 +2686,17 @@ function renderGoogleDetails(place, d){
 let sb = null;            // cliente supabase
 let sbUser = null;        // usuário logado
 let sbTripId = null;      // uuid da viagem no banco
+/* Todas as tabelas têm id NOT NULL, e nem todas têm default no banco. Então o
+   id sai daqui pronto, em vez de depender do Postgres preencher. */
+function uuid(){
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+const isUuid = v => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v || "");
+
 let syncState = "off";    // off | on | err
 let syncErrorMsg = "";    // última mensagem real do banco, mostrada na barra
 
@@ -2859,6 +2872,10 @@ async function pullFromSupabase(){
     storageSet(hiddenKey(currentTripId), status.data.filter(r => r.visited).map(r => r.place_id));
   }
   if (checks.data?.length) {
+    // O banco pode estar numa revisão anterior do checklist (outro aparelho, ou
+    // de antes desta atualização). Marca como antiga: o próximo getChecklist()
+    // reconcilia e devolve a versão nova pro banco.
+    storageSet(checkRevKey(), 1);
     saveChecklist(checks.data.map(r => ({
       id: r.id, section: r.section || "Sem seção", title: r.title, notes: r.notes || "",
       done: !!r.done, amount: r.amount, target: r.target, unit: r.unit || "", position: r.position
@@ -2876,7 +2893,7 @@ async function pushStays(){
   if (!sbReady()) return;
   try {
     const rows = getStays().map(s => ({
-      id: /^[0-9a-f-]{36}$/i.test(s.id) ? s.id : undefined,  // ids locais viram uuid novo no banco
+      id: isUuid(s.id) ? s.id : uuid(),   // id local antigo ("stay_1727…") vira uuid aqui
       user_id: sbUser.id, trip_id: sbTripId,
       name: s.name, city: s.city || null, address: s.address || null,
       type: s.type, status: s.status,
@@ -2898,6 +2915,7 @@ async function pushPlan(){
     const rows = [];
     Object.entries(plan).forEach(([day, items]) =>
       items.forEach((it, i) => rows.push({
+        id: isUuid(it.id) ? it.id : uuid(),
         user_id: sbUser.id, trip_id: sbTripId, day_date: day,
         place_id: it.placeId || null, title: it.title || null,
         start_time: it.start || null, notes: it.notes || null, position: i
@@ -2935,7 +2953,7 @@ async function pushPlaceStatus(){
     await sbRun(sb.from("place_status").delete().eq("trip_id", sbTripId), "apagar status");
     if (hidden.length) {
       await sbRun(sb.from("place_status").insert(hidden.map(pid => ({
-        user_id: sbUser.id, trip_id: sbTripId, place_id: pid, visited: true
+        id: uuid(), user_id: sbUser.id, trip_id: sbTripId, place_id: pid, visited: true
       }))), "salvar status");
     }
     syncState = "on"; syncErrorMsg = "";
@@ -3052,7 +3070,7 @@ function saveStayFromForm(){
   }
   const list = getStays();
   const data = {
-    id: editingStayId || `stay_${Date.now()}`,
+    id: editingStayId || uuid(),
     name: g("stay-name"), city: g("stay-city"),
     checkin: g("stay-in"), checkout: g("stay-out"),
     type: document.getElementById("stay-type").value,
@@ -3475,31 +3493,42 @@ function wirePlanControls(){
    ========================================================== */
 const CHECKLIST_SEED = [
   { section:"Agora (setembro)", title:"Reservar o ryokan em Hakone (02→03/12)", done:true,
-    notes:"Fechado: Fukuzumiro, em Tonosawa. Quarto japonês tipo Sekirei, 02→03/12.\nCancelamento grátis até 29/11/2026 — se mudar de ideia, é até essa data.\nConfirmar se o jantar kaiseki e o café estão inclusos." },
-  { section:"Agora (setembro)", title:"Comprar o Hakone Free Pass na chegada",
-    notes:"Cobre trem de montanha, teleférico, ônibus e o barco do lago." },
+    notes:"Fechado: Fukuzumiro, em Tonosawa. Quarto japonês tipo Sekirei, 02→03/12.\nCancelamento grátis até 29/11/2026 — se mudar de ideia, é até essa data.\nRyokan bom na região sai por volta de ¥50.000 a noite. CONFERIR duas coisas: se o preço é por pessoa ou pelo quarto, e se inclui jantar kaiseki + café (normalmente incluem, e isso muda a conta)." },
   { section:"Agora (setembro)", title:"Férias na Cubo Itaú", done:true },
   { section:"Agora (setembro)", title:"Conferir validade do passaporte", done:true },
+  { section:"Agora (setembro)", title:"Definir quantas noites em cada ponta de Tóquio", done:true,
+    notes:"Decidido: 4 noites na chegada (28/11→02/12) e 4 na volta (08/12→12/12), mais 1 na capsule perto do aeroporto (12/12→13/12)." },
   { section:"Agora (setembro)", title:"Pedir o cartão físico da Revolut", notes:"Leva semanas pra chegar." },
-  { section:"Agora (setembro)", title:"Definir quantas noites em cada ponta de Tóquio" },
-  { section:"Agora (setembro)", title:"Reservar hostels",
-    notes:"Priorizar área comum, bar e programação social; filtrar avaliações por atmosfera; preferir quarto compartilhado.\nTóquio: The Citan (Akihabara, bar no subsolo, 8.8★) · um a 5 min do Golden Gai (8.3★).\nOsaka: Hostel Chillax (Nipponbashi) · Mad Cat Hostel & Bar · Backstage Osaka.\nBairro em Tóquio: Shinjuku ou Shibuya pra noite; Asakusa é mais quieto." },
-  { section:"Agora (setembro)", title:"Pré-reservar o resto com cancelamento grátis",
-    notes:"Tóquio início, Kyoto, Osaka, Tóquio fim (capsule perto do aeroporto) e Paris. Booking · Agoda (melhor preço na Ásia) · Rakuten Travel." },
   { section:"Agora (setembro)", title:"Confirmar com o amigo qual era o karaokê recomendado" },
+
+  { section:"Hospedagem — as 6 reservas", title:"Tóquio 1 (hostel) — 28/11 → 02/12 · 4 noites",
+    notes:"Priorizar área comum, bar e programação social; filtrar avaliações por atmosfera; preferir quarto compartilhado.\nCandidatos: The Citan (Akihabara, bar no subsolo, 8.8★) · um a 5 min do Golden Gai (8.3★).\nBairro: Shinjuku ou Shibuya pra noite; Asakusa é mais quieto." },
+  { section:"Hospedagem — as 6 reservas", title:"Hakone (ryokan) — 02/12 → 03/12 · 1 noite", done:true,
+    notes:"Fukuzumiro, em Tonosawa. Única reserva já fechada." },
+  { section:"Hospedagem — as 6 reservas", title:"Kyoto (hostel) — 03/12 → 06/12 · 3 noites" },
+  { section:"Hospedagem — as 6 reservas", title:"Osaka (hostel) — 06/12 → 08/12 · 2 noites",
+    notes:"Candidatos: Hostel Chillax (Nipponbashi) · Mad Cat Hostel & Bar · Backstage Osaka." },
+  { section:"Hospedagem — as 6 reservas", title:"Tóquio 2 (hostel diferente) — 08/12 → 12/12 · 4 noites",
+    notes:"De propósito num hostel diferente do primeiro bloco." },
+  { section:"Hospedagem — as 6 reservas", title:"Capsule perto do aeroporto — 12/12 → 13/12 · 1 noite",
+    notes:"Última noite, pra não depender de trem cedo no dia do voo." },
+  { section:"Hospedagem — as 6 reservas", title:"Fechar tudo com cancelamento grátis",
+    notes:"São 15 noites, ¥102.000 (econômico) a ¥167.000 (confortável).\nBooking · Agoda (melhor preço na Ásia) · Rakuten Travel." },
 
   { section:"1º de outubro — data marcada", title:"teamLab Borderless — abre a venda dos ingressos de dezembro" },
 
   { section:"Durante outubro", title:"2º aporte BRL→JPY na Revolut",
     notes:"Você optou por esperar o iene cair — lembrar que isso é aposta de câmbio, não a média que a estratégia original buscava." },
+  { section:"Durante outubro", title:"Reservar o Shinkansen Odawara→Kyoto (Hikari ou Kodama)",
+    notes:"⚠️ O Nozomi NÃO para em Odawara. Tem que ser Hikari ou Kodama — e o Hikari tem poucas saídas, então vale conferir horário e reservar cedo, ainda mais sendo dezembro.\nTokaido Shinkansen, ~1h54. ¥11.770 sem reserva ou ¥12.100 com assento reservado.\nHakone-Yumoto→Odawara está coberto pelo Free Pass (~15 min)." },
+  { section:"Durante outubro", title:"Reservar o Shinkansen Osaka→Tóquio pelo smartEX",
+    notes:"¥14.520.\nTotal de trens entre cidades: ¥34.080. JR Pass não compensa (¥50.000 o passe)." },
   { section:"Durante outubro", title:"Confirmar as datas 2026 da iluminação noturna do Kenninji",
     notes:"Saem em outubro. A janela do ano passado (29/nov–13/dez) bate quase exato com a viagem." },
   { section:"Durante outubro", title:"Resolver a internet no Japão",
     notes:"O plano da Vivo provavelmente não cobre bem. Ligar e perguntar cobertura e custo; comparar com eSIM (Ubigi, Airalo, Sakura Mobile, Holafly) ou pocket wifi. Checar se o celular aceita eSIM." },
   { section:"Durante outubro", title:"Reconferir se o ETIAS segue adiado",
     notes:"Previsão agora é 2027, e ainda haveria 6 meses de tolerância." },
-  { section:"Durante outubro", title:"Reservar Shinkansen Tóquio→Kyoto e Osaka→Tóquio via smartEX",
-    notes:"JR Pass não compensa: ~¥28–31.000 avulso contra ¥50.000 o passe." },
   { section:"Durante outubro", title:"Se for de mala grande: planejar takkyubin (Yamato) entre hotéis" },
 
   { section:"10 de novembro, 10h JST — data e hora marcadas", title:"Museu Ghibli",
@@ -3507,8 +3536,6 @@ const CHECKLIST_SEED = [
 
   { section:"Início de novembro", title:"3º aporte BRL→JPY na Revolut",
     notes:"Último momento confortável — depois disso some a margem de manobra." },
-  { section:"Início de novembro", title:"Trem Fuji Excursion",
-    notes:"Reserva obrigatória, abre 1 mês antes às 10h JST. Não existe vagão livre." },
   { section:"Início de novembro", title:"USJ (se for) — Studio Pass + Express Pass com Super Nintendo World",
     notes:"O Studio Pass sozinho NÃO garante entrada na SNW. Power-Up Band ¥4.000–4.900 é praticamente obrigatória. Melhores dias: ter/qua/qui do início de dezembro." },
   { section:"Início de novembro", title:"Pokémon Café", notes:"Reserva abre 31 dias antes, às 18h JST." },
@@ -3523,33 +3550,109 @@ const CHECKLIST_SEED = [
   { section:"2 semanas antes (meados de novembro)", title:"Conferir o tempo de conexão em Frankfurt",
     notes:"O sistema biométrico EES causa filas longas nas fronteiras Schengen desde abril/2026, e é sua primeira entrada no espaço (digitais e foto)." },
 
+  { section:"Na viagem", title:"Comprar o Hakone Free Pass — a versão de ODAWARA, não a de Shinjuku",
+    notes:"São duas versões e a escolha importa:\n· Shinjuku: ¥7.100 (2 dias) — inclui a volta pra Shinjuku, que você NÃO vai usar, porque segue pra Kyoto.\n· \"Hakone Area Only\", comprada em Odawara: ¥6.000 (2 dias).\n➜ Comprar a de Odawara + passagem avulsa Shinjuku→Odawara (¥880) = ¥6.880. Economia de ¥1.420 sem perder nada.\nO Romancecar (assento reservado) não está incluso em nenhuma das duas: ¥1.200 a mais saindo de Shinjuku, ou só ¥200 dentro da área de Hakone.\nO passe cobre trem de montanha, teleférico, ônibus Tozan e o barco do Lago Ashi." },
   { section:"Na viagem", title:"Levar ¥20.000 em espécie como reserva",
     notes:"Sacar em ATM de 7-Eleven/Family Mart, recusando a conversão oferecida pela máquina." },
   { section:"Na viagem", title:"Tentar pegar o cartão Suica físico ao chegar" },
+  { section:"Na viagem", title:"Kyoto→Osaka: trem local, sem reserva", notes:"~¥580. Não precisa comprar antes." },
 
-  { section:"Dinheiro", title:"Iene comprado", amount:60000, target:245000, unit:"¥",
-    notes:"Estimativa pra 15 noites: ¥245.000–423.000 conforme o padrão. Os aportes (set/out/nov) existem pra diluir o risco de câmbio em vez de converter tudo de uma vez." },
+  { section:"Dinheiro", title:"Iene comprado", amount:120000, target:248000, unit:"¥",
+    notes:"Meta = o cenário econômico (~¥248.000). Médio ~¥322.000, confortável ~¥408.000.\nComposição do econômico: hospedagem ¥102.000 · trens entre cidades ¥34.080 · alimentação ¥60.000 · transporte local ¥19.500 · ingressos ¥30.000 · taxa de saída ¥3.000.\nFalta juntar o equivalente a R$ 4.000 (econômico) a R$ 6.400 (médio), em dois aportes até novembro." },
 
+  { section:"Avisos que mudam decisões", title:"Ônibus em Hakone: procurar o \"T\" laranja da Tozan",
+    notes:"Existe uma empresa rival na região, a Izu Hakone, com ônibus parecidos que NÃO aceitam o Free Pass — e você paga de novo.\nComo distinguir: o símbolo. \"T\" laranja = Tozan, vale o passe. Leão = Izu Hakone, não vale." },
   { section:"Avisos que mudam decisões", title:"Kart de rua está fora",
     notes:"A PID brasileira não vale no Japão — Brasil assinou Viena 1968, Japão só aceita Genebra 1949." },
   { section:"Avisos que mudam decisões", title:"Kabukicho: combinar preço antes de entrar onde não há cardápio visível" },
   { section:"Avisos que mudam decisões", title:"Gion: foto proibida nas vielas de Hanamikoji", notes:"Multa ¥10.000." },
   { section:"Avisos que mudam decisões", title:"Conferir horários de inverno",
-    notes:"Fujisan World Heritage Center abre só 9h–16h30 em dezembro. Chureito Pagoda: ~400 degraus, pode ter gelo. Kachi Kachi Ropeway: só em céu limpo, até ~17h. Owakudani: conferir o teleférico, atividade vulcânica às vezes suspende." },
+    notes:"Owakudani: conferir o teleférico antes de subir — atividade vulcânica às vezes suspende o serviço.\nMuseu ao Ar Livre de Hakone e barco do Lago Ashi: horário reduzido no inverno, conferir a última saída.\nSantuário Hakone: o torii na água costuma ter fila pra foto." },
   { section:"Avisos que mudam decisões", title:"Já fecharam (guias desatualizados ainda listam)",
     notes:"Contact, Sound Museum Vision, Immersive Fort Tokyo, Unicorn Gundam de Odaiba, GiGO Akihabara prédio 1, Square Enix Café de Akiba." }
 ];
 
+/* Itens que saíram do planejamento e precisam ser REMOVIDOS de uma lista que já
+   existe no navegador. Kawaguchiko saiu do roteiro, e com ele o trem que só
+   servia pra chegar lá; as reservas de hospedagem viraram as 6 linhas próprias. */
+const CHECKLIST_RETIRED = [
+  "Trem Fuji Excursion",
+  "Pré-reservar o resto com cancelamento grátis",
+  "Reservar hostels",
+  "Comprar o Hakone Free Pass na chegada",
+  "Reservar Shinkansen Tóquio→Kyoto e Osaka→Tóquio via smartEX"
+];
+
+/* Sobe quando o conteúdo acima muda. A lista guardada no navegador é
+   reconciliada com o seed novo sem perder o que você já marcou. */
+const CHECKLIST_REV = 2;
+
 function checkKey(){ return `checklist_${currentTripId}`; }
+
+function checkRevKey(){ return `checklist_rev_${currentTripId}`; }
+
+/* Títulos cujas NOTAS mudaram de fato e precisam vir do seed novo. Nos demais
+   itens a sua nota vence, pra não apagar nada que você escreveu. */
+const CHECKLIST_RENOTED = [
+  "Reservar o ryokan em Hakone (02→03/12)",
+  "Definir quantas noites em cada ponta de Tóquio",
+  "Conferir horários de inverno",
+  "Iene comprado"
+];
+
+/* Encaixa o seed novo numa lista que já existe no navegador:
+   - item do seed que você já tinha  → mantém o "feito" e, em regra, a sua nota
+   - item que saiu do planejamento    → sai da lista
+   - item que VOCÊ criou              → fica, no fim
+   É idempotente: rodar de novo não muda nada. */
+function reconcileChecklist(saved){
+  const byTitle = new Map(saved.map(it => [it.title, it]));
+  const seedTitles = new Set(CHECKLIST_SEED.map(s => s.title));
+  const out = [];
+
+  CHECKLIST_SEED.forEach(s => {
+    const old = byTitle.get(s.title);
+    const renote = !old || CHECKLIST_RENOTED.includes(s.title);
+    out.push({
+      id: old ? old.id : newItemId(),
+      section: s.section,
+      title: s.title,
+      notes: renote ? (s.notes || "") : (old.notes || s.notes || ""),
+      done: old ? !!old.done : !!s.done,
+      amount: renote ? (s.amount ?? null) : (old.amount ?? s.amount ?? null),
+      target: renote ? (s.target ?? null) : (old.target ?? s.target ?? null),
+      unit: s.unit || (old && old.unit) || "",
+      position: out.length
+    });
+  });
+
+  saved.forEach(it => {
+    if (seedTitles.has(it.title)) return;
+    if (CHECKLIST_RETIRED.includes(it.title)) return;
+    out.push({ ...it, position: out.length });   // item seu: preservado inteiro
+  });
+
+  return out;
+}
 
 function getChecklist(){
   const saved = storageGet(checkKey(), null);
-  if (saved) return saved;
-  const seeded = CHECKLIST_SEED.map((it, i) => ({
-    id: newItemId(), position: i, done:false, notes:"", amount:null, target:null, unit:"", ...it
-  }));
-  storageSet(checkKey(), seeded);
-  return seeded;
+  if (!saved) {
+    const seeded = CHECKLIST_SEED.map((it, i) => ({
+      id: newItemId(), position: i, done:false, notes:"", amount:null, target:null, unit:"", ...it
+    }));
+    storageSet(checkKey(), seeded);
+    storageSet(checkRevKey(), CHECKLIST_REV);
+    return seeded;
+  }
+  if (storageGet(checkRevKey(), 1) < CHECKLIST_REV) {
+    const merged = reconcileChecklist(saved);
+    storageSet(checkKey(), merged);
+    storageSet(checkRevKey(), CHECKLIST_REV);
+    setTimeout(() => { if (sbReady()) pushChecklist(); }, 0);   // manda a versão nova pro banco
+    return merged;
+  }
+  return saved;
 }
 function saveChecklist(list){ storageSet(checkKey(), list); }
 function saveChecklistAndSync(list){ saveChecklist(list); pushChecklist(); }

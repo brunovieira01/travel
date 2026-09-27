@@ -4,6 +4,62 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.1.0 — 2026-09-27
+
+**A hospedagem não salvava porque o `id` ia nulo.** O erro real, que só apareceu
+depois da v2.0.1 parar de engolir as respostas do banco:
+`null value in column "id" of relation "stays" violates not-null constraint`.
+
+A coluna `id` de `stays` é NOT NULL e **não tem default**. O app só mandava `id`
+quando já era um uuid (vindo de um pull anterior); pra reserva criada aqui o id
+era `stay_1727…`, virava `undefined`, sumia do JSON e o Postgres recebia null.
+Era também por isso que o checklist era o único que sincronizava: a
+`checklist_items` nasceu na migração 1.3.0 com `default gen_random_uuid()`.
+
+Não era RLS, como eu tinha suposto. As políticas do `supabase_migration_2.0.1.sql`
+continuam valendo a pena, mas não eram a causa.
+
+Agora todo id sai pronto do app (`uuid()`, com `crypto.randomUUID` e fallback),
+tanto pras reservas novas quanto pro roteiro e pro status das atrações — que
+teriam o mesmo problema se aquelas tabelas também não tivessem default. Não
+precisa rodar nada no banco pra isso funcionar.
+
+**Checklist atualizado com o novo planejamento**, sem perder nada do que você já
+tinha marcado:
+
+- **Kawaguchiko saiu, Hakone entrou.** "Trem Fuji Excursion" era reserva só pra
+  chegar em Kawaguchiko e foi removido. O aviso de horários de inverno deixou de
+  falar de Chureito, Kachi Kachi e Fujisan World Heritage Center e passou a
+  falar de Owakudani, Museu ao Ar Livre e barco do Lago Ashi.
+- **Seção nova "Hospedagem — as 6 reservas"**, com as datas exatas de cada bloco
+  (Tóquio 4 noites, Hakone 1, Kyoto 3, Osaka 2, Tóquio 4, capsule 1) e o total
+  de ¥102.000 a ¥167.000. As três tarefas genéricas que existiam antes
+  ("Reservar hostels", "Pré-reservar o resto") saíram, porque viraram estas seis.
+- **Transporte com os avisos que mudam a compra:** comprar o Free Pass na versão
+  de Odawara (¥6.000) e não na de Shinjuku (¥7.100), somada à passagem avulsa
+  (¥880) — ¥6.880 no total, ¥1.420 de economia; o Nozomi não para em Odawara,
+  então tem que ser Hikari ou Kodama, e o Hikari tem poucas saídas; e o ônibus
+  da Izu Hakone, que é parecido com o da Tozan mas não aceita o passe (símbolo:
+  "T" laranja vale, leão não).
+- **Dinheiro:** ¥120.000 de ¥248.000, com a composição do cenário econômico na
+  nota.
+
+**Como a atualização preserva o seu trabalho.** O checklist mora no
+localStorage, então trocar o seed não alcançaria a sua lista. Entrou um número
+de revisão (`CHECKLIST_REV`): quando ele sobe, `reconcileChecklist()` encaixa o
+seed novo na lista existente — mantém o que está marcado, mantém as notas que
+**você** escreveu (só as de fatos que mudaram são substituídas), tira o que saiu
+do planejamento e preserva inteiros os itens que você mesmo criou. É
+idempotente. Depois de puxar do banco a lista é remarcada como antiga, então uma
+lista vinda de outro aparelho também é reconciliada e devolvida atualizada.
+
+Verificado com teste contra a função real: 28 asserções, incluindo idempotência,
+preservação de marcações, de notas próprias e de itens criados por você.
+
+**Correção menor:** a aba do topo e a barra de baixo agora comparam por
+`data-view` em vez de por elemento, então as duas sempre concordam sobre qual
+seção está aberta.
+
 ## 2.0.1 — 2026-09-27
 
 **A hospedagem nunca chegava no banco, e o app dizia que tinha chegado.**
