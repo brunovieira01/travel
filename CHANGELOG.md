@@ -4,6 +4,36 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.0.1 — 2026-09-27
+
+**A hospedagem nunca chegava no banco, e o app dizia que tinha chegado.**
+
+A tabela `stays` ficava vazia depois de salvar uma reserva, sem erro nenhum na tela. A
+causa está no app: o supabase-js v2 **não lança exceção** quando o banco recusa — devolve
+`{ data, error }`. O código fazia `await sb.from("stays").insert(rows)` dentro de um
+`try/catch` e nunca olhava o `error`. Resultado: a recusa era descartada, `syncState`
+virava "on" e a barra dizia "sincronizado" com a tabela vazia.
+
+O mesmo valia pro roteiro (`itinerary_items`) e pro status das atrações
+(`place_status`). O `pushChecklist` era o único que checava o erro — e não por acaso era
+o único que sincronizava.
+
+Pior: em `pullFromSupabase`, um select que falhasse deixava `data` nulo, e o código
+concluía "banco vazio" e subia o local por cima. A falha se escondia sozinha.
+
+Agora toda chamada ao banco passa por `sbRun()`, que lê o `error` e lança com a mensagem
+real do Postgres. A barra do topo mostra essa mensagem em vez de um "erro ao sincronizar"
+genérico, e salvar uma reserva que o banco recusa abre um aviso na hora — em vez de você
+descobrir depois, olhando a tabela.
+
+**Do lado do banco:** as 16 colunas de `stays` foram conferidas uma a uma contra a API e
+todas existem, então não era diferença de schema. O que sobra é RLS: a `checklist_items`
+nasceu na migração 1.3.0 já com as quatro políticas explícitas, e é justamente a única
+tabela que sincronizava. O `supabase_migration_2.0.1.sql` garante as mesmas quatro
+políticas em `trips`, `stays`, `itinerary_items` e `place_status`. É idempotente, não
+apaga dado e não mexe em coluna nenhuma; no fim ele lista as políticas que ficaram
+valendo, pra dar pra conferir.
+
 ## 2.0.0 — 2026-09-25
 
 **Redesenho completo na direção "editorial".** Nenhuma funcionalidade saiu: mapa, blocos,
