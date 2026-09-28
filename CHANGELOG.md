@@ -4,6 +4,57 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.3.0 — 2026-09-28
+
+**A rota agora sai de uma lista, não de texto livre — e por isso passa a
+funcionar.** O motivo de "quase nunca funcionar" não era o Japão nem o
+transporte público: os campos eram texto solto e iam pro geocoder do Google,
+que **não está ativado nesta chave** (já tinha aparecido como "API not
+activated" quando a chave foi auditada). Sem geocoder, a origem e o destino
+nunca viravam coordenada de verdade.
+
+Os três campos (onde estou, de onde, para onde) viraram combos com filtro: a
+lista traz as **85 atrações da viagem e os hotéis já cadastrados**, e digitar
+filtra. O que vai pra API são as coordenadas exatas do lugar escolhido — não há
+mais o que o geocoder errar. Aceita o rótulo inteiro ("Kiyomizu-dera · Kyoto"),
+só o nome, ou um trecho que só case com um item; texto livre continua valendo
+como último recurso.
+
+**Hotéis no mapa, em amarelo, com o nome sempre visível.** As reservas guardam
+nome e cidade, não coordenada — quem resolve isso é o Places (que está ativado),
+e o resultado fica guardado, então é uma busca por hotel, uma vez só. O pino
+amarelo não se confunde com os das atrações, mostra as datas junto do nome e
+abre a reserva quando tocado. Os hotéis também entram na lista de rota, então dá
+pra traçar "hotel → atração" direto.
+
+**"Já fui" carimba a visita em Meus dias.** Era só "some do mapa". Agora, ao
+marcar, a atração entra no dia de hoje com a hora e o minuto do clique, e um
+aviso curto confirma. É o que tira a necessidade de digitar horário: o ato de
+marcar é o registro.
+
+Só registra se **hoje for um dia da viagem** — fora dela (planejando em
+setembro) ele continua só marcando como visitado, porque senão criaria entradas
+em datas que não existem no roteiro. Marcar duas vezes não duplica.
+
+**Atrações do Fuji rebaixadas pro tier 3.** As 5 de Fujiyoshida (Chureito,
+Honcho Street, Fujisan World Heritage Center, Kachi Kachi Yama e o Trem Fuji
+Excursion) saíram da prioridade quando Kawaguchiko deu lugar a Hakone. As 10 de
+Hakone não foram tocadas — Owakudani, Lago Ashi, Santuário Hakone, Museu ao Ar
+Livre e Hakone Yuryo seguem tier 1. A distinção foi feita pelo campo `city`, e
+não por procurar "Fuji" no texto: metade das descrições de Hakone também cita o
+Fuji, e o filtro por texto teria rebaixado o destino errado.
+
+**Correção: os botões do mapa estavam sem estilo desde a 2.0.0.** "Definir" e
+"Traçar rota" não têm classe própria e dependiam de uma regra
+`.map-toolbar button` que saiu na reforma do CSS — viraram botões brancos
+padrão do navegador. Passou despercebido porque as conferências visuais da 2.0.0
+cobriram catálogo, checklist, hospedagem e dias, e não a aba do mapa.
+
+**Painel de rota recolhido no telefone.** Aberto, os cinco campos empurravam o
+mapa pra baixo da dobra — e o mapa é justamente o que importa ali. Agora ficam
+atrás de um botão "Traçar rota entre dois pontos", e o mapa subiu de 46vh pra
+56vh. No desktop nada mudou: a barra continua inteira, numa linha.
+
 ## 2.2.0 — 2026-09-28
 
 **Mapa utilizável com uma mão só.** Por padrão o Google usa `gestureHandling:

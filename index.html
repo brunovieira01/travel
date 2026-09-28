@@ -145,14 +145,16 @@
   .ico-lg{ width:16px; height:16px; }
 
   /* ---------- BOTÕES E LINKS ---------- */
-  .gmaps-btn, .btn-primary{
+  /* .map-toolbar button entra aqui: esses dois botões não têm classe própria e
+     ficaram sem estilo (brancos) desde a 2.0.0, quando a regra antiga saiu. */
+  .gmaps-btn, .btn-primary, .map-toolbar button{
     background: var(--seal); color:#fff; font-weight:700; font-size: 13px;
     border:0; border-radius: var(--r-sm); padding: 11px 16px; cursor:pointer;
     min-height: 44px; white-space:nowrap;
     transition: background .16s ease, transform .1s ease;
   }
-  .gmaps-btn:hover, .btn-primary:hover{ background:#D8452F; }
-  .gmaps-btn:active, .btn-primary:active{ transform: translateY(1px); }
+  .gmaps-btn:hover, .btn-primary:hover, .map-toolbar button:hover{ background:#D8452F; }
+  .gmaps-btn:active, .btn-primary:active, .map-toolbar button:active{ transform: translateY(1px); }
   .link-btn{
     font-size: 12px; font-weight:600; color: var(--ink-3);
     background:none; border:0; cursor:pointer; padding:0;
@@ -185,6 +187,10 @@
   }
   .map-toolbar input[type=text]{ min-width:0; flex:1 1 170px; }
   .map-toolbar select{ flex:0 1 auto; }
+  /* No telefone os campos de rota ficam atrás de um botão: abertos, empurravam
+     o mapa cinco linhas pra baixo, e o mapa é o que importa ali. */
+  .route-toggle{ display:none; }
+
   .tier-filters{
     display:flex; gap: var(--s4); padding: 0 var(--gutter) var(--s3);
     font-size: 12px; color: var(--ink-3); font-weight:500;
@@ -212,6 +218,30 @@
     text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 8px rgba(0,0,0,.7);
     pointer-events:none; transform: translate(-50%,-50%); text-transform:uppercase;
   }
+  /* hotel: amarelo, nome sempre visível — é o que ancora o resto do mapa */
+  .map-stay-label{
+    background: rgba(242,176,30,.92); color:#1A1206; font-weight:800;
+    border-radius: var(--r-xs); padding: 3px 8px; display:block;
+    transform: translate(10px,-50%); box-shadow: 0 1px 4px rgba(0,0,0,.5);
+  }
+  .leaflet-tooltip.stay-tip{
+    background: rgba(242,176,30,.92); color:#1A1206; border:0; font-weight:800;
+    box-shadow: 0 1px 4px rgba(0,0,0,.5);
+  }
+  .leaflet-tooltip.stay-tip::before{ border-right-color: rgba(242,176,30,.92); }
+
+  /* aviso curto de "visita registrada" — some sozinho, não pede toque */
+  .toast{
+    position: fixed; left: 50%; bottom: 84px; transform: translate(-50%, 12px);
+    z-index: 1200; max-width: min(420px, calc(100vw - 32px));
+    background: var(--card); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--r-md);
+    padding: var(--s3) var(--s4); font-size: 13px; font-weight:600; line-height:1.4;
+    box-shadow: 0 8px 26px rgba(0,0,0,.55);
+    opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .18s ease;
+  }
+  .toast.on{ opacity: 1; transform: translate(-50%, 0); }
+
   .map-leg-label{
     position:absolute; font-size: 11px; font-weight:700; padding: 2px 7px; border-radius:999px;
     color: var(--paper); white-space:nowrap; pointer-events:none; transform: translate(-50%,-50%);
@@ -802,7 +832,16 @@
     .modal-body{ padding: var(--s1) var(--s5) var(--s6); }
     .carousel{ height: 38vh; }
 
-    #map-mapa{ height: 46vh; }
+    .route-toggle{
+      display:block; width:100%; margin: var(--s3) var(--gutter) 0;
+      width: calc(100% - var(--gutter) * 2);
+      background: var(--card); color: var(--ink); border: 1px solid var(--line);
+      border-radius: var(--r-sm); padding: 11px; font-size: 13px; font-weight:700;
+      cursor:pointer; min-height: 44px; text-align:left;
+    }
+    .map-toolbar{ display:none; }
+    .map-toolbar.open{ display:flex; }
+    #map-mapa{ height: 56vh; }
     #map-crono{ height: 44vh; }
 
     .cat-hero{ height: 200px; }
@@ -858,11 +897,13 @@
 
 <!-- ================= MAPA VIEW ================= -->
 <section class="view active" id="view-map">
+  <button class="route-toggle" id="route-toggle" aria-expanded="false">Traçar rota entre dois pontos</button>
   <div class="map-toolbar">
-    <input type="text" id="my-location-input" placeholder="Estou em... (define seu ponto de partida)">
+    <input type="text" id="my-location-input" list="route-places" placeholder="Estou em… (escolha da lista)">
     <button id="set-location-btn">Definir</button>
-    <input type="text" id="origin-input" placeholder="De onde (cidade ou atração)">
-    <input type="text" id="dest-input" placeholder="Para onde (cidade ou atração)">
+    <input type="text" id="origin-input" list="route-places" placeholder="De onde (escolha ou digite pra filtrar)">
+    <input type="text" id="dest-input" list="route-places" placeholder="Para onde (escolha ou digite pra filtrar)">
+    <datalist id="route-places"></datalist>
     <select id="route-mode">
       <option value="ALL">Comparar todos os modos</option>
       <option value="WALKING">A pé</option>
@@ -1103,7 +1144,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.2.0";
+const APP_VERSION = "2.3.0";
 
 /* ---------- ícones (SVG em vez de emoji: o emoji muda de cara em cada
    sistema e não acompanha a cor do texto) ---------- */
@@ -1321,19 +1362,19 @@ const TRIPS = [
         bestTime:"Compre na volta da noite, coma de manhã." },
 
       // ===================== FUJI =====================
-      { id:"chureito", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Chuurei-tou_Fujiyoshida_17025277650_c59733d6ba_o.jpg/1280px-Chuurei-tou_Fujiyoshida_17025277650_c59733d6ba_o.jpg", name:"Chureito Pagoda (Arakurayama Sengen Park)", city:"Fujiyoshida", district:"Shimoyoshida", lat:35.4986, lng:138.8003, mapQuery:"Chureito Pagoda Fujiyoshida", tags:["Vista do Fuji","Icônico","Grátis"], visitMin:90, tier:1, period:"manha",
+      { id:"chureito", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Chuurei-tou_Fujiyoshida_17025277650_c59733d6ba_o.jpg/1280px-Chuurei-tou_Fujiyoshida_17025277650_c59733d6ba_o.jpg", name:"Chureito Pagoda (Arakurayama Sengen Park)", city:"Fujiyoshida", district:"Shimoyoshida", lat:35.4986, lng:138.8003, mapQuery:"Chureito Pagoda Fujiyoshida", tags:["Vista do Fuji","Icônico","Grátis"], visitMin:90, tier: 3, period:"manha",
         blurb:"O cartão-postal clássico: pagode vermelho emoldurando o Monte Fuji.",
         detail:"Fica em Shimoyoshida, uma estação depois de Kawaguchiko. Do trem são 20-30 min de caminhada e depois uma escadaria de ~400 degraus até o mirante. ⚠️ Pode ter gelo nos degraus em dezembro.",
         bestTime:"Nascer do sol — menos gente e ar mais limpo. Alternativa: em dezembro há iluminação noturna das 16h às 21h50, também grátis, se a ida de manhã não rolar.", cost:"Grátis", booking:"Não precisa" },
-      { id:"honcho-street", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Fujiyoshida_montage.jpg/1280px-Fujiyoshida_montage.jpg", name:"Honcho Street (Fujiyoshida)", city:"Fujiyoshida", district:"Shimoyoshida", lat:35.4880, lng:138.8010, mapQuery:"Honcho Street Fujiyoshida", photoQuery:"Honcho street Fujiyoshida Mount Fuji", tags:["Vista do Fuji","Retrô","Grátis"], visitMin:45, tier:1, period:"tarde",
+      { id:"honcho-street", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Fujiyoshida_montage.jpg/1280px-Fujiyoshida_montage.jpg", name:"Honcho Street (Fujiyoshida)", city:"Fujiyoshida", district:"Shimoyoshida", lat:35.4880, lng:138.8010, mapQuery:"Honcho Street Fujiyoshida", photoQuery:"Honcho street Fujiyoshida Mount Fuji", tags:["Vista do Fuji","Retrô","Grátis"], visitMin:45, tier: 3, period:"tarde",
         blurb:"Rua retrô estilo Showa com o Fuji emoldurado bem no fim dela.",
         detail:"Fachadas antigas dos dois lados e a montanha fechando a perspectiva — uma das composições mais fotografadas da região. Fica perto da estação Shimoyoshida.",
         bestTime:"Fim de tarde, quando a luz fica melhor.", cost:"Grátis", booking:"Não precisa" },
-      { id:"fujisan-center", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/View_of_Mount_Fuji_from_%C5%8Cwakudani_20211202.jpg/1280px-View_of_Mount_Fuji_from_%C5%8Cwakudani_20211202.jpg", name:"Fujisan World Heritage Center", city:"Fujiyoshida", district:"Fujiyoshida", lat:35.4870, lng:138.7620, mapQuery:"Fujisan World Heritage Center Yamanashi", photoQuery:"Fujisan World Heritage Center", tags:["Museu","Grátis"], visitMin:60, tier:2, period:"tarde",
+      { id:"fujisan-center", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/View_of_Mount_Fuji_from_%C5%8Cwakudani_20211202.jpg/1280px-View_of_Mount_Fuji_from_%C5%8Cwakudani_20211202.jpg", name:"Fujisan World Heritage Center", city:"Fujiyoshida", district:"Fujiyoshida", lat:35.4870, lng:138.7620, mapQuery:"Fujisan World Heritage Center Yamanashi", photoQuery:"Fujisan World Heritage Center", tags:["Museu","Grátis"], visitMin:60, tier: 3, period:"tarde",
         blurb:"Centro sobre o Fuji como Patrimônio Mundial — e é de graça.",
         detail:"Exposições sobre a geologia, a história e o significado cultural e religioso da montanha. Bom complemento pra entender o que você vai ver.",
         bestTime:"Tarde. ⚠️ Em dezembro funciona em horário reduzido: 9h às 16h30.", cost:"Grátis", booking:"Não precisa · aberto todos os dias" },
-      { id:"kachikachi", name:"Mt. Fuji Panoramic Ropeway (Kachi Kachi Yama)", city:"Fujiyoshida", district:"Kawaguchiko", lat:35.5045, lng:138.7640, mapQuery:"Mt. Fuji Panoramic Ropeway Kawaguchiko", photoQuery:"Kachi Kachi Ropeway Kawaguchiko", tags:["Vista do Fuji","Mirante"], visitMin:60, tier:2, period:"tarde",
+      { id:"kachikachi", name:"Mt. Fuji Panoramic Ropeway (Kachi Kachi Yama)", city:"Fujiyoshida", district:"Kawaguchiko", lat:35.5045, lng:138.7640, mapQuery:"Mt. Fuji Panoramic Ropeway Kawaguchiko", photoQuery:"Kachi Kachi Ropeway Kawaguchiko", tags:["Vista do Fuji","Mirante"], visitMin:60, tier: 3, period:"tarde",
         blurb:"Bondinho até o Monte Tenjo, com lago e Fuji na mesma vista.",
         detail:"Sobe até um mirante onde dá pra ver o Lago Kawaguchiko em primeiro plano com o Fuji atrás. ⚠️ Só vale a pena em dia de céu limpo — com nuvem, não se vê a montanha.",
         bestTime:"Durante o dia, com céu limpo. No inverno funciona só até ~17h. Fica perto do lago, 15-20 min a pé da estação ou um pulo de ônibus.", cost:"¥1.000 ida e volta (adulto)", booking:"Não precisa" },
@@ -1548,7 +1589,7 @@ const TRIPS = [
         bestTime:"Tarde/noite.", cost:"A conferir" },
 
       // --- Fuji (detalhes do doc) ---
-      { id:"fuji-excursion", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Fujikyuko-Line_Series6000-6551_Mt.Fuji.jpg/1280px-Fujikyuko-Line_Series6000-6551_Mt.Fuji.jpg", name:"Trem Fuji Excursion", city:"Fujiyoshida", district:"—", lat:35.6896, lng:139.7006, mapQuery:"Shinjuku Station Tokyo", photoQuery:"Fuji Excursion limited express train", tags:["Transporte","Reserva obrigatória"], visitMin:120, tier:1, period:"manha",
+      { id:"fuji-excursion", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Fujikyuko-Line_Series6000-6551_Mt.Fuji.jpg/1280px-Fujikyuko-Line_Series6000-6551_Mt.Fuji.jpg", name:"Trem Fuji Excursion", city:"Fujiyoshida", district:"—", lat:35.6896, lng:139.7006, mapQuery:"Shinjuku Station Tokyo", photoQuery:"Fuji Excursion limited express train", tags:["Transporte","Reserva obrigatória"], visitMin:120, tier: 3, period:"manha",
         blurb:"⚠️ Reserva obrigatória — não existe vagão livre.",
         detail:"Trem expresso direto de Shinjuku até a região do Fuji. As reservas abrem 1 mês antes, às 10h JST.",
         bestTime:"Reservar exatamente 1 mês antes, 10h JST.", cost:"A conferir", booking:"Reserva OBRIGATÓRIA, abre 1 mês antes às 10h JST — não há vagão livre" },
@@ -2235,7 +2276,8 @@ async function setManualLocation(){
       });
     });
   } else {
-    const g = await geocodeNominatim(q);
+    const fromList = resolveRoutePoint(q);
+    const g = fromList || await geocodeNominatim(q);
     if (g) found = { ...g, label: q };
   }
   if (!found) { info.textContent = `Não encontrei "${q}". Tente com a cidade junto (ex: "Shinjuku, Tóquio").`; return; }
@@ -2288,6 +2330,73 @@ function renderUserLocationMarker(target = "mapa"){
   }
 }
 
+const STAY_COLOR = "#F2B01E";   // amarelo: hotel não se confunde com atração
+
+/* As reservas guardam nome e cidade, não coordenada. O Places resolve isso e o
+   resultado fica guardado — então é uma busca por hotel, uma vez só na vida. */
+async function resolveStayLocation(stay){
+  const cached = storageGet(`stayloc_${stay.id}`, null);
+  if (cached) return cached;
+  if (!usingGoogle || !stay.name) return null;
+  const query = [stay.name, stay.address || stay.city, "Japan"].filter(Boolean).join(", ");
+  return new Promise(resolve => {
+    let done = false;
+    const finish = v => { if (!done) { done = true; resolve(v); } };
+    setTimeout(() => finish(null), 6000);
+    gPlacesSvc.findPlaceFromQuery({ query, fields: ["geometry"] }, (res, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK && res && res[0] && res[0].geometry) {
+        const loc = { lat: res[0].geometry.location.lat(), lng: res[0].geometry.location.lng() };
+        storageSet(`stayloc_${stay.id}`, loc);
+        finish(loc);
+      } else finish(null);
+    });
+  });
+}
+
+/* Pino amarelo com o nome sempre visível — são poucos, e saber onde você dorme
+   é justamente o que dá sentido ao resto do mapa. */
+async function renderStayMarkers(){
+  const stays = getStays().filter(s => s.name);
+
+  if (usingGoogle) {
+    (gMapMapa._stayMarkers || []).forEach(m => m.setMap(null));
+    (gMapMapa._stayLabels || []).forEach(l => l.setMap(null));
+    gMapMapa._stayMarkers = [];
+    gMapMapa._stayLabels = [];
+  }
+
+  for (const s of stays) {
+    const loc = await resolveStayLocation(s);
+    if (!loc) continue;
+    const nights = [s.checkin, s.checkout].filter(Boolean).join(" → ");
+    const caption = nights ? `${s.name} (${nights})` : s.name;
+
+    if (usingGoogle) {
+      const marker = new google.maps.Marker({
+        position: loc, map: gMapMapa, title: caption, zIndex: 900,
+        icon: { url: redPinDataUri(STAY_COLOR),
+                scaledSize: new google.maps.Size(28, 40),
+                anchor: new google.maps.Point(14, 40) }
+      });
+      marker.addListener("click", () => openStayModal(s));
+      gMapMapa._stayMarkers.push(marker);
+
+      const label = new PlaceLabel(new google.maps.LatLng(loc.lat, loc.lng), caption,
+                                   "map-place-label map-stay-label");
+      label.minZoom = 0;            // hotel aparece em qualquer zoom
+      label.setMap(gMapMapa);
+      label.setVisible(true);
+      gMapMapa._stayLabels.push(label);
+    } else if (lMarkersMapa) {
+      L.marker([loc.lat, loc.lng], {
+        icon: L.icon({ iconUrl: redPinDataUri(STAY_COLOR), iconSize:[28,40], iconAnchor:[14,40] })
+      }).bindTooltip(caption, { permanent: true, direction: "right", className: "stay-tip" })
+        .addTo(lMarkersMapa);
+    }
+  }
+  renderRouteOptions();   // agora que os hotéis têm coordenada, entram na lista
+}
+
 function renderMapView(){
   const trip = currentTrip();
   const tiers = activeTiers();
@@ -2313,9 +2422,21 @@ function renderMapView(){
     if (visiblePlaces.length) lMapMapa.fitBounds(visiblePlaces.map(p => [p.lat, p.lng]), { padding:[30,30] });
   }
   renderUserLocationMarker();
+  renderRouteOptions();
+  renderStayMarkers();
 
   document.querySelectorAll(".tier-cb").forEach(cb => cb.onchange = renderMapView);
   document.getElementById("route-btn").onclick = handleRouteSearch;
+  const routeToggle = document.getElementById("route-toggle");
+  if (routeToggle && !routeToggle.dataset.wired) {
+    routeToggle.dataset.wired = "1";
+    routeToggle.onclick = () => {
+      const bar = document.querySelector(".map-toolbar");
+      const open = bar.classList.toggle("open");
+      routeToggle.setAttribute("aria-expanded", String(open));
+      routeToggle.textContent = open ? "Fechar rota" : "Traçar rota entre dois pontos";
+    };
+  }
   const setBtn = document.getElementById("set-location-btn");
   if (setBtn) {
     setBtn.onclick = setManualLocation;
@@ -2407,7 +2528,7 @@ async function openPlaceModal(place){
   document.getElementById("modal-desc").innerHTML = descParts.map(p => `<p style="margin:4px 0;">${p}</p>`).join("");
   document.getElementById("modal-pin-link").href = directionsUrl(place);
   document.getElementById("modal-pin-link").dataset.pinFor = place.id;
-  document.getElementById("modal-hide-btn").onclick = () => { hidePlace(place.id); closePlaceModal(); renderMapView(); renderTimeline(); };
+  document.getElementById("modal-hide-btn").onclick = () => { markVisited(place.id); closePlaceModal(); renderMapView(); renderTimeline(); };
 
   const carousel = document.getElementById("modal-carousel");
   const dots = document.getElementById("modal-dots");
@@ -2436,6 +2557,46 @@ function closePlaceModal(){ document.getElementById("place-modal").classList.rem
 document.getElementById("modal-close-btn").addEventListener("click", closePlaceModal);
 document.getElementById("place-modal").addEventListener("click", (e) => { if (e.target.id === "place-modal") closePlaceModal(); });
 
+/* Antes os campos eram texto livre e iam pro geocoder do Google — que nem está
+   ativado nesta chave. Por isso "quase nunca funcionava". Agora a origem e o
+   destino saem de uma lista das SUAS atrações e hotéis, e o que vai pra API são
+   as coordenadas exatas: não há mais o que o geocoder errar. */
+let routeTargets = new Map();   // rótulo -> {lat,lng}
+
+function routeLabelFor(p){ return `${p.name} · ${p.city}`; }
+
+function renderRouteOptions(){
+  const dl = document.getElementById("route-places");
+  if (!dl) return;
+  routeTargets = new Map();
+  const labels = [];
+  const add = (label, loc) => { if (!routeTargets.has(label)) { routeTargets.set(label, loc); labels.push(label); } };
+
+  if (userLocation) add("Minha localização", userLocation);
+  getStays().forEach(s => {
+    const loc = storageGet(`stayloc_${s.id}`, null);
+    if (loc && s.name) add(`${s.name} · hospedagem`, loc);
+  });
+  currentTrip().places.forEach(p => add(routeLabelFor(p), { lat: p.lat, lng: p.lng }));
+
+  dl.innerHTML = labels.map(l => `<option value="${esc(l)}"></option>`).join("");
+}
+
+/* Aceita o rótulo inteiro ("Kiyomizu-dera · Kyoto") e também só o nome, caso
+   você pare de digitar antes de escolher da lista. */
+function resolveRoutePoint(text){
+  if (!text) return null;
+  if (routeTargets.has(text)) return routeTargets.get(text);
+  const t = text.toLowerCase().trim();
+  const keys = [...routeTargets.keys()];
+  const exact = keys.find(k => k.toLowerCase() === t);
+  if (exact) return routeTargets.get(exact);
+  const byName = keys.find(k => k.toLowerCase().split(" · ")[0] === t);
+  if (byName) return routeTargets.get(byName);
+  const partial = keys.filter(k => k.toLowerCase().includes(t));
+  return partial.length === 1 ? routeTargets.get(partial[0]) : null;
+}
+
 async function handleRouteSearch(){
   const originText = document.getElementById("origin-input").value.trim();
   const destText = document.getElementById("dest-input").value.trim();
@@ -2444,13 +2605,17 @@ async function handleRouteSearch(){
   if (!originText || !destText) { info.textContent = "Preencha origem e destino."; return; }
   info.textContent = "Buscando…";
 
+  // coordenada exata quando o item veio da lista; texto solto só como último recurso
+  const originPoint = resolveRoutePoint(originText);
+  const destPoint = resolveRoutePoint(destText);
   const isMyLocation = originText === "Minha localização" && userLocation;
-  const originForGoogle = isMyLocation ? userLocation : originText;
+  const originForGoogle = isMyLocation ? userLocation : (originPoint || originText);
+  const destForGoogle = destPoint || destText;
 
   if (!usingGoogle) {
     try {
-      const o = isMyLocation ? userLocation : await geocodeNominatim(originText);
-      const d = await geocodeNominatim(destText);
+      const o = isMyLocation ? userLocation : (originPoint || await geocodeNominatim(originText));
+      const d = destPoint || await geocodeNominatim(destText);
       if (!o || !d) { info.textContent = "Não encontrei um dos endereços."; return; }
       lRouteMapa.clearLayers();
       const route = await osrmRoute([o, d]);
@@ -2475,7 +2640,7 @@ async function handleRouteSearch(){
   const wanted = chosen === "ALL" ? MODES : MODES.filter(m => m.id === chosen);
 
   const ask = (mode) => new Promise(resolve => {
-    gDirectionsSvc.route({ origin: originForGoogle, destination: destText, travelMode: google.maps.TravelMode[mode] },
+    gDirectionsSvc.route({ origin: originForGoogle, destination: destForGoogle, travelMode: google.maps.TravelMode[mode] },
       (res, status) => resolve(status === "OK" ? res : null));
   });
 
@@ -2809,6 +2974,23 @@ const LOCAL_ONLY_KEY = "local_only";
 
 function showLoginGate(show){
   document.getElementById("login-gate").classList.toggle("open", show);
+}
+
+/* Aviso curto e discreto: marcar visita precisa de confirmação visível,
+   mas não de um alert que obriga a tocar em "OK" com a mão ocupada. */
+let toastTimer = null;
+function toast(text){
+  let el = document.getElementById("toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "toast";
+    el.className = "toast";
+    document.body.appendChild(el);
+  }
+  el.textContent = text;
+  el.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("on"), 3200);
 }
 
 function loginMsg(text, kind){
@@ -3278,6 +3460,36 @@ function planUpsert(dateKey, item){
   plan[dateKey] = plan[dateKey] || [];
   plan[dateKey].push(item);
   savePlanAndSync(plan);
+}
+
+/* "Já fui" deixa de ser só "esconde do mapa": ele carimba a visita em Meus
+   dias com o dia e a hora do clique. Assim não é preciso digitar horário
+   nenhum — é o próprio ato de marcar que vira o registro.
+   Só registra se hoje for um dia da viagem; fora dela (planejando em setembro,
+   por exemplo) continua só marcando, senão entradas cairiam em datas que não
+   existem no roteiro. Devolve o horário gravado, ou null. */
+function logVisitNow(placeId){
+  const key = todayKeyLocal();
+  if (!TRIP_DATES.some(d => d.key === key)) return null;
+  const plan = getPlan();
+  const list = plan[key] || [];
+  if (list.some(i => i.placeId === placeId)) return null;   // já registrado hoje
+  const now = new Date();
+  const hhmm = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+  planUpsert(key, { id: newItemId(), placeId, title: "", start: hhmm, notes: "" });
+  return hhmm;
+}
+
+/* Um só caminho pros três botões "Já fui" (catálogo, modal e blocos). */
+function markVisited(placeId){
+  const at = logVisitNow(placeId);
+  hidePlace(placeId);
+  if (at) {
+    const p = placeById(placeId);
+    toast(`${p ? p.name : "Visita"} registrado em Meus dias às ${at}.`);
+    if (currentView === "schedule" && currentSubView === "dias") renderMyPlan();
+  }
+  return at;
 }
 
 function planAdd(dateKey, placeId){
@@ -3907,7 +4119,7 @@ function renderCatalog(){
 
   body.querySelectorAll("[data-cat-hide]").forEach(b => b.onclick = () => {
     const id = b.dataset.catHide;
-    isHidden(id) ? unhidePlace(id) : hidePlace(id);
+    isHidden(id) ? unhidePlace(id) : markVisited(id);
     renderCatalog(); renderMapView(); renderTimeline();
   });
   // Num carrossel, "clique" e "arrastar" chegam os dois como click. Só abre o
@@ -4041,7 +4253,7 @@ function renderTimeline(){
       });
       card.querySelector("[data-hide]").addEventListener("click", (e) => {
         e.stopPropagation();
-        hidePlace(id);
+        markVisited(id);
         renderTimeline();
         updateCronoMap();
       });
