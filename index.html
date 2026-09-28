@@ -540,6 +540,40 @@
   }
   /* a contagem de fotos sobe pro canto de cima: embaixo é onde fica o nome */
   .cat-hero .photo-count{ top: var(--s3); right: var(--s3); bottom:auto; }
+
+  /* carrossel da capa — arrasta de lado pra ver as outras fotos do lugar */
+  .cat-track{
+    position:absolute; inset:0; z-index:1;
+    display:flex; overflow-x:auto; overflow-y:hidden;
+    scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    scrollbar-width:none; -ms-overflow-style:none;
+  }
+  .cat-track::-webkit-scrollbar{ display:none; }
+  .cat-slide{ flex:0 0 100%; height:100%; scroll-snap-align:start; }
+  .cat-slide img, .cat-slide .placeholder{
+    width:100%; height:100%; object-fit:cover; display:block;
+  }
+  .cat-dots{
+    position:absolute; top: var(--s3); right: var(--s3); z-index:3;
+    display:flex; gap:5px; padding: 5px 7px; border-radius:999px;
+    background: rgba(18,16,14,.55);
+  }
+  .cat-dots span{
+    width:6px; height:6px; border-radius:50%;
+    background: rgba(247,243,236,.45); transition: background .16s ease;
+  }
+  .cat-dots span.on{ background: var(--ink); }
+
+  /* Texto longo sem espaço (um link colado numa nota, por exemplo) empurrava o
+     card pra fora da tela. Aqui ele quebra em vez de alargar o layout. */
+  .check-title, .check-notes, .check-progress-text,
+  .plan-item-name, .plan-item-meta, .plan-item-notes,
+  .cat-blurb, .cat-detail, .cat-fact span,
+  .stay-name, .stay-meta, .stay-notes, .stay-dates,
+  .card-title, .card-blurb, .card-detail, .card-desc,
+  .modal-title, .modal-desc, .gd-review-text, .gd-summary{
+    overflow-wrap: anywhere;
+  }
   .cat-hero .cat-cap{ position:absolute; left: var(--s4); right: var(--s4); bottom: var(--s3); z-index:3; }
   .cat-hero .cat-name{
     font-family: var(--serif); font-size: 25px; font-weight:400; line-height:1.1;
@@ -1069,7 +1103,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.1.0";
+const APP_VERSION = "2.2.0";
 
 /* ---------- ícones (SVG em vez de emoji: o emoji muda de cara em cada
    sistema e não acompanha a cor do texto) ---------- */
@@ -1095,6 +1129,11 @@ const ICONS = (() => {
    de ~432 KB. Se algum arquivo não tiver essa versão, o onerror da imagem
    volta pra URL original, então nada quebra. */
 const HERO_WIDTH = 500;
+
+/* Quantas fotos por lugar. Era 3. O Places devolve até 10 por busca; 8 dá
+   carrossel de verdade sem exagerar na cota — e só as que entram na tela
+   são baixadas, porque cada slide carrega com loading="lazy". */
+const MAX_PHOTOS = 8;
 function thumbUrl(url, width){
   if (!url || !url.includes("/thumb/")) return url;
   const clean = url.split("?")[0];             // tira utm_* que veio da API do Commons
@@ -2098,18 +2137,33 @@ function initGoogleMaps(){
     { featureType: "water", elementType: "geometry", stylers: [{ color: "#0B1622" }] },
     { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#4B6478" }] }
   ];
-  gMapMapa = new google.maps.Map(document.getElementById("map-mapa"), { center:{lat:35.6,lng:137.5}, zoom:6, styles: styleDark });
-  gMapCrono = new google.maps.Map(document.getElementById("map-crono"), { center:{lat:35.68,lng:139.76}, zoom:12, styles: styleDark });
-  const LABEL_ZOOM_THRESHOLD = 15;
+  const mapBaseOpts = {
+    styles: styleDark,
+    gestureHandling: "greedy",   // arrasta e dá zoom com um dedo só
+    mapTypeControl: false,       // menos controle na tela, mais mapa
+    streetViewControl: false,
+    fullscreenControl: false,
+    zoomControl: true,
+    zoomControlOptions: { position: google.maps.ControlPosition.RIGHT_BOTTOM },
+    clickableIcons: false        // evita abrir o card de POI do Google sem querer
+  };
+  gMapMapa = new google.maps.Map(document.getElementById("map-mapa"),
+    { center:{lat:35.6,lng:137.5}, zoom:6, ...mapBaseOpts });
+  gMapCrono = new google.maps.Map(document.getElementById("map-crono"),
+    { center:{lat:35.68,lng:139.76}, zoom:12, ...mapBaseOpts });
   gMapMapa.addListener("zoom_changed", () => {
-    const show = gMapMapa.getZoom() >= LABEL_ZOOM_THRESHOLD;
-    (gMapMapa._customLabels || []).forEach(l => l.setVisible(show));
+    (gMapMapa._customLabels || []).forEach(l => l.setVisible(gMapMapa.getZoom() >= l.minZoom));
   });
   gDirectionsSvc = new google.maps.DirectionsService();
   gDirectionsRendMapa = new google.maps.DirectionsRenderer({ map: gMapMapa, suppressMarkers: true });
   gDirectionsRendCrono = new google.maps.DirectionsRenderer({ map: gMapCrono, suppressMarkers: true });
   gPlacesSvc = new google.maps.places.PlacesService(gMapMapa);
 }
+
+/* A partir de que zoom o nome de cada atração aparece.
+   12 = dá pra ver a cidade inteira e já ler os essenciais.
+   14 = bairro; aí cabe o resto sem os nomes se sobreporem. */
+function labelMinZoom(tier){ return tier === 1 ? 12 : tier === 2 ? 14 : 14; }
 
 function tierColor(tier){ return tier === 1 ? "#E8492A" : tier === 2 ? "#2EC4B6" : "#8B96A8"; }
 function directionsUrl(place){
@@ -2302,6 +2356,12 @@ function definePlaceLabelClass(){
       const pos = proj.fromLatLngToDivPixel(this.position);
       this.div.style.left = pos.x + "px";
       this.div.style.top = pos.y + "px";
+      // o setVisible pode ter rodado antes do div existir (onAdd vem depois),
+      // então o zoom é reconferido aqui, a cada redesenho.
+      if (this.minZoom != null) {
+        const z = this.getMap() && this.getMap().getZoom();
+        if (z != null) this.div.style.display = z >= this.minZoom ? "block" : "";
+      }
     }
     onRemove(){
       if (this.div){ this.div.parentNode.removeChild(this.div); this.div = null; }
@@ -2323,8 +2383,9 @@ function renderGoogleMarkers(map, places){
   });
   map._customLabels = places.map(p => {
     const label = new PlaceLabel(new google.maps.LatLng(p.lat, p.lng), p.name);
+    label.minZoom = labelMinZoom(p.tier);
     label.setMap(map);
-    label.setVisible(map.getZoom() >= 15);
+    label.setVisible(map.getZoom() >= label.minZoom);
     return label;
   });
   if (places.length) {
@@ -2475,9 +2536,9 @@ async function getPhotos(place){
   const cachedPid = storageGet(`placeid_${place.id}`, null);
   if (cachedPid) placeIdCache[place.id] = cachedPid;
 
-  if (photoCache[place.id]) return [...override, ...photoCache[place.id]].slice(0, 3);
-  const cached = storageGet(`photos_${place.id}`, null);
-  if (cached) { photoCache[place.id] = cached; return [...override, ...cached].slice(0, 3); }
+  if (photoCache[place.id]) return [...override, ...photoCache[place.id]].slice(0, MAX_PHOTOS);
+  const cached = storageGet(`photos2_${place.id}`, null);
+  if (cached) { photoCache[place.id] = cached; return [...override, ...cached].slice(0, MAX_PHOTOS); }
 
   if (!usingGoogle) return override;
 
@@ -2499,10 +2560,10 @@ async function getPhotos(place){
           if (!place.photoQuery) cachePlaceId(place, results[0].place_id);
           refreshMapLinksFor(place); // agora que temos o place_id, atualiza os links "Ver no mapa" já renderizados
           if (results[0].photos) {
-            const urls = results[0].photos.slice(0, 3).map(p => p.getUrl({ maxWidth: 1200, maxHeight: 900 }));
+            const urls = results[0].photos.slice(0, MAX_PHOTOS).map(p => p.getUrl({ maxWidth: 1200, maxHeight: 900 }));
             photoCache[place.id] = urls;
-            storageSet(`photos_${place.id}`, urls);
-            finish([...override, ...urls].slice(0, 3));
+            storageSet(`photos2_${place.id}`, urls);
+            finish([...override, ...urls].slice(0, MAX_PHOTOS));
             return;
           }
         }
@@ -3817,7 +3878,10 @@ function renderCatalog(){
       return `
         <div class="cat-card ${visited ? "is-visited" : ""}">
           <div class="cat-hero" data-cat-photos="${p.id}">
-            <div class="hero-img" data-place="${p.id}"><div class="placeholder">${p.name.charAt(0)}</div></div>
+            <div class="cat-track" data-track="${p.id}">
+              <div class="cat-slide"><div class="placeholder">${p.name.charAt(0)}</div></div>
+            </div>
+            <div class="cat-dots" data-dots="${p.id}" style="display:none;"></div>
             <span class="cat-tier" style="background:${tierColor(p.tier)}">${tierLabel(p.tier)}</span>
             <div class="cat-cap">
               <span class="cat-name">${p.name}</span>
@@ -3846,7 +3910,16 @@ function renderCatalog(){
     isHidden(id) ? unhidePlace(id) : hidePlace(id);
     renderCatalog(); renderMapView(); renderTimeline();
   });
-  body.querySelectorAll("[data-cat-photos]").forEach(b => b.onclick = () => openPlaceModal(placeById(b.dataset.catPhotos)));
+  // Num carrossel, "clique" e "arrastar" chegam os dois como click. Só abre o
+  // modal se o dedo praticamente não andou — senão arrastar a foto abriria o modal.
+  body.querySelectorAll("[data-cat-photos]").forEach(el => {
+    let x0 = 0, y0 = 0;
+    el.addEventListener("pointerdown", e => { x0 = e.clientX; y0 = e.clientY; });
+    el.addEventListener("click", e => {
+      if (Math.abs(e.clientX - x0) > 10 || Math.abs(e.clientY - y0) > 10) return;
+      openPlaceModal(placeById(el.dataset.catPhotos));
+    });
+  });
   body.querySelectorAll("[data-cat-more]").forEach(b => b.onclick = (ev) => {
     ev.stopPropagation();
     const el = body.querySelector(`[data-cat-detail="${b.dataset.catMore}"]`);
@@ -4043,12 +4116,60 @@ function paintHero(place, photos){
   });
 }
 
+/* Preenche o carrossel da aba Atrações. Só a primeira foto é ansiosa; as
+   outras carregam quando você arrasta, então um card que você nem olhou não
+   custa banda nenhuma. */
+function paintCatalogPhotos(place, photos){
+  if (!photos || !photos.length) return;
+  document.querySelectorAll(`.cat-track[data-track="${place.id}"]`).forEach(track => {
+    if (track.dataset.shown === photos.join("|")) return;   // nada mudou
+    track.dataset.shown = photos.join("|");
+    const fallback = track.innerHTML;
+
+    track.innerHTML = photos.map((url, i) => `
+      <div class="cat-slide">
+        <img src="${url}" alt="${esc(place.name)}"${i ? ' loading="lazy"' : ""} decoding="async">
+      </div>`).join("");
+
+    // se a PRIMEIRA falhar, volta pro placeholder — sem foto é melhor que foto quebrada
+    const first = track.querySelector("img");
+    if (first) first.onerror = () => {
+      if (place.heroImageOverride && first.src !== place.heroImageOverride) {
+        first.src = place.heroImageOverride;   // tenta a original antes de desistir
+        return;
+      }
+      delete track.dataset.shown;
+      track.innerHTML = fallback;
+    };
+
+    const dots = document.querySelector(`.cat-dots[data-dots="${place.id}"]`);
+    if (dots) {
+      if (photos.length > 1) {
+        dots.style.display = "flex";
+        dots.innerHTML = photos.map((_, i) => `<span class="${i ? "" : "on"}"></span>`).join("");
+        track.onscroll = () => {
+          const i = Math.round(track.scrollLeft / track.clientWidth);
+          dots.querySelectorAll("span").forEach((s, n) => s.classList.toggle("on", n === i));
+        };
+      } else {
+        dots.style.display = "none";
+      }
+    }
+  });
+}
+
 async function loadHeroImage(place){
   // A capa do Commons é conhecida sem rede nenhuma: desenha JÁ, sem esperar o
   // Google. Se o Places responder depois com fotos extras, a capa é repintada
   // com o contador "+N fotos". Se não responder, nada se perde.
-  if (place.heroImageOverride) paintHero(place, [thumbUrl(place.heroImageOverride, HERO_WIDTH)]);
-  paintHero(place, await getPhotos(place));
+  if (place.heroImageOverride) {
+    const capa = [thumbUrl(place.heroImageOverride, HERO_WIDTH)];
+    paintHero(place, capa);
+    paintCatalogPhotos(place, capa);
+  }
+  const photos = await getPhotos(place);
+  paintHero(place, photos);
+  paintCatalogPhotos(place, photos);
 }
 
 function addNearbyOption(dayIndex, slotIndex, currentIds, slotTime){

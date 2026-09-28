@@ -4,6 +4,57 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.2.0 — 2026-09-28
+
+**Mapa utilizável com uma mão só.** Por padrão o Google usa `gestureHandling:
+"auto"`, que numa página que rola vira `"cooperative"`: arrastar com um dedo
+rolava a página e o mapa mostrava "use dois dedos para mover o mapa". Agora é
+`"greedy"` — um dedo arrasta e dá zoom.
+
+O trade-off é real e foi aceito de propósito: **dentro do mapa o dedo não rola
+mais a página**. Pra rolar, é preciso arrastar fora do mapa. É o certo pro caso
+de uso — de pé numa estação, com a outra mão ocupada.
+
+Junto disso, menos coisa disputando espaço na tela: sumiram os controles de tipo
+de mapa, Street View e tela cheia; o zoom foi pro canto inferior direito, onde o
+polegar alcança; e `clickableIcons: false` impede que um toque errado abra o card
+de restaurante do próprio Google por cima do seu.
+
+**Nomes das atrações aparecem de mais longe.** O limite era zoom 15 — quase
+nível de rua, ou seja, era preciso chegar muito perto pra saber o que era cada
+pino. Mas mostrar os 85 nomes de uma vez em Tóquio vira sopa de letras. Então
+virou escalonado: **essenciais (tier 1) a partir do zoom 12**, com a cidade
+inteira na tela; **o resto a partir do 14**, quando você já está num bairro.
+
+Detalhe de implementação que importa: o `setVisible` pode rodar antes do rótulo
+existir no DOM (o `onAdd` do overlay vem depois), então o zoom é reconferido no
+`draw()`, a cada redesenho. Sem isso alguns nomes ficavam presos escondidos.
+
+**Carrossel de fotos na aba Atrações.** A capa virou um trilho que arrasta de
+lado, com pontinhos indicando quantas fotos existem.
+
+- O teto por lugar subiu de **3 para 8 fotos**. A chave do cache mudou
+  (`photos_` → `photos2_`) justamente pra forçar uma releitura: o cache antigo
+  tinha guardado só 3 e nunca expiraria sozinho.
+- **Só a primeira foto é carregada de imediato**; as outras têm
+  `loading="lazy"`, então um card que você nem olhou não custa banda nenhuma —
+  o que importa com dado móvel no Japão.
+- **Arrastar não abre mais o modal.** Num carrossel, arrastar e tocar chegam os
+  dois como `click`; agora o modal só abre se o dedo andou menos de 10px. Sem
+  isso, tentar ver a segunda foto abriria a ficha do lugar.
+- Se a primeira foto falhar, tenta a original antes de desistir e volta pro
+  placeholder — nunca fica foto quebrada.
+
+**Texto longo não empurra mais o card pra fora da tela.** Um link colado numa
+nota do checklist não tem espaço pra quebrar e, com `white-space: pre-wrap`,
+alargava o cartão até a página inteira rolar de lado. `overflow-wrap: anywhere`
+nos campos de texto resolve. Medido de novo depois: **zero elementos estourando
+a 390px e a 360px**, no catálogo e no checklist.
+
+Nota: no modo Leaflet (usado só quando o Google não carrega) os nomes continuam
+em tooltip de hover, que não existe em telefone. Como o site publicado usa o
+Google, isso ficou de fora — mas é um buraco conhecido.
+
 ## 2.1.0 — 2026-09-27
 
 **A hospedagem não salvava porque o `id` ia nulo.** O erro real, que só apareceu
