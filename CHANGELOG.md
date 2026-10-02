@@ -4,6 +4,113 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.4.0 — 2026-10-02
+
+**As fotos pararam de quebrar porque pararam de vencer.** O sintoma era muito
+específico — a primeira foto de cada atração abria, a segunda em diante vinha
+como quadrado quebrado — e a causa estava exatamente aí: a primeira foto é a
+capa curada do Wikimedia, e a partir da segunda eram fotos do Google Places.
+
+A URL que o Places devolve é **assinada e tem prazo**. Nós guardávamos essa URL
+no localStorage **sem TTL nenhum** (`photos2_<id>`), e `getPhotos` lia o cache
+antes de qualquer outra coisa. Então a URL era buscada uma vez, guardada pra
+sempre, vencia alguns dias depois e nunca mais era renovada. A capa seguia de
+pé só porque ela é do Wikimedia e é recolocada na frente da lista a cada
+abertura. Comparar: as mesmas chaves guardavam detalhe do Google com
+`GD_TTL = 30 dias` — as fotos foram as únicas que ficaram sem prazo.
+
+**Todo slide agora se defende sozinho.** Esta é a outra metade do bug, e é o
+que estava de fato na tela: só o PRIMEIRO slide tinha `onerror`. Os de 2 a 8
+não tinham nenhum, então uma foto morta ficava ali como quadrado quebrado.
+Agora cada slide tenta a versão original antes de desistir e, se ela também
+falhar, **sai do carrossel**; as bolinhas são refeitas com o que sobrou, e o
+placeholder só volta se não restar foto nenhuma. Vale pros dois carrosséis: o
+da aba Atrações e o do modal.
+
+**A galeria virou uma lista fixa de URLs do Wikimedia, embutida no arquivo** —
+464 fotos em 85 lugares, até 7 por atração mais a capa. URL do Commons não
+vence, não pede chave, não gasta cota e sai de um CDN global.
+
+**De quebra, saíram 85 chamadas cobradas do Places por render do catálogo.**
+`renderCatalog` chamava `loadHeroImage` pra cada lugar, e cada uma disparava uma
+`findPlaceFromQuery` só pra pegar foto. O `place_id` — que deixa o link "Ver no
+mapa" mais preciso — continua sendo resolvido, mas só quando o modal do lugar
+abre, que é quando ele serve pra algo. Até lá o link usa o nome do lugar, que
+já funcionava.
+
+**`getPhotos` ficou síncrono.** Não há mais nada pra esperar, então o carrossel
+pinta no mesmo quadro em que o card aparece — sem o piscar que existia enquanto
+o Places respondia, e sem o risco de pintar num nó que ainda não entrou no DOM.
+
+**Limpeza das chaves vencidas.** As URLs do Places já guardadas no aparelho são
+apagadas uma vez (`photos_rev = 3`). Ninguém mais as lê, então é higiene:
+libera espaço no localStorage e garante que nenhuma volte a ser desenhada.
+
+### De onde vem cada foto, e por que isso importa
+
+Duas fontes, com confiança diferente:
+
+- **364 fotos vêm das imagens do artigo da Wikipedia** do lugar. Confiáveis:
+  alguém escolheu aquelas fotos pra ilustrar aquele lugar.
+- **100 vêm de busca por texto no Commons**, usada só pra quem tem artigo pobre
+  ou nenhum. Essa fonte sozinha **erra feio**: casar palavra em nome de arquivo
+  não sabe nada de geografia. Ela trouxe um *passeio de barco na lagoa da
+  Tijuca* pro barco de Osaka, um *Oxxo mexicano* pro konbini, uma *Muji de
+  Guangzhou*, *Walden Pond* (Massachusetts) pra Hakone, um *Van Gogh* e uma
+  *xilogravura do Tokaido* pro castelo de Odawara.
+
+Então foto de busca só entra com três cercas: o nome do arquivo tem que citar o
+próprio lugar (nome, cidade ou título do artigo); não pode cair num filtro de
+assunto (luta, recorte de jornal, foto de trem — foi assim que saíram cinco
+fotos do trem Cassiopeia da ficha de Omiya e uma luta da ficha de Yokohama); e
+não pode citar OUTRA cidade da viagem (foi assim que saíram as lojas Uniqlo de
+Osaka da ficha de Shinjuku). Em todas as fontes caem fora ícone, mapa, logo,
+gravura, pintura, maquete e foto de época.
+
+Oito lugares ficaram só com a capa, ou sem foto: `mandarake`,
+`nintendo-shibuya`, `gu-ginza`, `balada-osaka`, `barco-osaka`,
+`basquete-bleague`, `shibuya-sky`, `fushimi-sake`. São lojas, uma balada e
+atrações sem artigo — preferimos nenhuma foto a foto do lugar errado.
+
+**Sobre a verificação das URLs, com honestidade:** a intenção era conferir as
+464 uma por uma com requisição real. Não deu: o Wikimedia passa a responder
+**429** quando a gente insiste, e numa tentativa em paralelo ele reprovou 670 de
+707 URLs que, testadas depois uma a uma, respondem `200 image/jpeg`. Ou seja, o
+veredito era da nossa pressa, não das URLs. O que sustenta a qualidade então é:
+as URLs saem da própria API do Wikimedia (o arquivo existe, a largura é
+conhecida); só entram arquivos de 1000px ou mais, o que garante que o thumb de
+500px seja menor que o original — condição pro MediaWiki gerar thumb; uma
+amostra foi conferida de fato; e o `armSlides` cobre o resto em tempo de
+execução, removendo qualquer slide que não carregue. Nenhuma URL ruim vira
+quadrado quebrado na tela, que era a reclamação original.
+
+### Sobre guardar as fotos no Supabase (foi considerado e recusado)
+
+Caberia: a biblioteca inteira dá ~34 MB e o plano gratuito tem 1 GB de
+armazenamento e 5 GB de egress por mês. O que mata é outra linha: **projeto
+gratuito é pausado depois de 1 semana sem uso.** Pausado, o Storage para de
+responder junto com o banco — ou seja, as fotos sumiriam exatamente no cenário
+de "não abri o app essa semana", e o pior momento possível pra isso acontecer é
+no Japão. Hospedar no Supabase também gastaria egress a cada visualização, no
+mesmo orçamento que a sincronização usa, pra servir o que o Wikimedia já serve
+de graça, em CDN e sem prazo. Além disso, re-hospedar as fotos do Google Places
+seria contra os termos deles — as do Commons, não.
+
+O Supabase Storage faz sentido pra um caso que o Wikimedia não cobre: **as
+fotos que o Bruno tirar na viagem.** Aí o conteúdo é dele e não existe em outro
+lugar. A pausa por inatividade continua valendo como risco.
+
+### Achados que ficaram pra depois (nas capas, não na galeria nova)
+
+Das 74 capas antigas: 9 apontam pra `thumb.wikimedia.org` em vez do canônico
+`upload.wikimedia.org`, e 7 são link direto pro arquivo (sem `/thumb/`), então
+são servidas em tamanho original em vez de reduzidas. Não foram tocadas aqui de
+propósito: funcionam hoje, e consertar sem poder verificar — com o Wikimedia
+nos barrando — é o tipo de mudança às cegas que já deu errado duas vezes nesta
+sessão. Vale uma passada quando o limite liberar. Três delas também merecem
+troca por mérito: `USJLogo2024.png` é um logo, `CandiesVendingMachine1952.jpg`
+é de 1952, e `Onsen_in_Nachikatsuura` é de Wakayama, não de onde deveria.
+
 ## 2.3.0 — 2026-09-28
 
 **A rota agora sai de uma lista, não de texto livre — e por isso passa a

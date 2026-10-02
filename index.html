@@ -1144,7 +1144,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.3.0";
+const APP_VERSION = "2.4.0";
 
 /* ---------- ícones (SVG em vez de emoji: o emoji muda de cara em cada
    sistema e não acompanha a cor do texto) ---------- */
@@ -1181,6 +1181,685 @@ function thumbUrl(url, width){
   return clean.replace(/\/(\d+)px-/, "/" + width + "px-");
 }
 
+
+/* ==========================================================
+   GALERIA — as fotos de cada atração, como URL fixa do Wikimedia.
+
+   Antes o carrossel pegava as fotos do Google Places. O problema: a URL que o
+   Places devolve é ASSINADA e tem prazo de validade, e nós a guardávamos pra
+   sempre no localStorage (sem TTL nenhum). Depois de alguns dias, cada slide
+   2, 3, 4… virava quadrado de imagem quebrada — a capa continuava de pé só
+   porque ela é do Wikimedia e entra na frente a cada abertura.
+
+   URL do Commons não vence, não pede chave, não gasta cota e sai de um CDN
+   global. Guardamos a forma 1280px; o app reduz pra 500px em tempo de execução
+   e cai na 1280 se a reduzida faltar.
+
+   Como a lista foi montada, e o que confia em quê:
+   · 364 fotos vêm das IMAGENS DO ARTIGO da Wikipedia de cada lugar. Essas são
+     confiáveis: alguém escolheu aquelas fotos pra ilustrar aquele lugar, e a
+     ordem do artigo já é curadoria.
+   · 100 vêm de BUSCA POR TEXTO no Commons, usada só pra quem tem artigo pobre
+     ou nenhum. Essa fonte NÃO é confiável sozinha: ela trouxe um passeio de
+     barco na lagoa da Tijuca pro barco de Osaka, um Oxxo mexicano pro konbini,
+     Walden Pond pra Hakone e um Van Gogh. Então foto de busca só entra se o
+     nome do arquivo citar o próprio lugar (nome, cidade ou título do artigo),
+     se não cair num filtro de assunto (luta, jornal, foto de trem) e se não
+     citar OUTRA cidade da viagem.
+   · Em todas as fontes caem fora ícone, mapa, logo, gravura, pintura, maquete
+     e foto de época — um planejador de viagem quer o lugar como ele está hoje.
+   · As URLs saem da própria API do Wikimedia, então o arquivo existe e a
+     largura é conhecida; só entram arquivos com 1000px ou mais, que é o que
+     garante que o thumb de 500px seja menor que o original (condição pro
+     MediaWiki gerar thumb). Uma amostra foi conferida por requisição real;
+     conferir as 464 não foi possível porque o Wikimedia passa a responder 429
+     quando a gente insiste. Quem cobre o resto é o armSlides, abaixo: slide
+     que não carrega tenta a original e, falhando, se remove.
+
+   Pra trocar uma foto feia: mexa aqui, é só texto.
+   ========================================================== */
+const GALLERY = {
+  "akihabara": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Japanese_shmup_arcade.jpg/1280px-Japanese_shmup_arcade.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Electric_City_Akihabara_Pachinko.jpg/1280px-Electric_City_Akihabara_Pachinko.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Akihabara_Night.jpg/1280px-Akihabara_Night.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Akihabara_-05.jpg/1280px-Akihabara_-05.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Akihabara_UDX_building_2F_entrance_%282010-02-28_17.54.16%29.jpg/1280px-Akihabara_UDX_building_2F_entrance_%282010-02-28_17.54.16%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Akihabara_UDX_Building_2F_Entrance_in_early_morning_-_2013-07-07_%28by_eliminium%29.jpg/1280px-Akihabara_UDX_Building_2F_Entrance_in_early_morning_-_2013-07-07_%28by_eliminium%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Pedestrian_deck_of_Akihabara_UDX_building_-_2013-07-07_%28by_elminium%29.jpg/1280px-Pedestrian_deck_of_Akihabara_UDX_building_-_2013-07-07_%28by_elminium%29.jpg"
+  ],
+  "radiokaikan": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/AKIHABARA_New_Radio_Kaikan.jpg/1280px-AKIHABARA_New_Radio_Kaikan.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Akihabara_Radio_Kaikan_%282022-10-18_12.49.52_by_John_Seb_Barber%29ed.jpg/1280px-Akihabara_Radio_Kaikan_%282022-10-18_12.49.52_by_John_Seb_Barber%29ed.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Akihabara_Radio_Kaikan_1st_-01.jpg/1280px-Akihabara_Radio_Kaikan_1st_-01.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Akihabara_Radio_Kaikan%2C_Sotokanda_1_in_2023_%282023-01-21_11.05.26_by_nakashi%29.jpg/1280px-Akihabara_Radio_Kaikan%2C_Sotokanda_1_in_2023_%282023-01-21_11.05.26_by_nakashi%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Akihabara_Radio_Kaikan_Shopping_Building_%2853416976349%29.jpg/1280px-Akihabara_Radio_Kaikan_Shopping_Building_%2853416976349%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Radio_kaikan.jpg/1280px-Radio_kaikan.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/AKIHABARA_RADIO_KAIKAN.jpg/1280px-AKIHABARA_RADIO_KAIKAN.jpg"
+  ],
+  "kandamyojin": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/The_entrance_to_Kanda-Myojin_shrine%2C_Tokyo%3B_February_2015.jpg/1280px-The_entrance_to_Kanda-Myojin_shrine%2C_Tokyo%3B_February_2015.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Kanda_Matsuri_2009-1_in_Akihabara.jpg/1280px-Kanda_Matsuri_2009-1_in_Akihabara.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/KandaMyojinRooflines8768.jpg/1280px-KandaMyojinRooflines8768.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/KandaMyojinLanterns8758.jpg/1280px-KandaMyojinLanterns8758.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/KandaMyojinZenigataHeiji8801.jpg/1280px-KandaMyojinZenigataHeiji8801.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/KandaMyojinGate8837.jpg/1280px-KandaMyojinGate8837.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Kanda-Myojin_torii.JPG/1280px-Kanda-Myojin_torii.JPG"
+  ],
+  "ikebukuro": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Mikuni_Alley_2026_1.png/1280px-Mikuni_Alley_2026_1.png",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Ikebukuro-Sunshine60-2016-Luka-Peternel.jpg/1280px-Ikebukuro-Sunshine60-2016-Luka-Peternel.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Sunshine_60_Observatory_%40_Sunshine_Building_%40_Ikebukuro_%2811547419543%29.jpg/1280px-Sunshine_60_Observatory_%40_Sunshine_Building_%40_Ikebukuro_%2811547419543%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Ikebukuro_4.jpg/1280px-Ikebukuro_4.jpg"
+  ],
+  "nakano": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/%E4%B8%AD%E9%87%8E%E3%83%96%E3%83%AD%E3%83%BC%E3%83%89%E3%82%A6%E3%82%A7%E3%82%A4_%E5%A4%89%E3%82%84_2014_%2811866337495%29.jpg/1280px-%E4%B8%AD%E9%87%8E%E3%83%96%E3%83%AD%E3%83%BC%E3%83%89%E3%82%A6%E3%82%A7%E3%82%A4_%E5%A4%89%E3%82%84_2014_%2811866337495%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/%E4%B8%AD%E9%87%8ETRF_2015_%2822530124169%29.jpg/1280px-%E4%B8%AD%E9%87%8ETRF_2015_%2822530124169%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/%E4%B8%AD%E9%87%8E%E7%99%BE%E8%80%81%E5%8C%AF%E4%BF%AF%E7%9E%B0.jpg/1280px-%E4%B8%AD%E9%87%8E%E7%99%BE%E8%80%81%E5%8C%AF%E4%BF%AF%E7%9E%B0.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Nakano_Broadway_-_%E4%B8%AD%E9%87%8E%E3%83%96%E3%83%AD%E3%83%BC%E3%83%89%E3%82%A6%E3%82%A7%E3%82%A4_-_panoramio.jpg/1280px-Nakano_Broadway_-_%E4%B8%AD%E9%87%8E%E3%83%96%E3%83%AD%E3%83%BC%E3%83%89%E3%82%A6%E3%82%A7%E3%82%A4_-_panoramio.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Nakano_Broadway_2021130_%E2%91%A4.jpg/1280px-Nakano_Broadway_2021130_%E2%91%A4.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Nakano_Broadway_2021130_%E2%91%A3.jpg/1280px-Nakano_Broadway_2021130_%E2%91%A3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Nakano_Broadway_2021130_%E2%91%A6.jpg/1280px-Nakano_Broadway_2021130_%E2%91%A6.jpg"
+  ],
+  "shinjuku-noite": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/%E6%96%B0%E5%AE%BF%E5%8C%BA%E4%B8%8B%E8%90%BD%E5%90%88_%E6%96%B0%E7%9B%AE%E7%99%BD%E9%80%9A%E3%82%8A_20250928.jpg/1280px-%E6%96%B0%E5%AE%BF%E5%8C%BA%E4%B8%8B%E8%90%BD%E5%90%88_%E6%96%B0%E7%9B%AE%E7%99%BD%E9%80%9A%E3%82%8A_20250928.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Skyscrapers_of_Shinjuku_2009_January.jpg/1280px-Skyscrapers_of_Shinjuku_2009_January.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Tokyo_Metropolitan_Government_Building_2012.JPG/1280px-Tokyo_Metropolitan_Government_Building_2012.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Shinjuku_large-guard_2023.jpg/1280px-Shinjuku_large-guard_2023.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Shinjuku_shopping_street1.jpg/1280px-Shinjuku_shopping_street1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Shinjuku_shopping_street.jpg/1280px-Shinjuku_shopping_street.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Tokyo_Metropolitan_Government_Building_Oka1.JPG/1280px-Tokyo_Metropolitan_Government_Building_Oka1.JPG"
+  ],
+  "shinjuku-cafes": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/Shinjuku_%289278703935%29.jpg/1280px-Shinjuku_%289278703935%29.jpg"
+  ],
+  "karaoke-chakura": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Asemakatu_31-33_Oulu_20101024.JPG/1280px-Asemakatu_31-33_Oulu_20101024.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Sing_and_record_machine_in_Haiikou_-_01.jpg/1280px-Sing_and_record_machine_in_Haiikou_-_01.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Karaoke-Harbin6303733.jpg/1280px-Karaoke-Harbin6303733.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Karaoke-Big_echo-P5262150.jpg/1280px-Karaoke-Big_echo-P5262150.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Karaoke-kan_Shinjuku.jpg/1280px-Karaoke-kan_Shinjuku.jpg"
+  ],
+  "uniqlo-shinjuku": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/West_Zone_of_Taikoo_Li_Sanlitun_Beijing_%28cropped%29.jpg/1280px-West_Zone_of_Taikoo_Li_Sanlitun_Beijing_%28cropped%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Uniqlo_Ginza_2018.jpg/1280px-Uniqlo_Ginza_2018.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Uniqlo_Chicago.jpg/1280px-Uniqlo_Chicago.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Uniqlo_store_Shinjuku_2020-10-15.jpg/1280px-Uniqlo_store_Shinjuku_2020-10-15.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Uniqlo_Okacimachi_Store_2016_%2832589623690%29.jpg/1280px-Uniqlo_Okacimachi_Store_2016_%2832589623690%29.jpg"
+  ],
+  "kabukicho": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/%E6%96%B0%E5%AE%BF%E5%8C%BA%E6%AD%8C%E8%88%9E%E4%BC%8E%E7%94%BA_20250824.jpg/1280px-%E6%96%B0%E5%AE%BF%E5%8C%BA%E6%AD%8C%E8%88%9E%E4%BC%8E%E7%94%BA_20250824.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/%E6%96%B0%E5%AE%BF_%E6%AD%8C%E8%88%9E%E4%BC%8E%E7%94%BA_Shinjuku_Tokyo%2C_Japan_Sigma_35mm_Canon_6D_%2833795009235%29.jpg/1280px-%E6%96%B0%E5%AE%BF_%E6%AD%8C%E8%88%9E%E4%BC%8E%E7%94%BA_Shinjuku_Tokyo%2C_Japan_Sigma_35mm_Canon_6D_%2833795009235%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Tokyo_Shinjuku_Milano_za.jpg/1280px-Tokyo_Shinjuku_Milano_za.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Tokyo_Route_302_-06.jpg/1280px-Tokyo_Route_302_-06.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Sakura_Dori_street_Kabukicho-Sinjyuku-Tokyo.jpg/1280px-Sakura_Dori_street_Kabukicho-Sinjyuku-Tokyo.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Shinjuku_Toho1.jpg/1280px-Shinjuku_Toho1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Kabukicho_cropped_GSI_CKT20092-C62-15_20090427.jpg/1280px-Kabukicho_cropped_GSI_CKT20092-C62-15_20090427.jpg"
+  ],
+  "takeshita": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Marion_Cr%C3%AApes_in_Harajuku_Takeshita_2.jpg/1280px-Marion_Cr%C3%AApes_in_Harajuku_Takeshita_2.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Marion_Cr%C3%AApes_in_Harajuku_Takeshita.jpg/1280px-Marion_Cr%C3%AApes_in_Harajuku_Takeshita.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Takeshita_street%2C_Tokyo%2C_20240822_1032_5383.jpg/1280px-Takeshita_street%2C_Tokyo%2C_20240822_1032_5383.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Cr%C3%AApes_-_Takeshita_street_-_Tokyo_-_DSC07885.JPG/1280px-Cr%C3%AApes_-_Takeshita_street_-_Tokyo_-_DSC07885.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Takeshita_Street_in_December_2018.jpg/1280px-Takeshita_Street_in_December_2018.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Harajuku_Takeshita_Street_snow_2016-01-18.jpg/1280px-Harajuku_Takeshita_Street_snow_2016-01-18.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Takeshita_Street.jpg/1280px-Takeshita_Street.jpg"
+  ],
+  "harajuku-cafes": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Yoyogi_dancers.JPG/1280px-Yoyogi_dancers.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Takeshita_Street_in_December_2018.jpg/1280px-Takeshita_Street_in_December_2018.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Watermill_at_Onden.jpg/1280px-Watermill_at_Onden.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Omote-sando03s3200.jpg/1280px-Omote-sando03s3200.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Kawaii_monstar_cafe.jpg/1280px-Kawaii_monstar_cafe.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Cat_Street%2C_Ura_Harajuku_2.jpg/1280px-Cat_Street%2C_Ura_Harajuku_2.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Classicloli.JPG/1280px-Classicloli.JPG"
+  ],
+  "shibuya-noite": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Shibuya_Crossing_in_July_2026.jpg/1280px-Shibuya_Crossing_in_July_2026.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Shibuya_2010_%284786647052%29.jpg/1280px-Shibuya_2010_%284786647052%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Omotesando_Avenue_at_sunset_from_pedestrian_bridge%2C_Jingumae%2C_Shibuya%2C_Tokyo.jpg/1280px-Omotesando_Avenue_at_sunset_from_pedestrian_bridge%2C_Jingumae%2C_Shibuya%2C_Tokyo.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Shibuya_%284786015857%29.jpg/1280px-Shibuya_%284786015857%29.jpg"
+  ],
+  "skytree": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Worm%27s-eye_view_of_Tokyo_Skytree_with_vertical_symmetry_impression%2C_a_sunny_day%2C_in_Japan.jpg/1280px-Worm%27s-eye_view_of_Tokyo_Skytree_with_vertical_symmetry_impression%2C_a_sunny_day%2C_in_Japan.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Tokyo_Skytree_at_night_%28Miyabi%29.jpg/1280px-Tokyo_Skytree_at_night_%28Miyabi%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Tokyo_Skytree_at_night_%28Iki%29.jpg/1280px-Tokyo_Skytree_at_night_%28Iki%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Tokyo_%2C_%E6%9D%B1%E4%BA%AC_-_Flickr_-_Melvin_Loi_%281%29.jpg/1280px-Tokyo_%2C_%E6%9D%B1%E4%BA%AC_-_Flickr_-_Melvin_Loi_%281%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Tokyo_Skytree_%281%29.JPG/1280px-Tokyo_Skytree_%281%29.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Tokyo_Sky_Tree_under_construction_%284121825262%29.jpg/1280px-Tokyo_Sky_Tree_under_construction_%284121825262%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/2012%E5%B9%B4%E9%9A%85%E7%94%B0%E5%B7%9D%E8%8A%B1%E7%81%AB%E5%A4%A7%E4%BC%9A.jpg/1280px-2012%E5%B9%B4%E9%9A%85%E7%94%B0%E5%B7%9D%E8%8A%B1%E7%81%AB%E5%A4%A7%E4%BC%9A.jpg"
+  ],
+  "ginza": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/%E4%B8%AD%E5%A4%AE%E5%8C%BA%E7%AB%8B%E9%8A%80%E5%BA%A7%E4%B8%AD%E5%AD%A6%E6%A0%A1.jpg/1280px-%E4%B8%AD%E5%A4%AE%E5%8C%BA%E7%AB%8B%E9%8A%80%E5%BA%A7%E4%B8%AD%E5%AD%A6%E6%A0%A1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Walk_from_Toranomon_to_Ginza_%2845971%29.jpg/1280px-Walk_from_Toranomon_to_Ginza_%2845971%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Kabuki-za_Theatre_2013_1125.jpg/1280px-Kabuki-za_Theatre_2013_1125.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Taimei_Elementary_School_in_Ginza.JPG/1280px-Taimei_Elementary_School_in_Ginza.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Tokyu_Plaza_Ginza1b.JPG/1280px-Tokyu_Plaza_Ginza1b.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/SuzuranStreetGinza.jpg/1280px-SuzuranStreetGinza.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Ginza_in_the_rain.jpg/1280px-Ginza_in_the_rain.jpg"
+  ],
+  "cdg-ginza": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/CdG.JPG/1280px-CdG.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Comme_des_Garcons_men_for_H%26M_09.jpg/1280px-Comme_des_Garcons_men_for_H%26M_09.jpg"
+  ],
+  "odaiba": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Tokio20040612_2.jpg/1280px-Tokio20040612_2.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/62/%D0%9E%D0%B4%D0%B0%D0%B9%D0%B1%D0%B0-%D0%B3%D0%B0%D0%BA%D1%83%D1%8D%D0%BD.jpg/1280px-%D0%9E%D0%B4%D0%B0%D0%B9%D0%B1%D0%B0-%D0%B3%D0%B0%D0%BA%D1%83%D1%8D%D0%BD.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Zepp_DiverCity.JPG/1280px-Zepp_DiverCity.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Yurikamome_Series7300-7451F_Rainbow-Bridge.jpg/1280px-Yurikamome_Series7300-7451F_Rainbow-Bridge.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Odaiba_view_close_up_2025_Jan_14_01-07PM.jpeg/1280px-Odaiba_view_close_up_2025_Jan_14_01-07PM.jpeg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Shinagawa_Baidai_cannon.jpg/1280px-Shinagawa_Baidai_cannon.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Rainbow_Bridge_%28Tokyo%29_at_night_2.JPG/1280px-Rainbow_Bridge_%28Tokyo%29_at_night_2.JPG"
+  ],
+  "saitama": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Omiya_ward_office_and_library.jpg/1280px-Omiya_ward_office_and_library.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Omiya-STA_West.jpg/1280px-Omiya-STA_West.jpg"
+  ],
+  "yokohama": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Minato_mirai_21_sakura-0332.jpg/1280px-Minato_mirai_21_sakura-0332.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Cosmo_Clock_21_at_night.jpg/1280px-Cosmo_Clock_21_at_night.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Yokohama_townscape.jpg/1280px-Yokohama_townscape.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Yokohama_townscape_15.jpg/1280px-Yokohama_townscape_15.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Walk_in_Yokohama_5.jpg/1280px-Walk_in_Yokohama_5.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Yokohama_street_scenes_3.jpg/1280px-Yokohama_street_scenes_3.jpg"
+  ],
+  "palacio-tokyo": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/T%C5%8Dkagakud%C5%8D_2012.JPG/1280px-T%C5%8Dkagakud%C5%8D_2012.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/%E7%9A%87%E5%B1%85_%E4%B8%8B%E9%81%93%E7%81%8C%E6%BF%A0.JPG/1280px-%E7%9A%87%E5%B1%85_%E4%B8%8B%E9%81%93%E7%81%8C%E6%BF%A0.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/%E7%9A%87%E5%B1%85%E3%83%BB%E6%A1%94%E6%A2%97%E9%96%80.jpg/1280px-%E7%9A%87%E5%B1%85%E3%83%BB%E6%A1%94%E6%A2%97%E9%96%80.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/%E6%9D%B1%E4%BA%AC%E9%83%BD_%E5%BE%A1%E5%B9%B8%E9%80%9A%E3%82%8A_%E9%A8%8E%E9%A6%AC%E9%9A%8A.jpg/1280px-%E6%9D%B1%E4%BA%AC%E9%83%BD_%E5%BE%A1%E5%B9%B8%E9%80%9A%E3%82%8A_%E9%A8%8E%E9%A6%AC%E9%9A%8A.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/%E6%A1%9C%E7%94%B0%E5%B7%BD%E6%AB%93.jpg/1280px-%E6%A1%9C%E7%94%B0%E5%B7%BD%E6%AB%93.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Tokyo_Imperial_Palace_pic_08.jpg/1280px-Tokyo_Imperial_Palace_pic_08.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Suwano-chaya_Tea_House_photo_Don_Ramey_Logan.jpg/1280px-Suwano-chaya_Tea_House_photo_Don_Ramey_Logan.jpg"
+  ],
+  "todai": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Yasuda_Auditorium%2C_Tokyo_University_-_Nov_2005.JPG/1280px-Yasuda_Auditorium%2C_Tokyo_University_-_Nov_2005.JPG"
+  ],
+  "ramen-estacao": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Wakayamaramen222.jpg/1280px-Wakayamaramen222.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Soupless_Dandan_noodles_Hiroshima_Type_%E5%BA%83%E5%B3%B6%E5%BC%8F_%E6%B1%81%E3%81%AA%E3%81%97_%E6%8B%85%E6%8B%85%E9%BA%BA.jpg/1280px-Soupless_Dandan_noodles_Hiroshima_Type_%E5%BA%83%E5%B3%B6%E5%BC%8F_%E6%B1%81%E3%81%AA%E3%81%97_%E6%8B%85%E6%8B%85%E9%BA%BA.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Tokyoramen.jpg/1280px-Tokyoramen.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Shinyokohama_ramen_museum.jpg/1280px-Shinyokohama_ramen_museum.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/The_Japanese-style_Chinese_noodle_RAMEN_of_the_restaurant_RAIRAIKEN_at_Yutenji_Tokyo.jpg/1280px-The_Japanese-style_Chinese_noodle_RAMEN_of_the_restaurant_RAIRAIKEN_at_Yutenji_Tokyo.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Shinjuku_%286969833313%29.jpg/1280px-Shinjuku_%286969833313%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Shio_ramen_from_Ryukyu_Ramen_Tondou%2C_Shin-Yokohama.jpg/1280px-Shio_ramen_from_Ryukyu_Ramen_Tondou%2C_Shin-Yokohama.jpg"
+  ],
+  "restaurantes-escondidos": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Uoshin_Nogizaka_03_%2815579480298%29.jpg/1280px-Uoshin_Nogizaka_03_%2815579480298%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Typical_yakitori_001.jpg/1280px-Typical_yakitori_001.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Robatayaki.jpg/1280px-Robatayaki.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Karaage_frittiertes_H%C3%BChnchen.jpg/1280px-Karaage_frittiertes_H%C3%BChnchen.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Flessen_drank.jpg/1280px-Flessen_drank.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Cyochin2.jpg/1280px-Cyochin2.jpg"
+  ],
+  "sukiya": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/%E3%81%99%E3%81%8D%E5%AE%B6_%E7%89%9B%E4%B8%BC_20230908_213505.jpg/1280px-%E3%81%99%E3%81%8D%E5%AE%B6_%E7%89%9B%E4%B8%BC_20230908_213505.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/%E3%81%99%E3%81%8D%E5%AE%B6_20231116_191520.jpg/1280px-%E3%81%99%E3%81%8D%E5%AE%B6_20231116_191520.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/%E3%81%99%E3%81%8D%E5%AE%B6%E3%81%AE%E7%89%9B%E4%B8%BC_%2849303755326%29.jpg/1280px-%E3%81%99%E3%81%8D%E5%AE%B6%E3%81%AE%E7%89%9B%E4%B8%BC_%2849303755326%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Negitama_gyudon%2C_at_Sukiya_%282013.06.09%29.jpg/1280px-Negitama_gyudon%2C_at_Sukiya_%282013.06.09%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Nagoya_20210215-30.jpg/1280px-Nagoya_20210215-30.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/YOSHINOYA_BEEF_BOWL%2831%29.jpg/1280px-YOSHINOYA_BEEF_BOWL%2831%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Sukiya_edible_chili_sauce_and_bamboo_shoots_gyudon.jpg/1280px-Sukiya_edible_chili_sauce_and_bamboo_shoots_gyudon.jpg"
+  ],
+  "konbini": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/R-kioski_by_Vaasankatu_in_Harju%2C_Helsinki%2C_Finland%2C_2021.jpg/1280px-R-kioski_by_Vaasankatu_in_Harju%2C_Helsinki%2C_Finland%2C_2021.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Pyaterochka_new_concept_2019_Moscow_int1.jpg/1280px-Pyaterochka_new_concept_2019_Moscow_int1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Sp%C3%A4tkauf_in_Berlin-Kreuzberg.jpg/1280px-Sp%C3%A4tkauf_in_Berlin-Kreuzberg.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Sheetz_Altoona_PA.JPG/1280px-Sheetz_Altoona_PA.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/OxxoObreraDF.JPG/1280px-OxxoObreraDF.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Nicponia_village_shop.jpg/1280px-Nicponia_village_shop.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Musmanni_panaderia_en_Liberia_Guanacaste.jpg/1280px-Musmanni_panaderia_en_Liberia_Guanacaste.jpg"
+  ],
+  "chureito": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Fuji%2C_assorted_-_FujiAssorted6854.jpg/1280px-Fuji%2C_assorted_-_FujiAssorted6854.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Fujiyoshida_-_Fujiyoshida6761.jpg/1280px-Fujiyoshida_-_Fujiyoshida6761.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Chureito_Pagoda.jpg/1280px-Chureito_Pagoda.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/View_towards_Mount_Fuji_from_Arakurayama_Sengen_Park_in_Fujiyoshida%2C_Yamanashi%2C_Japan%2C_2024_May_-_2.jpg/1280px-View_towards_Mount_Fuji_from_Arakurayama_Sengen_Park_in_Fujiyoshida%2C_Yamanashi%2C_Japan%2C_2024_May_-_2.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Chureito_Pagoda_and_Mount_Fuji_20241022.jpg/1280px-Chureito_Pagoda_and_Mount_Fuji_20241022.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Chureito_Pagoda_and_Mount_Fuji_2023-03-07.jpg/1280px-Chureito_Pagoda_and_Mount_Fuji_2023-03-07.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Arakurayama_Sengen_Park_09.jpg/1280px-Arakurayama_Sengen_Park_09.jpg"
+  ],
+  "honcho-street": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Fujiyoshida_City_hall.jpg/1280px-Fujiyoshida_City_hall.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Fuji%2C_assorted_-_FujiAssorted6859.jpg/1280px-Fuji%2C_assorted_-_FujiAssorted6859.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Fujiyoshida_-_Fujiyoshida6772.jpg/1280px-Fujiyoshida_-_Fujiyoshida6772.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/12-Chureito-pagoda-and-Mount-Fuji-Japan_%2829677439878%29.jpg/1280px-12-Chureito-pagoda-and-Mount-Fuji-Japan_%2829677439878%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Honcho_Street_with_Mount_Fuji_in_the_daytime%2C_Fujiyoshida%2C_2016.jpg/1280px-Honcho_Street_with_Mount_Fuji_in_the_daytime%2C_Fujiyoshida%2C_2016.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Honcho_Street_with_Mount_Fuji_in_the_evening%2C_Fujiyoshida%2C_2016.jpg/1280px-Honcho_Street_with_Mount_Fuji_in_the_evening%2C_Fujiyoshida%2C_2016.jpg"
+  ],
+  "fujisan-center": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Torii_near_the_summit_of_mount_Fuji_2015.jpg/1280px-Torii_near_the_summit_of_mount_Fuji_2015.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/%E3%80%8C%E5%AF%8C%E5%B6%BD%E4%B8%89%E5%8D%81%E5%85%AD%E6%99%AF_%E5%87%B1%E9%A2%A8%E5%BF%AB%E6%99%B4%E3%80%8D-South_Wind%2C_Clear_Sky_%28Gaif%C5%AB_kaisei%29%2C_also_known_as_Red_Fuji%2C_from_the_series_Thirty-six_Views_of_Mount_Fuji_%28Fugaku_sanj%C5%ABrokkei%29_MET_DP141062.jpg/1280px-%E3%80%8C%E5%AF%8C%E5%B6%BD%E4%B8%89%E5%8D%81%E5%85%AD%E6%99%AF_%E5%87%B1%E9%A2%A8%E5%BF%AB%E6%99%B4%E3%80%8D-South_Wind%2C_Clear_Sky_%28Gaif%C5%AB_kaisei%29%2C_also_known_as_Red_Fuji%2C_from_the_series_Thirty-six_Views_of_Mount_Fuji_%28Fugaku_sanj%C5%ABrokkei%29_MET_DP141062.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Outer_shrine_of_Fujisan_Hongu_SengenTaisha_%28%E5%AF%8C%E5%A3%AB%E5%B1%B1%E6%9C%AC%E5%AE%AE%E6%B5%85%E9%96%93%E5%A4%A7%E7%A4%BE%29_-_panoramio.jpg/1280px-Outer_shrine_of_Fujisan_Hongu_SengenTaisha_%28%E5%AF%8C%E5%A3%AB%E5%B1%B1%E6%9C%AC%E5%AE%AE%E6%B5%85%E9%96%93%E5%A4%A7%E7%A4%BE%29_-_panoramio.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Mt_Fuji_NASA_ISS002-E-6971_large.jpg/1280px-Mt_Fuji_NASA_ISS002-E-6971_large.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Mt_Fuji_Summit.jpg/1280px-Mt_Fuji_Summit.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Mt.Fuji_Shizuoka_Airport.jpg/1280px-Mt.Fuji_Shizuoka_Airport.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/Mount_Ashiwada_and_Mount_Fuji.jpg/1280px-Mount_Ashiwada_and_Mount_Fuji.jpg"
+  ],
+  "kachikachi": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Walden_Pond%2C_Massachusetts_on_June_27%2C_2012.png/1280px-Walden_Pond%2C_Massachusetts_on_June_27%2C_2012.png",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/%E6%B2%B3%E5%8F%A3%E6%B9%96_-_panoramio_%2819%29.jpg/1280px-%E6%B2%B3%E5%8F%A3%E6%B9%96_-_panoramio_%2819%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/The_Fuji_reflects_in_Lake_Kawaguchi%2C_seen_from_the_Misaka_pass_in_the_Kai_province.jpg/1280px-The_Fuji_reflects_in_Lake_Kawaguchi%2C_seen_from_the_Misaka_pass_in_the_Kai_province.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Maple_%2816230396575%29.jpg/1280px-Maple_%2816230396575%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Lake_Kawaguchiko_Sakura_Mount_Fuji_1.JPG/1280px-Lake_Kawaguchiko_Sakura_Mount_Fuji_1.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/KawaguchiKo.jpg/1280px-KawaguchiKo.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Kawagichiko_Ensolcillc_ship.JPG/1280px-Kawagichiko_Ensolcillc_ship.JPG"
+  ],
+  "hakone-yumoto": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/View_of_Mount_Fuji_from_Lake_Ashi.jpg/1280px-View_of_Mount_Fuji_from_Lake_Ashi.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Lake_ashi_from_ropeway.JPG/1280px-Lake_ashi_from_ropeway.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Lake_Ashi_from_Mt.Komagatake_03.jpg/1280px-Lake_Ashi_from_Mt.Komagatake_03.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Hakone_no_Seki_20211202.jpg/1280px-Hakone_no_Seki_20211202.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Hakone-no-Seki_2017_%2834571303382%29.jpg/1280px-Hakone-no-Seki_2017_%2834571303382%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Hakone_yumoto_onsen_2.jpg/1280px-Hakone_yumoto_onsen_2.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Hakone_Town_Hall.JPG/1280px-Hakone_Town_Hall.JPG"
+  ],
+  "open-air-museum": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Hakone_Open-air_Museum_20211202-13.jpg/1280px-Hakone_Open-air_Museum_20211202-13.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/The_Hakone_Open-Air_Museum_-_panoramio.jpg/1280px-The_Hakone_Open-Air_Museum_-_panoramio.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Hakone_open_air_museum_%2810%29.jpg/1280px-Hakone_open_air_museum_%2810%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Aristide_Maillol_-_Action_Enchained_-_Hakone_Open-air_Museum.jpg/1280px-Aristide_Maillol_-_Action_Enchained_-_Hakone_Open-air_Museum.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Hakone_Open-air_Museum_20211202-1.jpg/1280px-Hakone_Open-air_Museum_20211202-1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Hakone_Open-air_Museum_20211202-3.jpg/1280px-Hakone_Open-air_Museum_20211202-3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Hakone_Open-air_Museum_20211202-2.jpg/1280px-Hakone_Open-air_Museum_20211202-2.jpg"
+  ],
+  "owakudani": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Hakone_black_egg_dsc05310.jpg/1280px-Hakone_black_egg_dsc05310.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Owakudani_sculpture.jpg/1280px-Owakudani_sculpture.jpg"
+  ],
+  "hakone-ropeway": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Owakudani_Station.jpg/1280px-Owakudani_Station.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Hakone-ropeway_en.JPG/1280px-Hakone-ropeway_en.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Cable_car_station_%40_Souzan_%40_Hakone_%2813776279633%29.jpg/1280px-Cable_car_station_%40_Souzan_%40_Hakone_%2813776279633%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/View_of_Owakudani_Valley_from_Hakone_Cable_Car.JPG/1280px-View_of_Owakudani_Valley_from_Hakone_Cable_Car.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Hakonetozan-Cable.JPG/1280px-Hakonetozan-Cable.JPG"
+  ],
+  "lake-ashi": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/The_lake_of_Hakone_in_the_Segami_province.jpg/1280px-The_lake_of_Hakone_in_the_Segami_province.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Mt.Fuji_from_Mt.Taikanzan_%E5%A4%A7%E8%A6%B3%E5%B1%B1.jpg/1280px-Mt.Fuji_from_Mt.Taikanzan_%E5%A4%A7%E8%A6%B3%E5%B1%B1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Hakone_Volcano_20121110.jpg/1280px-Hakone_Volcano_20121110.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Hakone-loyal-II.JPG/1280px-Hakone-loyal-II.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Pirate-themed_sightseeing_Cruise_at_Lake_Ashi%2C_Hakone%2C_Japan3.jpg/1280px-Pirate-themed_sightseeing_Cruise_at_Lake_Ashi%2C_Hakone%2C_Japan3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Ship_at_Lake_Ashi%2C_Hakone%2C_Kanagawa_Prefecture%2C_January_2014.jpg/1280px-Ship_at_Lake_Ashi%2C_Hakone%2C_Kanagawa_Prefecture%2C_January_2014.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Pirate-themed_sightseeing_Cruise_at_Lake_Ashi%2C_Hakone%2C_Japan.jpg/1280px-Pirate-themed_sightseeing_Cruise_at_Lake_Ashi%2C_Hakone%2C_Japan.jpg"
+  ],
+  "hakone-shrine": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Stairs_-_Hakone-jinja_-_Hakone%2C_Japan_-_DSC05716.jpg/1280px-Stairs_-_Hakone-jinja_-_Hakone%2C_Japan_-_DSC05716.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Processional_shrines_-_Hakone-jinja_-_Hakone%2C_Japan_-_DSC05744.jpg/1280px-Processional_shrines_-_Hakone-jinja_-_Hakone%2C_Japan_-_DSC05744.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Komainu_at_Hakone_Shrine.jpg/1280px-Komainu_at_Hakone_Shrine.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Hakone-jinja_-_Hakone%2C_Japan_-_DSC05819.jpg/1280px-Hakone-jinja_-_Hakone%2C_Japan_-_DSC05819.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Ducks_%26_floating_torii.jpg/1280px-Ducks_%26_floating_torii.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Crowd_-_Hakone-jinja_-_Hakone%2C_Japan_-_DSC05780.jpg/1280px-Crowd_-_Hakone-jinja_-_Hakone%2C_Japan_-_DSC05780.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Avenue_-_Hakone-jinja_-_Hakone%2C_Japan_-_DSC05864.jpg/1280px-Avenue_-_Hakone-jinja_-_Hakone%2C_Japan_-_DSC05864.jpg"
+  ],
+  "pola-museum": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/191103_Pola_Museum_of_Art_Hakone_Japan01s3.jpg/1280px-191103_Pola_Museum_of_Art_Hakone_Japan01s3.jpg"
+  ],
+  "gora-park": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Rose_garden_-_Gora_Park_-_Hakone%2C_Kanagawa%2C_Japan_-_DSC08411.jpg/1280px-Rose_garden_-_Gora_Park_-_Hakone%2C_Kanagawa%2C_Japan_-_DSC08411.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/251123_Gora_Park_Hakone_Japan02s3.jpg/1280px-251123_Gora_Park_Hakone_Japan02s3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/211126_Gora_Park_Hakone_Japan23s3.jpg/1280px-211126_Gora_Park_Hakone_Japan23s3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/211126_Gora_Park_Hakone_Japan17s3.jpg/1280px-211126_Gora_Park_Hakone_Japan17s3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Flowers_-_Hakuun-do_Chaen_Tearooms_-_Gora_Park_-_Hakone%2C_Kanagawa%2C_Japan_DSC08506.jpg/1280px-Flowers_-_Hakuun-do_Chaen_Tearooms_-_Gora_Park_-_Hakone%2C_Kanagawa%2C_Japan_DSC08506.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gora_Park_%40_Hakone_%2810621096404%29.jpg/1280px-Gora_Park_%40_Hakone_%2810621096404%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Pathway_-_Hakuun-do_Chaen_Tearooms_-_Gora_Park_-_Hakone%2C_Kanagawa%2C_Japan_DSC08512.jpg/1280px-Pathway_-_Hakuun-do_Chaen_Tearooms_-_Gora_Park_-_Hakone%2C_Kanagawa%2C_Japan_DSC08512.jpg"
+  ],
+  "hakone-yuryo": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/%E3%81%93%E3%81%A1%E3%82%89%E3%81%AF%E6%9C%AC%E6%97%A5%E3%81%AE%E9%BB%92%E7%8E%89%E5%AD%90%E3%81%AE%E8%89%B2%E5%85%B7%E5%90%88%E3%81%A7%E3%81%99_%282305057549%29.jpg/1280px-%E3%81%93%E3%81%A1%E3%82%89%E3%81%AF%E6%9C%AC%E6%97%A5%E3%81%AE%E9%BB%92%E7%8E%89%E5%AD%90%E3%81%AE%E8%89%B2%E5%85%B7%E5%90%88%E3%81%A7%E3%81%99_%282305057549%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Yubatake_%2814308957671%29.jpg/1280px-Yubatake_%2814308957671%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/%E5%9E%82%E7%8E%89%E6%B8%A9%E6%B3%89%E6%89%93%E3%81%9F%E3%81%9B%E6%B9%AF.jpg/1280px-%E5%9E%82%E7%8E%89%E6%B8%A9%E6%B3%89%E6%89%93%E3%81%9F%E3%81%9B%E6%B9%AF.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Yumura_onsen11s1920.jpg/1280px-Yumura_onsen11s1920.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Ginzan_Onsen_2019_no.3.png/1280px-Ginzan_Onsen_2019_no.3.png",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Tsurunoyu_onsen_rotenburo2.JPG/1280px-Tsurunoyu_onsen_rotenburo2.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Kaisenkaku_Asamushi_Onsen_Aomori_Japan02n.jpg/1280px-Kaisenkaku_Asamushi_Onsen_Aomori_Japan02n.jpg"
+  ],
+  "odawara-castle": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/%E8%93%AE%E4%B8%8A%E9%99%A2%E5%9C%9F%E5%A1%81.jpg/1280px-%E8%93%AE%E4%B8%8A%E9%99%A2%E5%9C%9F%E5%A1%81.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Sannomaru_gaikaku.jpg/1280px-Sannomaru_gaikaku.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Odawara_Castle_02.jpg/1280px-Odawara_Castle_02.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Korinjiyama_Nishi_moat.jpg/1280px-Korinjiyama_Nishi_moat.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Komine%60s_deep_moat_%28Nakabori_moat_of_Komine%29.jpg/1280px-Komine%60s_deep_moat_%28Nakabori_moat_of_Komine%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Komine%60s_deep_moat3.jpg/1280px-Komine%60s_deep_moat3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Hachimanyama_kokaku_Higashi_Compound.jpg/1280px-Hachimanyama_kokaku_Higashi_Compound.jpg"
+  ],
+  "bamboo": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/2021_Sagano_Bamboo_forest_in_Arashiyama%2C_Kyoto%2C_Japan.jpg/1280px-2021_Sagano_Bamboo_forest_in_Arashiyama%2C_Kyoto%2C_Japan.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Togetsu-ky%C5%8D_bridge_at_golden_hour%2C_Kyoto%2C_Japan.jpg/1280px-Togetsu-ky%C5%8D_bridge_at_golden_hour%2C_Kyoto%2C_Japan.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Macaques_in_Sagano.jpg/1280px-Macaques_in_Sagano.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Arashiyama%2C_Part_II_-_Arashiyama7538.jpg/1280px-Arashiyama%2C_Part_II_-_Arashiyama7538.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Arashiyama%2C_Part_II_-_Arashiyama7534.jpg/1280px-Arashiyama%2C_Part_II_-_Arashiyama7534.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Aerial_perspective_of_Arashiyama_Park_Nakanoshima_Area_%E5%B5%90%E5%B1%B1%E5%85%AC%E5%9C%92_%E4%B8%AD%E4%B9%8B%E5%B3%B6%E5%9C%B0%E5%8C%BA.jpg/1280px-Aerial_perspective_of_Arashiyama_Park_Nakanoshima_Area_%E5%B5%90%E5%B1%B1%E5%85%AC%E5%9C%92_%E4%B8%AD%E4%B9%8B%E5%B3%B6%E5%9C%B0%E5%8C%BA.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Aerial_panorama_of_Arashiyama_%28%E5%B5%90%E5%B1%B1%29.jpg/1280px-Aerial_panorama_of_Arashiyama_%28%E5%B5%90%E5%B1%B1%29.jpg"
+  ],
+  "kiyomizu": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/Nio-mon%2C_Kiyomizu-dera_Temple%2C_Kyoto%2C_West_view_20190416_1.jpg/1280px-Nio-mon%2C_Kiyomizu-dera_Temple%2C_Kyoto%2C_West_view_20190416_1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/64/Smok_w_Kiyomizudera.JPG/1280px-Smok_w_Kiyomizudera.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Kiyomizudera-Niomon-2017-Luka-Peternel.jpg/1280px-Kiyomizudera-Niomon-2017-Luka-Peternel.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/View_of_Kyoto_from_Kyriomizu-dera.jpg/1280px-View_of_Kyoto_from_Kyriomizu-dera.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Kiyomizudera_morning.jpg/1280px-Kiyomizudera_morning.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Kiyomizu_dera_2024.jpg/1280px-Kiyomizu_dera_2024.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Kiyomizudera_autumn.jpg/1280px-Kiyomizudera_autumn.jpg"
+  ],
+  "yasaka": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Yasaka_Shrine_Kyoto.png/1280px-Yasaka_Shrine_Kyoto.png",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Yasaka_jinja.jpg/1280px-Yasaka_jinja.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Yasaka_Shrine_01.jpg/1280px-Yasaka_Shrine_01.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/YasakaShrine3.jpg/1280px-YasakaShrine3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/YasakaShrine2.jpg/1280px-YasakaShrine2.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/YasakaShrine1.jpg/1280px-YasakaShrine1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Nishiromon_Gate%2C_Yasaka_Shrine%2C_Kyoto%2C_West_view_20190416_1.jpg/1280px-Nishiromon_Gate%2C_Yasaka_Shrine%2C_Kyoto%2C_West_view_20190416_1.jpg"
+  ],
+  "gion": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Wooden_and_bamboo_facades_of_dwellings_with_sudare_in_a_cobbled_street_of_Gion%2C_perspective_effect_with_vanishing_point%2C_Kyoto%2C_Japan.jpg/1280px-Wooden_and_bamboo_facades_of_dwellings_with_sudare_in_a_cobbled_street_of_Gion%2C_perspective_effect_with_vanishing_point%2C_Kyoto%2C_Japan.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Shirakara_Canal%2C_Gion%2C_Kyoto.jpg/1280px-Shirakara_Canal%2C_Gion%2C_Kyoto.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5d/Miyako_Odori%3B_cherry_dance_in_Kyoto%3B_%E9%83%BD%E3%82%92%E3%81%A9%E3%82%8A.jpg/1280px-Miyako_Odori%3B_cherry_dance_in_Kyoto%3B_%E9%83%BD%E3%82%92%E3%81%A9%E3%82%8A.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Gion_Higashi_Tsunemomo.jpg/1280px-Gion_Higashi_Tsunemomo.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Gion.jpg/1280px-Gion.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Kyoto_Gion_Matsuri_20100716_2544.jpg/1280px-Kyoto_Gion_Matsuri_20100716_2544.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Facade_of_a_dwelling_with_sudare%2C_wooden_balustrades_and_yellow_lamp%2C_Shinbashi-dori%2C_Gion%2C_Kyoto%2C_Japan.jpg/1280px-Facade_of_a_dwelling_with_sudare%2C_wooden_balustrades_and_yellow_lamp%2C_Shinbashi-dori%2C_Gion%2C_Kyoto%2C_Japan.jpg"
+  ],
+  "heianjingu": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Heian_Shrine_Torii_Gate.JPG/1280px-Heian_Shrine_Torii_Gate.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Heian-jing%C5%AB_otenmon1.jpg/1280px-Heian-jing%C5%AB_otenmon1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Acheilognathus_cyanostigma_by_OpenCage.jpg/1280px-Acheilognathus_cyanostigma_by_OpenCage.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Taihei-kaku%2C_Heian-jing%C5%AB%2C_Kyoto%2C_20240820_1006_4972.jpg/1280px-Taihei-kaku%2C_Heian-jing%C5%AB%2C_Kyoto%2C_20240820_1006_4972.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Taihei-kaku%2C_Heian-jing%C5%AB%2C_Kyoto%2C_20240820_0959_4961.jpg/1280px-Taihei-kaku%2C_Heian-jing%C5%AB%2C_Kyoto%2C_20240820_0959_4961.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Heian_Shrine_Garden%2C_Kyoto%2C_Japan%2C_20240820_0946_4928.jpg/1280px-Heian_Shrine_Garden%2C_Kyoto%2C_Japan%2C_20240820_0946_4928.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Heian_Shrine_Garden%2C_Kyoto%2C_Japan%2C_20240820_0951_4939.jpg/1280px-Heian_Shrine_Garden%2C_Kyoto%2C_Japan%2C_20240820_0951_4939.jpg"
+  ],
+  "fushimi": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Toris_inari_3.jpg/1280px-Toris_inari_3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Nobu3withfoxy_IMG_0155_%2814564801685%29.jpg/1280px-Nobu3withfoxy_IMG_0155_%2814564801685%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Kyoto_Schrein_Fushimi-Inari-taisha_10.jpg/1280px-Kyoto_Schrein_Fushimi-Inari-taisha_10.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Inari_fountain.jpg/1280px-Inari_fountain.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Fushimi-Inari-Shrine-Senbon-Torii-2018-Luka-Peternel.jpg/1280px-Fushimi-Inari-Shrine-Senbon-Torii-2018-Luka-Peternel.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Fushimi-Inari-Shrine-Senbon-Torii-2016-Luka-Peternel.jpg/1280px-Fushimi-Inari-Shrine-Senbon-Torii-2016-Luka-Peternel.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Inari_sculpture.jpg/1280px-Inari_sculpture.jpg"
+  ],
+  "ryoanji": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/%E9%BE%8D%E5%AE%89%E5%AF%BA_-_panoramio_%285%29.jpg/1280px-%E9%BE%8D%E5%AE%89%E5%AF%BA_-_panoramio_%285%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/WalkAmidMaples2.jpg/1280px-WalkAmidMaples2.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Ryoanji_rock_garden_close_up.jpg/1280px-Ryoanji_rock_garden_close_up.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Ryoanji_Temple_-_Kuri_Main_Building_Interior.jpg/1280px-Ryoanji_Temple_-_Kuri_Main_Building_Interior.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Ryoan-ji_03.jpg/1280px-Ryoan-ji_03.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Tsukubai2.JPG/1280px-Tsukubai2.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Ryoan-ji.JPG/1280px-Ryoan-ji.JPG"
+  ],
+  "nijo": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Walkway_in_Seiryu-en_garden.jpg/1280px-Walkway_in_Seiryu-en_garden.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Ninomaru_garden.jpg/1280px-Ninomaru_garden.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Ninomaru-goten_palace.jpg/1280px-Ninomaru-goten_palace.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Nijojo-ninomaru-garden01s3s4592.jpg/1280px-Nijojo-ninomaru-garden01s3s4592.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Nijo_Castle.jpg/1280px-Nijo_Castle.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/NijoCastleOutside.jpg/1280px-NijoCastleOutside.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Kiyomizu-dera_in_Kyoto-r.jpg/1280px-Kiyomizu-dera_in_Kyoto-r.jpg"
+  ],
+  "palacio-kyoto": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Seiryoden1.jpg/1280px-Seiryoden1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Seisho-Gomon.JPG/1280px-Seisho-Gomon.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Seiryoden.jpg/1280px-Seiryoden.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Sarugatsuji_of_Kyoto_Imperial_Palace.jpg/1280px-Sarugatsuji_of_Kyoto_Imperial_Palace.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Sakon_no_Sakura.JPG/1280px-Sakon_no_Sakura.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Otsune-Goten.JPG/1280px-Otsune-Goten.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Ninna-ji_%283263626979%29.jpg/1280px-Ninna-ji_%283263626979%29.jpg"
+  ],
+  "kinkakuji": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Snowfall_at_Golden_pavillion_in_kyoto.jpeg/1280px-Snowfall_at_Golden_pavillion_in_kyoto.jpeg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Y%C5%8Dsh%C5%AB_Chikanobu_Kinkaku_haiken.jpg/1280px-Y%C5%8Dsh%C5%AB_Chikanobu_Kinkaku_haiken.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Kyoto_Rokuon-ji_Kinkaku-ji_c12.jpg/1280px-Kyoto_Rokuon-ji_Kinkaku-ji_c12.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Kyoto-Kinkaku-ji-White-Snake.jpg/1280px-Kyoto-Kinkaku-ji-White-Snake.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Kiyomizu-dera_in_Kyoto-r.jpg/1280px-Kiyomizu-dera_in_Kyoto-r.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Kinkakuji_Kyoto05s3s3990.jpg/1280px-Kinkakuji_Kyoto05s3s3990.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Kinkaku-ji_the_Golden_Temple_in_Kyoto_overlooking_the_lake_-_high_rez.JPG/1280px-Kinkaku-ji_the_Golden_Temple_in_Kyoto_overlooking_the_lake_-_high_rez.JPG"
+  ],
+  "ginkakuji": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Ginkaku-ji_Temple%2C_Kyoto%2C_20240820_1050_4995.jpg/1280px-Ginkaku-ji_Temple%2C_Kyoto%2C_20240820_1050_4995.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Ginshadan_Garden%2C_Ginkaku-ji_Temple%2C_Kyoto%2C_20240820_1042_4980.jpg/1280px-Ginshadan_Garden%2C_Ginkaku-ji_Temple%2C_Kyoto%2C_20240820_1042_4980.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Ginkaku-ji_Temple%2C_Kyoto%2C_20240820_1048_4992.jpg/1280px-Ginkaku-ji_Temple%2C_Kyoto%2C_20240820_1048_4992.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Ginshadan_Garden%2C_Ginkaku-ji_Temple%2C_Kyoto%2C_20240820_1042_4979.jpg/1280px-Ginshadan_Garden%2C_Ginkaku-ji_Temple%2C_Kyoto%2C_20240820_1042_4979.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Sunlight_through_clouds_and_view_of_Ginkaku-ji_Temple_from_above%2C_Kyoto%2C_Japan.jpg/1280px-Sunlight_through_clouds_and_view_of_Ginkaku-ji_Temple_from_above%2C_Kyoto%2C_Japan.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Dry-sand_Zen_garden_made_of_beige_stripes_a_sunny_day_at_Higashiyama_Jisho-ji_Buddhist_temple_Ginkaku-ji_Kyoto_Japan.jpg/1280px-Dry-sand_Zen_garden_made_of_beige_stripes_a_sunny_day_at_Higashiyama_Jisho-ji_Buddhist_temple_Ginkaku-ji_Kyoto_Japan.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Ginkaku-ji_Temple%2C_Kyoto%2C_20240820_1044_4984.jpg/1280px-Ginkaku-ji_Temple%2C_Kyoto%2C_20240820_1044_4984.jpg"
+  ],
+  "dotonbori": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/%E6%9C%AC%E5%AE%B6_%E6%97%A5%E6%9C%AC%E4%B8%80_%E5%A4%A7%E3%81%9F%E3%81%93_%289642827577%29.jpg/1280px-%E6%9C%AC%E5%AE%B6_%E6%97%A5%E6%9C%AC%E4%B8%80_%E5%A4%A7%E3%81%9F%E3%81%93_%289642827577%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Neon_signs_in_Dotombori%2C_24th_October_2014_%281%29.JPG/1280px-Neon_signs_in_Dotombori%2C_24th_October_2014_%281%29.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Yebisu_Tower.JPG/1280px-Yebisu_Tower.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Tombori_River_Walk01.JPG/1280px-Tombori_River_Walk01.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Osaka_-_Osaka194.jpg/1280px-Osaka_-_Osaka194.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Osaka%2C_Japan_%2831891587072%29.jpg/1280px-Osaka%2C_Japan_%2831891587072%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Kuidaore2008_by_MASA.jpg/1280px-Kuidaore2008_by_MASA.jpg"
+  ],
+  "takoyaki": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Yakitori_Yatai.jpg/1280px-Yakitori_Yatai.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Takoyaki_sauce_on_the_stall_by_clanchou_in_Ueno_Park%2C_Tokyo.jpg/1280px-Takoyaki_sauce_on_the_stall_by_clanchou_in_Ueno_Park%2C_Tokyo.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Takoyaki_at_the_Richmond_Night_Market_by_SqueakyMarmot.jpg/1280px-Takoyaki_at_the_Richmond_Night_Market_by_SqueakyMarmot.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Takoyaki-1.jpg/1280px-Takoyaki-1.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Osaka-style_and_Kyoto-style_Takoyaki_made_in_Kyoto%2C_Japan.jpg/1280px-Osaka-style_and_Kyoto-style_Takoyaki_made_in_Kyoto%2C_Japan.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/Aizuya-Headoffice.jpg/1280px-Aizuya-Headoffice.jpg"
+  ],
+  "shinsekai": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Tsutenkaku_and_Shinsekai_at_night_2019-04-12.jpg/1280px-Tsutenkaku_and_Shinsekai_at_night_2019-04-12.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Shinsekai_downtown_titanium22.jpg/1280px-Shinsekai_downtown_titanium22.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Shinsekai_-_Shinsekai31.jpg/1280px-Shinsekai_-_Shinsekai31.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Shin-sekai_-_panoramio.jpg/1280px-Shin-sekai_-_panoramio.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Shin-sekai_-_panoramio_%281%29.jpg/1280px-Shin-sekai_-_panoramio_%281%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Shin-sekai_-_panoramio_%282%29.jpg/1280px-Shin-sekai_-_panoramio_%282%29.jpg"
+  ],
+  "osakacastle": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/Osaka_Castle_Outer_Moat_and_Osaka_Business_Park%2C_November_2016.jpg/1280px-Osaka_Castle_Outer_Moat_and_Osaka_Business_Park%2C_November_2016.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Osaka_Castle_Keep_Tower_in_201504_016.JPG/1280px-Osaka_Castle_Keep_Tower_in_201504_016.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Osakajo_ramparts_and_moat.jpg/1280px-Osakajo_ramparts_and_moat.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Osaka_Castle_Nishinomaru_Garden_April_2005.JPG/1280px-Osaka_Castle_Nishinomaru_Garden_April_2005.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Osaka_Castle_Keep_Tower_in_201504_001.JPG/1280px-Osaka_Castle_Keep_Tower_in_201504_001.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Osaka_castle_tenshu.jpg/1280px-Osaka_castle_tenshu.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Osaka_castle_%2C_%E5%A4%A7%E9%98%AA%E5%9F%8E_-_panoramio_%2862%29.jpg/1280px-Osaka_castle_%2C_%E5%A4%A7%E9%98%AA%E5%9F%8E_-_panoramio_%2862%29.jpg"
+  ],
+  "vending-osaka": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Vending_machine_of_Japanese_local_curries_in_retort_pouches_at_Asakusa_in_Tokyo_2018-9-23.jpg/1280px-Vending_machine_of_Japanese_local_curries_in_retort_pouches_at_Asakusa_in_Tokyo_2018-9-23.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Vendstar3000.JPG/1280px-Vendstar3000.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Vending_machines_at_hospital.jpg/1280px-Vending_machines_at_hospital.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Vending_machine%2C_Novosibirsk_1.JPG/1280px-Vending_machine%2C_Novosibirsk_1.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Vending_Machine_in_Iwami-Ginzan.jpg/1280px-Vending_Machine_in_Iwami-Ginzan.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Sagamihara_Vending_Machine_Park_%E2%80%93_restocking_udon.jpg/1280px-Sagamihara_Vending_Machine_Park_%E2%80%93_restocking_udon.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Sagamihara_Vending_Machine_Park_%E2%80%93_machines.jpg/1280px-Sagamihara_Vending_Machine_Park_%E2%80%93_machines.jpg"
+  ],
+  "nara": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Sika_deer_in_Nara_Park%2C_November_2016.jpg/1280px-Sika_deer_in_Nara_Park%2C_November_2016.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/Ukimido_Pavilion_Nara_park.jpg/1280px-Ukimido_Pavilion_Nara_park.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/%E6%B5%AE%E8%A6%8B%E5%A0%82.JPG/1280px-%E6%B5%AE%E8%A6%8B%E5%A0%82.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Sika_deer_in_Nara_09.jpg/1280px-Sika_deer_in_Nara_09.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Nara_Park%2C_November_2016.jpg/1280px-Nara_Park%2C_November_2016.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Shikasenbei.jpg/1280px-Shikasenbei.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Nara_Mizutani-tyaya01ds3872.jpg/1280px-Nara_Mizutani-tyaya01ds3872.jpg"
+  ],
+  "muji": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/TW_%E5%8F%B0%E7%81%A3_Taiwan_%E4%B8%AD%E6%AD%A3%E5%8D%80_Zhongzheng_District_%E5%8F%B0%E5%8C%97%E8%BB%8A%E7%AB%99_Taipei_Main_Metro_Station_%E5%BE%AE%E9%A2%A8%E5%8F%B0%E5%8C%97%E7%AB%99_Breeze_Taipei_Station_2nd_Floor_mall_shop_in_August_2019_SSG_09.jpg/1280px-TW_%E5%8F%B0%E7%81%A3_Taiwan_%E4%B8%AD%E6%AD%A3%E5%8D%80_Zhongzheng_District_%E5%8F%B0%E5%8C%97%E8%BB%8A%E7%AB%99_Taipei_Main_Metro_Station_%E5%BE%AE%E9%A2%A8%E5%8F%B0%E5%8C%97%E7%AB%99_Breeze_Taipei_Station_2nd_Floor_mall_shop_in_August_2019_SSG_09.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Muji_Plaza_Singapura%2C_Singapore%2C_July_2017.jpg/1280px-Muji_Plaza_Singapura%2C_Singapore%2C_July_2017.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Muji_Olympian_City_interior_2016.jpg/1280px-Muji_Olympian_City_interior_2016.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Muji_Grand_Front_Osaka_201407.JPG/1280px-Muji_Grand_Front_Osaka_201407.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Menswear_in_Muji_Chatswood_December_2024.jpg/1280px-Menswear_in_Muji_Chatswood_December_2024.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Cafe_Muji_Shinjuku_Store_Interior_2013.jpg/1280px-Cafe_Muji_Shinjuku_Store_Interior_2013.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/A_MUJI_store_in_August_2020%2C_POPARK%2C_Guangzhou%2C_China.png/1280px-A_MUJI_store_in_August_2020%2C_POPARK%2C_Guangzhou%2C_China.png"
+  ],
+  "seven-eleven": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Seven_Eleven_and_ESSO%2C_Windsor%2C_Ontario%2C_2026-08-07.jpg/1280px-Seven_Eleven_and_ESSO%2C_Windsor%2C_Ontario%2C_2026-08-07.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Open_Chan_Clock_on_Column_of_7-Eleven_Zhengtang_Store_20160530.jpg/1280px-Open_Chan_Clock_on_Column_of_7-Eleven_Zhengtang_Store_20160530.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Bugis_7-Eleven_11-11-2023.jpg/1280px-Bugis_7-Eleven_11-11-2023.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/7-Eleven_store_in_Tabok_%282024-05-29%29.jpg/1280px-7-Eleven_store_in_Tabok_%282024-05-29%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Gulf7eleven.jpg/1280px-Gulf7eleven.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/HK_SYP_Chong_Yip_Ctr_7-11_shop.jpg/1280px-HK_SYP_Chong_Yip_Ctr_7-11_shop.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Copenhagen_Central_Station_%282%29_%2814452107285%29.jpg/1280px-Copenhagen_Central_Station_%282%29_%2814452107285%29.jpg"
+  ],
+  "chakura": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Asemakatu_31-33_Oulu_20101024.JPG/1280px-Asemakatu_31-33_Oulu_20101024.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Sing_and_record_machine_in_Haiikou_-_01.jpg/1280px-Sing_and_record_machine_in_Haiikou_-_01.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Karaoke-Harbin6303733.jpg/1280px-Karaoke-Harbin6303733.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Karaoke-Big_echo-P5262150.jpg/1280px-Karaoke-Big_echo-P5262150.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Karaoke-kan_Shinjuku.jpg/1280px-Karaoke-kan_Shinjuku.jpg"
+  ],
+  "champion": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Golden_Gai_%282%29.jpg/1280px-Golden_Gai_%282%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Golden_Gai3.jpg/1280px-Golden_Gai3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Golden_Gai_%281%29.jpg/1280px-Golden_Gai_%281%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Midnight_at_the_Golden_Gai_-_Flickr_-_Mike_Kniec.jpg/1280px-Midnight_at_the_Golden_Gai_-_Flickr_-_Mike_Kniec.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Golden_Gai1.jpg/1280px-Golden_Gai1.jpg"
+  ],
+  "tokyu-kabukicho": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Kabukicho_2022_430_IMG_7275.jpg/1280px-Kabukicho_2022_430_IMG_7275.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/%E6%9D%B1%E6%80%A5%E6%AD%8C%E8%88%9E%E4%BC%8E%E7%94%BA%E3%82%BF%E3%83%AF%E3%83%BC_Tokyu_Kabukicho_Tower.jpg/1280px-%E6%9D%B1%E6%80%A5%E6%AD%8C%E8%88%9E%E4%BC%8E%E7%94%BA%E3%82%BF%E3%83%AF%E3%83%BC_Tokyu_Kabukicho_Tower.jpg"
+  ],
+  "museu-nacional": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Reliquary%2C_Kamakura_period%2C_13th-14th_century%2C_cintamani_%28sacred_jewel%29_in_flame_type%2C_gilt_bronze_-_Tokyo_National_Museum_-_DSC05173.JPG/1280px-Reliquary%2C_Kamakura_period%2C_13th-14th_century%2C_cintamani_%28sacred_jewel%29_in_flame_type%2C_gilt_bronze_-_Tokyo_National_Museum_-_DSC05173.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Original_Honkan_of_the_Tokyo_National_Museum.jpg/1280px-Original_Honkan_of_the_Tokyo_National_Museum.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Portrait_of_a_Woman_by_Kuroda_Seiki_%28Kuroda_Kinenkan%29.jpg/1280px-Portrait_of_a_Woman_by_Kuroda_Seiki_%28Kuroda_Kinenkan%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Nagoya_Castle_Feb_2011_66.jpg/1280px-Nagoya_Castle_Feb_2011_66.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/N%C5%8D_mask_-_Koomote_Type.JPG/1280px-N%C5%8D_mask_-_Koomote_Type.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Kuroda_Memorial_Hall_2012.JPG/1280px-Kuroda_Memorial_Hall_2012.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Jomon_Vessel_with_Flame-like_Ornamentation%2C_attributed_provenance_Umataka%2C_Nagaoka-shi%2C_Niigata%2C_Jomon_period%2C_3000-2000_BC_-_Tokyo_National_Museum_-_DSC05620.JPG/1280px-Jomon_Vessel_with_Flame-like_Ornamentation%2C_attributed_provenance_Umataka%2C_Nagaoka-shi%2C_Niigata%2C_Jomon_period%2C_3000-2000_BC_-_Tokyo_National_Museum_-_DSC05620.JPG"
+  ],
+  "shimokitazawa": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Shimokitazawa_store.jpg/1280px-Shimokitazawa_store.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Shimokita_Night.jpg/1280px-Shimokita_Night.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Shimokitazawa_Street_%2820260227194844%29.jpg/1280px-Shimokitazawa_Street_%2820260227194844%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Shimokitazawa%2C_Tokyo_%2826516822902%29.jpg/1280px-Shimokitazawa%2C_Tokyo_%2826516822902%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/77/Shimokitazawa%2C_Tokyo_%2826516861982%29.jpg/1280px-Shimokitazawa%2C_Tokyo_%2826516861982%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Shimokitazawa%2C_Tokyo_%2826006579633%29.jpg/1280px-Shimokitazawa%2C_Tokyo_%2826006579633%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Shimokitazawa%2C_Tokyo_%2826583488436%29.jpg/1280px-Shimokitazawa%2C_Tokyo_%2826583488436%29.jpg"
+  ],
+  "koenji": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Koenji_awaodori.JPG/1280px-Koenji_awaodori.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Koenji_look_entrance_suginami_tokyo_2009.JPG/1280px-Koenji_look_entrance_suginami_tokyo_2009.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Koshin_dori_shopping_street_koenjikita.JPG/1280px-Koshin_dori_shopping_street_koenjikita.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Koenji_Street_Scene_%2853416682176%29.jpg/1280px-Koenji_Street_Scene_%2853416682176%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Koenji_Awa_Odori_Exciting_Love_Part_II._%2838077442%29.jpg/1280px-Koenji_Awa_Odori_Exciting_Love_Part_II._%2838077442%29.jpg"
+  ],
+  "silk-hat": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/VR_World_4_E34_St_jeh.jpg/1280px-VR_World_4_E34_St_jeh.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Great_Yarmouth_-_panoramio_%2827%29.jpg/1280px-Great_Yarmouth_-_panoramio_%2827%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Japanese_style_cocktail_cab.jpg/1280px-Japanese_style_cocktail_cab.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Wizard_of_Oz_game.JPG/1280px-Wizard_of_Oz_game.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Penny_arcade1.JPG/1280px-Penny_arcade1.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Daytona_Twin.jpg/1280px-Daytona_Twin.jpg"
+  ],
+  "aula-ramen": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Wakayamaramen222.jpg/1280px-Wakayamaramen222.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Soupless_Dandan_noodles_Hiroshima_Type_%E5%BA%83%E5%B3%B6%E5%BC%8F_%E6%B1%81%E3%81%AA%E3%81%97_%E6%8B%85%E6%8B%85%E9%BA%BA.jpg/1280px-Soupless_Dandan_noodles_Hiroshima_Type_%E5%BA%83%E5%B3%B6%E5%BC%8F_%E6%B1%81%E3%81%AA%E3%81%97_%E6%8B%85%E6%8B%85%E9%BA%BA.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Tokyoramen.jpg/1280px-Tokyoramen.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Shinyokohama_ramen_museum.jpg/1280px-Shinyokohama_ramen_museum.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/The_Japanese-style_Chinese_noodle_RAMEN_of_the_restaurant_RAIRAIKEN_at_Yutenji_Tokyo.jpg/1280px-The_Japanese-style_Chinese_noodle_RAMEN_of_the_restaurant_RAIRAIKEN_at_Yutenji_Tokyo.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Shinjuku_%286969833313%29.jpg/1280px-Shinjuku_%286969833313%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/Shio_ramen_from_Ryukyu_Ramen_Tondou%2C_Shin-Yokohama.jpg/1280px-Shio_ramen_from_Ryukyu_Ramen_Tondou%2C_Shin-Yokohama.jpg"
+  ],
+  "pokepark": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Yomiuriland_okanoyu.jpg/1280px-Yomiuriland_okanoyu.jpg"
+  ],
+  "pokemon-cafe": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Pokemon_go_fest.jpg/1280px-Pokemon_go_fest.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Mega_Tokyo_Pok%C3%A9mon_Center_wares_4.jpg/1280px-Mega_Tokyo_Pok%C3%A9mon_Center_wares_4.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Limited-edition_Pok%C3%A9mon-themed_donuts_from_Mister_Donut%2C_Kaohsiung.jpg/1280px-Limited-edition_Pok%C3%A9mon-themed_donuts_from_Mister_Donut%2C_Kaohsiung.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Liam_meets_pikachu_%2814438634188%29.jpg/1280px-Liam_meets_pikachu_%2814438634188%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Gachapon.jpg/1280px-Gachapon.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Duo_gameboy.JPG/1280px-Duo_gameboy.JPG"
+  ],
+  "teamlab": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/TeamLab_Borderless_Azabudai_Hills.jpg/1280px-TeamLab_Borderless_Azabudai_Hills.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/TeamLab_Borderless%2C_Odaiba%2C_Tokyo%2C_Japan_%2849070835722%29.jpg/1280px-TeamLab_Borderless%2C_Odaiba%2C_Tokyo%2C_Japan_%2849070835722%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/TeamLab_Borderless%2C_Odaiba%2C_Tokyo%2C_Japan_%2849070645226%29.jpg/1280px-TeamLab_Borderless%2C_Odaiba%2C_Tokyo%2C_Japan_%2849070645226%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/TeamLab_Borderless%2C_Odaiba%2C_Tokyo%2C_Japan_%2849070633351%29.jpg/1280px-TeamLab_Borderless%2C_Odaiba%2C_Tokyo%2C_Japan_%2849070633351%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/TeamLab_Borderless%2C_Odaiba%2C_Tokyo%2C_Japan_%2849070856407%29.jpg/1280px-TeamLab_Borderless%2C_Odaiba%2C_Tokyo%2C_Japan_%2849070856407%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/TeamLab_Borderless%2C_Odaiba%2C_Tokyo%2C_Japan_%2849070857867%29.jpg/1280px-TeamLab_Borderless%2C_Odaiba%2C_Tokyo%2C_Japan_%2849070857867%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/TeamLab_Borderless%2C_Odaiba%2C_Tokyo%2C_Japan_%2849070650346%29.jpg/1280px-TeamLab_Borderless%2C_Odaiba%2C_Tokyo%2C_Japan_%2849070650346%29.jpg"
+  ],
+  "ghibli": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Ghibli_Museum_Straw_Hat_Cafe_2024.jpg/1280px-Ghibli_Museum_Straw_Hat_Cafe_2024.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Ghibli_Museum_Rooftop_Garden_2024.JPG/1280px-Ghibli_Museum_Rooftop_Garden_2024.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Ghibli_Museum_Courtyard_2024.jpg/1280px-Ghibli_Museum_Courtyard_2024.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Ghibli_Museum_Totoro_Stained_Glass.jpg/1280px-Ghibli_Museum_Totoro_Stained_Glass.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Ghibli_Museum_-_Totoro.jpg/1280px-Ghibli_Museum_-_Totoro.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Ghibli_Museum%2C_Mitaka%2C_Tokyo%2C_20240823_1131_5545.jpg/1280px-Ghibli_Museum%2C_Mitaka%2C_Tokyo%2C_20240823_1131_5545.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Ghibli_Museum_sign%2C_Mitaka_2014-04-23.jpg/1280px-Ghibli_Museum_sign%2C_Mitaka_2014-04-23.jpg"
+  ],
+  "round1": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Round_1_Maine_Mall.jpg/1280px-Round_1_Maine_Mall.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Namba_SkyO_on_26th_April_2019.jpg/1280px-Namba_SkyO_on_26th_April_2019.jpg"
+  ],
+  "fuji-excursion": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/JRE_Series-E353-S211_Fuji-kaiyu-15.jpg/1280px-JRE_Series-E353-S211_Fuji-kaiyu-15.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Fujikyu_2002.jpg/1280px-Fujikyu_2002.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Fujikyu_1205F_Fujitozan.jpg/1280px-Fujikyu_1205F_Fujitozan.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Fujikyu-Type5000.jpg/1280px-Fujikyu-Type5000.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Fujikyu-Series8500.jpg/1280px-Fujikyu-Series8500.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Fujikyu-Series8000.jpg/1280px-Fujikyu-Series8000.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Fujikyu-Series6000_6052.jpg/1280px-Fujikyu-Series6000_6052.jpg"
+  ],
+  "kenninji-noite": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Wind_God_and_Thunder_God_Screens_by_Tawaraya_Sotatsu_hi-res.png/1280px-Wind_God_and_Thunder_God_Screens_by_Tawaraya_Sotatsu_hi-res.png",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Kenninji_Kyoto07n3200.jpg/1280px-Kenninji_Kyoto07n3200.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Kenninji01s1920.jpg/1280px-Kenninji01s1920.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/JP_%E6%97%A5%E6%9C%AC_Japan_%E4%BA%AC%E9%83%BD_Kyoto_tourism_%E4%B8%AD%E4%BA%AC%E5%8D%80_Nakagyo-ku_%E5%BB%BA%E4%BB%81%E5%AF%BA_Kennin-ji_Temple_June_2026_N13P_100.jpg/1280px-JP_%E6%97%A5%E6%9C%AC_Japan_%E4%BA%AC%E9%83%BD_Kyoto_tourism_%E4%B8%AD%E4%BA%AC%E5%8D%80_Nakagyo-ku_%E5%BB%BA%E4%BB%81%E5%AF%BA_Kennin-ji_Temple_June_2026_N13P_100.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b6/JP_%E6%97%A5%E6%9C%AC_Japan_%E4%BA%AC%E9%83%BD_Kyoto_tourism_%E4%B8%AD%E4%BA%AC%E5%8D%80_Nakagyo-ku_%E5%BB%BA%E4%BB%81%E5%AF%BA_Kennin-ji_Temple_June_2026_N13P_131.jpg/1280px-JP_%E6%97%A5%E6%9C%AC_Japan_%E4%BA%AC%E9%83%BD_Kyoto_tourism_%E4%B8%AD%E4%BA%AC%E5%8D%80_Nakagyo-ku_%E5%BB%BA%E4%BB%81%E5%AF%BA_Kennin-ji_Temple_June_2026_N13P_131.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/JP_%E6%97%A5%E6%9C%AC_Japan_%E4%BA%AC%E9%83%BD_Kyoto_tourism_%E4%B8%AD%E4%BA%AC%E5%8D%80_Nakagyo-ku_%E5%BB%BA%E4%BB%81%E5%AF%BA_Kennin-ji_Temple_June_2026_N13P_109.jpg/1280px-JP_%E6%97%A5%E6%9C%AC_Japan_%E4%BA%AC%E9%83%BD_Kyoto_tourism_%E4%B8%AD%E4%BA%AC%E5%8D%80_Nakagyo-ku_%E5%BB%BA%E4%BB%81%E5%AF%BA_Kennin-ji_Temple_June_2026_N13P_109.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/JP_%E6%97%A5%E6%9C%AC_Japan_%E4%BA%AC%E9%83%BD_Kyoto_tourism_%E4%B8%AD%E4%BA%AC%E5%8D%80_Nakagyo-ku_%E5%BB%BA%E4%BB%81%E5%AF%BA_Kennin-ji_Temple_June_2026_N13P_102.jpg/1280px-JP_%E6%97%A5%E6%9C%AC_Japan_%E4%BA%AC%E9%83%BD_Kyoto_tourism_%E4%B8%AD%E4%BA%AC%E5%8D%80_Nakagyo-ku_%E5%BB%BA%E4%BB%81%E5%AF%BA_Kennin-ji_Temple_June_2026_N13P_102.jpg"
+  ],
+  "kodaiji-noite": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Kodaiji-2002-0098.jpg/1280px-Kodaiji-2002-0098.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/K%C5%8Ddaiji_Temple_sakura_blossoms_%2851473589649%29.jpg/1280px-K%C5%8Ddaiji_Temple_sakura_blossoms_%2851473589649%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Toyotomi_Hideyoshi_%28Kodaiji%29.jpg/1280px-Toyotomi_Hideyoshi_%28Kodaiji%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/KoudaijiOtamaya.jpg/1280px-KoudaijiOtamaya.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Entokuin_Kyoto18n4272.jpg/1280px-Entokuin_Kyoto18n4272.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/170923_Kodaiji_Kyoto_Japan05n.jpg/1280px-170923_Kodaiji_Kyoto_Japan05n.jpg"
+  ],
+  "arashiyama-macacos": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Iwatayama_Monkey_Park_%283810532079%29.jpg/1280px-Iwatayama_Monkey_Park_%283810532079%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Iwatayama_Monkey_Park.jpg/1280px-Iwatayama_Monkey_Park.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Arashiyama_Monkey_Park_Iwatayama_entrance_sign.jpg/1280px-Arashiyama_Monkey_Park_Iwatayama_entrance_sign.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Aerial_panorama_of_Arashiyama_%28%E5%B5%90%E5%B1%B1%29.jpg/1280px-Aerial_panorama_of_Arashiyama_%28%E5%B5%90%E5%B1%B1%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Macaca_fuscata_Iwatayama.jpg/1280px-Macaca_fuscata_Iwatayama.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Iwatayama_%28Arashiyama_%2C_Kyoto%29_Monkey_Park_hdsr_S5_28.jpg/1280px-Iwatayama_%28Arashiyama_%2C_Kyoto%29_Monkey_Park_hdsr_S5_28.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Iwatayama_%28Arashiyama_%2C_Kyoto%29_Monkey_Park_hdsr_S5_23.jpg/1280px-Iwatayama_%28Arashiyama_%2C_Kyoto%29_Monkey_Park_hdsr_S5_23.jpg"
+  ],
+  "uzumasa": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/%E6%9D%B1%E6%98%A0%E5%A4%AA%E7%A7%A6%E6%98%A0%E7%94%BB%E6%9D%91_-_%E6%98%A0%E7%94%BB%E6%96%87%E5%8C%96%E9%A4%A8%E5%85%A5%E5%8F%A3.jpg/1280px-%E6%9D%B1%E6%98%A0%E5%A4%AA%E7%A7%A6%E6%98%A0%E7%94%BB%E6%9D%91_-_%E6%98%A0%E7%94%BB%E6%96%87%E5%8C%96%E9%A4%A8%E5%85%A5%E5%8F%A3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Toei_Kyoto_Studio_Park_and_Toei_Studios_Kyoto_aerial_photo_20200819.jpg/1280px-Toei_Kyoto_Studio_Park_and_Toei_Studios_Kyoto_aerial_photo_20200819.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/%E6%9D%B1%E6%98%A0%E5%A4%AA%E7%A7%A6%E6%98%A0%E7%94%BB%E6%9D%91_-_%E5%8F%B2%E4%B8%8A%E6%9C%80%E6%81%90%E3%81%AE%E3%81%8A%E5%8C%96%E3%81%91%E5%B1%8B%E6%95%B7.jpg/1280px-%E6%9D%B1%E6%98%A0%E5%A4%AA%E7%A7%A6%E6%98%A0%E7%94%BB%E6%9D%91_-_%E5%8F%B2%E4%B8%8A%E6%9C%80%E6%81%90%E3%81%AE%E3%81%8A%E5%8C%96%E3%81%91%E5%B1%8B%E6%95%B7.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/%E4%B8%AD%E6%9D%91%E5%BA%A7_%282681433589%29.jpg/1280px-%E4%B8%AD%E6%9D%91%E5%BA%A7_%282681433589%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Toei_Uzumasa-0312.jpg/1280px-Toei_Uzumasa-0312.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Toei_Kyoto_Studio_Park_from_above.jpg/1280px-Toei_Kyoto_Studio_Park_from_above.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Toei_Uzumasa-0183.jpg/1280px-Toei_Uzumasa-0183.jpg"
+  ],
+  "usj": [
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Universal_Studios_Japan_parade_3.jpg/1280px-Universal_Studios_Japan_parade_3.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Universal_CityWalk_Osaka.JPG/1280px-Universal_CityWalk_Osaka.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/USJ_5years.JPG/1280px-USJ_5years.JPG",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/USJ-ET.jpg/1280px-USJ-ET.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/USJ-4D_Cinema.jpg/1280px-USJ-4D_Cinema.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Universal_Studios_Japan_2019%2C08.jpg/1280px-Universal_Studios_Japan_2019%2C08.jpg",
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/UNIVERSAL_STUDIOS_JAPAN_ENTRANCE.jpg/1280px-UNIVERSAL_STUDIOS_JAPAN_ENTRANCE.jpg"
+  ]
+};
+
+/* Todo slide se defende sozinho. Se a versão reduzida não existir pra aquele
+   arquivo, tenta a original; se a original também falhar, o slide SAI do
+   carrossel — antes ele ficava ali como quadrado de imagem quebrada, porque só
+   o primeiro slide tinha onerror. "redraw" recebe quantas fotos sobraram, pra
+   quem chamou refazer as bolinhas (ou desistir, se não sobrou nenhuma). */
+function armSlides(container, slideSelector, redraw){
+  container.querySelectorAll("img").forEach(img => {
+    img.onerror = () => {
+      const cur = img.getAttribute("src");
+      const full = thumbUrl(cur, 1280);
+      if (!img.dataset.triedFull && full && full !== cur) {
+        img.dataset.triedFull = "1";
+        img.src = full;
+        return;
+      }
+      const slide = img.closest(slideSelector);
+      if (slide) slide.remove();
+      redraw(container.querySelectorAll("img").length);
+    };
+  });
+}
 
 const CONFIG = {
   googleMapsApiKey: "AIzaSyBorvHlS1t_wka3R3-zing2YzUkTrWn6FI",
@@ -1933,7 +2612,7 @@ let googleReady = false;
 let userLocation = null; // {lat,lng} depois que o navegador autoriza
 
 const selections = {};       // key `${tripId}_${dayIndex}_${slotIndex}` -> placeId
-const photoCache = {};       // placeId -> [url, url, url] | []
+// (o cache de fotos saiu: a galeria é fixa, não há o que cachear)
 
 // declarados aqui (e não perto de onde são usados) porque o boot roda de forma síncrona
 // mais abaixo no modo sem chave, e "let" fica inacessível até a linha da própria declaração rodar
@@ -1972,6 +2651,20 @@ function storageGet(key, fallback){
 function storageSet(key, value){
   try { localStorage.setItem(key, JSON.stringify(value)); } catch(e){ /* ambiente sem storage: segue sem persistir */ }
 }
+/* As URLs de foto do Places que ficaram guardadas neste aparelho estão
+   vencidas — é literalmente o que fazia os slides 2+ aparecerem quebrados.
+   Como ninguém mais lê essas chaves, isso é só higiene: libera o espaço e
+   garante que nenhuma delas volte a ser desenhada. Roda uma vez por aparelho. */
+(function purgeStalePhotoCache(){
+  if (storageGet("photos_rev", 0) >= 3) return;
+  try {
+    Object.keys(localStorage)
+      .filter(k => k.startsWith("photos2_"))
+      .forEach(k => localStorage.removeItem(k));
+  } catch(e){ /* sem storage: nada a limpar */ }
+  storageSet("photos_rev", 3);
+})();
+
 function hiddenKey(tripId){ return `hidden_places_${tripId}`; }
 function isHidden(placeId){ return storageGet(hiddenKey(currentTripId), []).includes(placeId); }
 function hidePlace(placeId){
@@ -2541,13 +3234,26 @@ async function openPlaceModal(place){
     .then(d => renderGoogleDetails(place, d))
     .catch(e => { console.error("Places details:", e); renderGoogleDetails(place, null); });
 
-  const photos = await getPhotos(place);
+  const photos = getPhotos(place);
+  const blank = `<div class="carousel-slide"><div class="placeholder-big placeholder">${esc(place.name.charAt(0))}</div></div>`;
   if (photos.length) {
-    carousel.innerHTML = photos.map((url, i) =>
-      `<div class="carousel-slide"><img src="${url}" alt="${place.name}" onerror="this.parentElement.innerHTML='<div class=\\'placeholder-big placeholder\\'>${place.name.charAt(0)}</div>'"></div>`
+    carousel.innerHTML = photos.map(url =>
+      `<div class="carousel-slide"><img src="${url}" alt="${esc(place.name)}" decoding="async"></div>`
     ).join("");
-    dots.innerHTML = photos.map((_, i) => `<span class="${i===0 ? 'active' : ''}"></span>`).join("");
+    const paintDots = (n) => {
+      dots.innerHTML = n > 1
+        ? Array.from({ length: n }, (_, i) => `<span class="${i ? "" : "active"}"></span>`).join("")
+        : "";
+    };
+    paintDots(photos.length);
+    // antes cada slide quebrado virava a letra inicial do lugar no meio do
+    // carrossel; agora ele sai, e a letra só aparece se não sobrar foto nenhuma
+    armSlides(carousel, ".carousel-slide", (left) => {
+      if (!left) carousel.innerHTML = blank;
+      paintDots(left);
+    });
     carousel.onscroll = () => {
+      if (!dots.children.length) return;
       const idx = Math.round(carousel.scrollLeft / carousel.clientWidth);
       dots.querySelectorAll("span").forEach((d, i) => d.classList.toggle("active", i === idx));
     };
@@ -2694,49 +3400,20 @@ function cachePlaceId(place, id){
   storageSet(`placeid_${place.id}`, id);
 }
 
-async function getPhotos(place){
-  // se um dia uma foto automática ficar feia/errada, adicione heroImageOverride: "url"
-  // no lugar em TRIPS e ela entra na frente das fotos do Google, sem precisar mexer em mais nada.
-  const override = place.heroImageOverride ? [thumbUrl(place.heroImageOverride, HERO_WIDTH)] : [];
-  const cachedPid = storageGet(`placeid_${place.id}`, null);
-  if (cachedPid) placeIdCache[place.id] = cachedPid;
+/* As fotos agora são uma lista fixa e verificada: nada de rede, nada de cota,
+   nada que vença. Síncrono de propósito — o carrossel pinta no mesmo quadro em
+   que o card aparece, sem o piscar que existia enquanto o Places respondia.
 
-  if (photoCache[place.id]) return [...override, ...photoCache[place.id]].slice(0, MAX_PHOTOS);
-  const cached = storageGet(`photos2_${place.id}`, null);
-  if (cached) { photoCache[place.id] = cached; return [...override, ...cached].slice(0, MAX_PHOTOS); }
-
-  if (!usingGoogle) return override;
-
-  return new Promise(resolve => {
-    // O Places às vezes simplesmente não responde (chave sem autorização,
-    // quota estourada, rede caindo). Sem este teto a promessa ficava pendurada
-    // e a capa curada nunca era desenhada. Passado o tempo, segue com o que temos.
-    let done = false;
-    const finish = (v) => { if (!done) { done = true; resolve(v); } };
-    setTimeout(() => finish(override), 6000);
-
-    gPlacesSvc.findPlaceFromQuery(
-      { query: place.photoQuery || place.mapQuery, fields: ["photos", "place_id"], language: "pt" },
-      (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results[0]) {
-          // só guarda o place_id se a busca foi pelo mapQuery real. Quando usamos photoQuery
-          // (um substituto só pra ter foto decente), o place_id devolvido é do lugar da FOTO,
-          // não do destino — usá-lo mandaria o Google Maps pro endereço errado.
-          if (!place.photoQuery) cachePlaceId(place, results[0].place_id);
-          refreshMapLinksFor(place); // agora que temos o place_id, atualiza os links "Ver no mapa" já renderizados
-          if (results[0].photos) {
-            const urls = results[0].photos.slice(0, MAX_PHOTOS).map(p => p.getUrl({ maxWidth: 1200, maxHeight: 900 }));
-            photoCache[place.id] = urls;
-            storageSet(`photos2_${place.id}`, urls);
-            finish([...override, ...urls].slice(0, MAX_PHOTOS));
-            return;
-          }
-        }
-        photoCache[place.id] = [];
-        finish(override);
-      }
-    );
-  });
+   Isso também tirou 85 chamadas cobradas do Places a cada render do catálogo
+   (uma findPlaceFromQuery por atração, só pra pegar foto). O place_id, que
+   deixa o link "Ver no mapa" mais preciso, continua sendo resolvido — mas só
+   quando o modal do lugar abre, que é quando ele serve pra algo. */
+function getPhotos(place){
+  const urls = [];
+  const add = (u) => { if (u && !urls.includes(u)) urls.push(u); };
+  add(place.heroImageOverride);                 // a capa curada abre a galeria
+  (GALLERY[place.id] || []).forEach(add);
+  return urls.slice(0, MAX_PHOTOS).map(u => thumbUrl(u, HERO_WIDTH));
 }
 
 /* ==========================================================
@@ -4343,43 +5020,38 @@ function paintCatalogPhotos(place, photos){
         <img src="${url}" alt="${esc(place.name)}"${i ? ' loading="lazy"' : ""} decoding="async">
       </div>`).join("");
 
-    // se a PRIMEIRA falhar, volta pro placeholder — sem foto é melhor que foto quebrada
-    const first = track.querySelector("img");
-    if (first) first.onerror = () => {
-      if (place.heroImageOverride && first.src !== place.heroImageOverride) {
-        first.src = place.heroImageOverride;   // tenta a original antes de desistir
-        return;
-      }
-      delete track.dataset.shown;
-      track.innerHTML = fallback;
-    };
-
     const dots = document.querySelector(`.cat-dots[data-dots="${place.id}"]`);
-    if (dots) {
-      if (photos.length > 1) {
+    const paintDots = (n) => {
+      if (!dots) return;
+      if (n > 1) {
         dots.style.display = "flex";
-        dots.innerHTML = photos.map((_, i) => `<span class="${i ? "" : "on"}"></span>`).join("");
-        track.onscroll = () => {
-          const i = Math.round(track.scrollLeft / track.clientWidth);
-          dots.querySelectorAll("span").forEach((s, n) => s.classList.toggle("on", n === i));
-        };
+        dots.innerHTML = Array.from({ length: n }, (_, i) => `<span class="${i ? "" : "on"}"></span>`).join("");
       } else {
         dots.style.display = "none";
+        dots.innerHTML = "";
       }
-    }
+    };
+    paintDots(photos.length);
+
+    // uma foto quebrada tira só a si mesma; se não sobrar nenhuma, volta o placeholder
+    armSlides(track, ".cat-slide", (left) => {
+      if (!left) { delete track.dataset.shown; track.innerHTML = fallback; }
+      paintDots(left);
+    });
+
+    track.onscroll = () => {
+      if (!dots || !dots.children.length) return;
+      const i = Math.round(track.scrollLeft / track.clientWidth);
+      dots.querySelectorAll("span").forEach((s, n) => s.classList.toggle("on", n === i));
+    };
   });
 }
 
-async function loadHeroImage(place){
-  // A capa do Commons é conhecida sem rede nenhuma: desenha JÁ, sem esperar o
-  // Google. Se o Places responder depois com fotos extras, a capa é repintada
-  // com o contador "+N fotos". Se não responder, nada se perde.
-  if (place.heroImageOverride) {
-    const capa = [thumbUrl(place.heroImageOverride, HERO_WIDTH)];
-    paintHero(place, capa);
-    paintCatalogPhotos(place, capa);
-  }
-  const photos = await getPhotos(place);
+/* Já não há nada pra esperar: a galeria é conhecida sem rede. Pinta na hora.
+   (Continua sendo chamada depois do nó entrar no DOM — paintHero e
+   paintCatalogPhotos procuram por querySelectorAll, então nó solto não pinta.) */
+function loadHeroImage(place){
+  const photos = getPhotos(place);
   paintHero(place, photos);
   paintCatalogPhotos(place, photos);
 }
