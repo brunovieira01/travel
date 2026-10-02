@@ -102,6 +102,38 @@
     border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px;
     letter-spacing:.03em;
   }
+  /* A lista da rota. Fica em position:fixed e pendurada na raiz da página, pra
+     não ser cortada pelo overflow da barra do mapa — no telefone acontecia.
+     (Evitar escrever a tag de abertura do body aqui: as ferramentas de teste
+     injetam script na primeira ocorrência dela e acabavam caindo dentro deste
+     comentário, dentro do <style>, em vez da página.) */
+  .combo-menu{
+    position: fixed; z-index: 90; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--r-sm);
+    box-shadow: 0 14px 34px rgba(0,0,0,.45);
+  }
+  .combo-opt{
+    padding: 11px 12px; font-size: 13px; color: var(--ink-2);
+    cursor: pointer; border-bottom: 1px solid var(--line);
+  }
+  .combo-opt:last-child{ border-bottom: none; }
+  .combo-opt.on, .combo-opt:hover{ background: var(--paper); color: var(--ink); }
+  .combo-opt b{ color: var(--ink); font-weight: 700; }
+  .combo-empty{ padding: 11px 12px; font-size: 12px; color: var(--ink-3); }
+  .combo-count{
+    padding: 7px 12px; font-size: 10px; color: var(--ink-3);
+    letter-spacing:.04em; text-transform: uppercase;
+    border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--card);
+  }
+  .refresh-btn{
+    flex:0 0 auto; background: var(--card); color: var(--ink-3);
+    border: 1px solid var(--line); border-radius: 999px;
+    width: 26px; height: 26px; line-height: 1; font-size: 13px; padding: 0;
+    cursor: pointer; transition: color .16s ease, border-color .16s ease;
+  }
+  .refresh-btn:hover{ color: var(--ink); border-color: var(--ink-3); }
+  .refresh-btn.spin{ animation: refresh-spin .9s linear infinite; }
+  @keyframes refresh-spin{ to { transform: rotate(360deg); } }
   select.trip-select{
     flex:0 0 auto; background: var(--card); color: var(--ink);
     border: 1px solid var(--line); border-radius: var(--r-sm);
@@ -882,6 +914,7 @@
     <div class="title-group">
       <h1 id="trip-title">Journey Planner</h1>
       <span class="version-badge" id="version-badge"></span>
+      <button class="refresh-btn" id="refresh-btn" title="Conferir se saiu versão nova" aria-label="Atualizar">&#8635;</button>
     </div>
     <select class="trip-select" id="trip-select"></select>
   </div>
@@ -899,11 +932,10 @@
 <section class="view active" id="view-map">
   <button class="route-toggle" id="route-toggle" aria-expanded="false">Traçar rota entre dois pontos</button>
   <div class="map-toolbar">
-    <input type="text" id="my-location-input" list="route-places" placeholder="Estou em… (escolha da lista)">
+    <input type="text" id="my-location-input" autocomplete="off" placeholder="Estou em… (toque pra ver a lista)">
     <button id="set-location-btn">Definir</button>
-    <input type="text" id="origin-input" list="route-places" placeholder="De onde (escolha ou digite pra filtrar)">
-    <input type="text" id="dest-input" list="route-places" placeholder="Para onde (escolha ou digite pra filtrar)">
-    <datalist id="route-places"></datalist>
+    <input type="text" id="origin-input" autocomplete="off" placeholder="De onde (toque pra ver a lista)">
+    <input type="text" id="dest-input" autocomplete="off" placeholder="Para onde (toque pra ver a lista)">
     <select id="route-mode">
       <option value="ALL">Comparar todos os modos</option>
       <option value="WALKING">A pé</option>
@@ -1144,7 +1176,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.4.0";
+const APP_VERSION = "2.5.0";
 
 /* ---------- ícones (SVG em vez de emoji: o emoji muda de cara em cada
    sistema e não acompanha a cor do texto) ---------- */
@@ -2719,8 +2751,55 @@ function haversine(a, b){
 /* ==========================================================
    BOOT — decide Google Maps real vs. modo alternativo (Leaflet)
    ========================================================== */
+/* Botão de atualizar. Ele revisa o site publicado, e navegador (e o CDN do
+   Pages) servem o HTML do cache por um tempo — já aconteceu de ele revisar uma
+   versão velha sem saber. Isto busca o arquivo ignorando cache, compara o
+   APP_VERSION de lá com o daqui, e só recarrega se mudou: um toque responde
+   "já está na mais nova" em vez de piscar a tela sem motivo. */
+/* Compara "2.10.0" com "2.9.0" do jeito certo: número por número, não como
+   texto (como texto, "2.10.0" < "2.9.0" e o botão nunca mais atualizaria). */
+function cmpVersion(a, b){
+  const pa = String(a).split("."), pb = String(b).split(".");
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const na = Number(pa[i] || 0), nb = Number(pb[i] || 0);
+    if (na !== nb) return na > nb ? 1 : -1;
+  }
+  return 0;
+}
+
+async function checkForUpdate(){
+  const btn = document.getElementById("refresh-btn");
+  if (btn) btn.classList.add("spin");
+  try {
+    const r = await fetch("index.html?probe=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const m = (await r.text()).match(/APP_VERSION = "([0-9.]+)"/);
+    const remote = m ? m[1] : null;
+    if (!remote) { toast("Não deu pra ler a versão publicada."); return; }
+    // Só recarrega se a publicada for MAIS NOVA. Comparar com !== recarregaria
+    // à toa quando o CDN do Pages ainda serve a versão anterior durante um
+    // deploy — e pior, voltaria pra ela.
+    if (cmpVersion(remote, APP_VERSION) > 0) {
+      toast("Versão " + remote + " disponível. Recarregando…");
+      setTimeout(() => location.replace(location.pathname + "?v=" + Date.now()), 800);
+      return;
+    }
+    toast("Já está na versão mais nova (v" + APP_VERSION + ").");
+  } catch(e){
+    console.error("checkForUpdate:", e);
+    toast("Sem conexão pra conferir a versão.");
+  } finally {
+    if (btn) btn.classList.remove("spin");
+  }
+}
+
 function boot(){
   document.getElementById("version-badge").textContent = "v" + APP_VERSION;
+  const refreshBtn = document.getElementById("refresh-btn");
+  if (refreshBtn) refreshBtn.onclick = checkForUpdate;
+  attachCombo(document.getElementById("my-location-input"), () => routeLabels, () => setManualLocation());
+  attachCombo(document.getElementById("origin-input"), () => routeLabels);
+  attachCombo(document.getElementById("dest-input"), () => routeLabels);
   migratePlanFormat();
   renderTripSelect();
   renderViewTabs();
@@ -3133,7 +3212,11 @@ function renderMapView(){
   const setBtn = document.getElementById("set-location-btn");
   if (setBtn) {
     setBtn.onclick = setManualLocation;
-    document.getElementById("my-location-input").onkeydown = (e) => { if (e.key === "Enter") setManualLocation(); };
+    // se a lista tratou o Enter (escolheu um item), não dispara "Definir" aqui:
+    // o onPick da lista já chama setManualLocation com o valor certo.
+    document.getElementById("my-location-input").onkeydown = (e) => {
+      if (e.key === "Enter" && !e.defaultPrevented) setManualLocation();
+    };
   }
 }
 
@@ -3271,12 +3354,12 @@ let routeTargets = new Map();   // rótulo -> {lat,lng}
 
 function routeLabelFor(p){ return `${p.name} · ${p.city}`; }
 
+let routeLabels = [];           // a lista, na ordem em que deve aparecer
+
 function renderRouteOptions(){
-  const dl = document.getElementById("route-places");
-  if (!dl) return;
   routeTargets = new Map();
-  const labels = [];
-  const add = (label, loc) => { if (!routeTargets.has(label)) { routeTargets.set(label, loc); labels.push(label); } };
+  routeLabels = [];
+  const add = (label, loc) => { if (!routeTargets.has(label)) { routeTargets.set(label, loc); routeLabels.push(label); } };
 
   if (userLocation) add("Minha localização", userLocation);
   getStays().forEach(s => {
@@ -3285,22 +3368,225 @@ function renderRouteOptions(){
   });
   currentTrip().places.forEach(p => add(routeLabelFor(p), { lat: p.lat, lng: p.lng }));
 
-  dl.innerHTML = labels.map(l => `<option value="${esc(l)}"></option>`).join("");
+  // se a lista mudou embaixo de um menu aberto, redesenha
+  if (comboOpen) comboOpen.draw();
 }
 
-/* Aceita o rótulo inteiro ("Kiyomizu-dera · Kyoto") e também só o nome, caso
-   você pare de digitar antes de escolher da lista. */
+/* ---------- busca esperta ----------
+   "ignora acento" importa em português: digitar "toquio" tem que achar
+   "Tóquio". E o casamento é por PALAVRA, não só pelo começo do rótulo:
+   · "ashi"     acha "Lago Ashi + cruzeiro…"       (começo de outra palavra)
+   · "livre"    acha "Museu ao Ar Livre de Hakone" (idem, no meio do nome)
+   · "hak mus"  acha "Museu ao Ar Livre de Hakone" (dois pedaços, fora de ordem)
+   · "kyoto fus" acha "Fushimi Inari · Kyoto"      (um pedaço é a cidade)
+   Todo pedaço digitado tem que casar com algo — é E, não OU, senão digitar
+   mais tornaria a lista maior (tem teste pra isso).
+
+   Ordem: começo do nome > começo de outra palavra > no meio de uma palavra.
+   Casar por INICIAIS ("mal" pra "Museu ao Ar Livre") foi tentado e removido:
+   as iniciais reais ali são "maaldhh", porque "ao" e "de" também contam, e a
+   regra dava a pontuação mais alta de todas — duas letras digitadas jogavam um
+   item esquisito pra frente de um nome que casava de verdade. */
+function deaccent(s){
+  return String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function routeScore(label, query){
+  const L = deaccent(label);
+  const words = L.split(/[^a-z0-9]+/).filter(Boolean);
+  const q = deaccent(query).trim();
+  if (!q) return 0;                                   // sem filtro: a lista inteira
+  const tokens = q.split(/\s+/).filter(Boolean);
+
+  let score = 0;
+  for (const t of tokens) {
+    let best = -1;
+    if (words[0] && words[0].startsWith(t)) best = 100;         // começo do nome
+    if (best < 0) {
+      for (let i = 1; i < words.length; i++) {
+        if (words[i].startsWith(t)) { best = 70 - Math.min(i, 9); break; }   // começo de outra palavra
+      }
+    }
+    if (best < 0 && L.includes(t)) best = 30;                   // no meio de uma palavra
+    if (best < 0) return -1;                                    // um pedaço sem casar: fora
+    score += best;
+  }
+  if (L.startsWith(q)) score += 50;                             // digitando o rótulo inteiro
+  score -= Math.min(label.length, 40) / 10;                     // empate: rótulo mais curto ganha
+  return score;
+}
+
+/* Marca em negrito o que casou, pra ficar claro POR QUE aquele item apareceu. */
+function comboHighlight(label, query){
+  const q = deaccent(query).trim();
+  if (!q) return esc(label);
+  const L = deaccent(label);
+  const hits = [];
+  q.split(/\s+/).filter(Boolean).forEach(t => {
+    let from = 0, at;
+    while ((at = L.indexOf(t, from)) >= 0) { hits.push([at, at + t.length]); from = at + t.length; }
+  });
+  if (!hits.length) return esc(label);
+  hits.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  hits.forEach(h => {
+    const last = merged[merged.length - 1];
+    if (last && h[0] <= last[1]) last[1] = Math.max(last[1], h[1]);
+    else merged.push(h.slice());
+  });
+  let out = "", pos = 0;
+  merged.forEach(([a, b]) => {
+    out += esc(label.slice(pos, a)) + "<b>" + esc(label.slice(a, b)) + "</b>";
+    pos = b;
+  });
+  return out + esc(label.slice(pos));
+}
+
+/* ---------- a lista em si ----------
+   O <datalist> do navegador prometia "escolha ou digite pra filtrar" e não
+   entregava: no telefone ele não abre como lista nenhuma — só sugere depois de
+   digitar, e às vezes nem isso. Então a lista é nossa: toca e abre INTEIRA pra
+   rolar, digita e ela filtra. */
+let comboOpen = null;
+
+function closeCombo(){
+  if (!comboOpen) return;
+  comboOpen.menu.remove();
+  comboOpen = null;
+}
+
+function openCombo(input, items, onPick){
+  if (comboOpen && comboOpen.input === input) { comboOpen.draw(); return comboOpen; }
+  closeCombo();
+
+  const menu = document.createElement("div");
+  menu.className = "combo-menu";
+  document.body.appendChild(menu);
+  const st = { input, menu, items, onPick, idx: -1, shown: [] };
+  comboOpen = st;
+
+  st.place = () => {
+    const r = input.getBoundingClientRect();
+    menu.style.left = Math.max(8, r.left) + "px";
+    menu.style.width = Math.min(r.width, window.innerWidth - 16) + "px";
+    const below = window.innerHeight - r.bottom;
+    if (below < 170 && r.top > below) {           // sem espaço embaixo: abre pra cima
+      menu.style.top = "auto";
+      menu.style.bottom = (window.innerHeight - r.top + 4) + "px";
+      menu.style.maxHeight = Math.min(300, r.top - 12) + "px";
+    } else {
+      menu.style.bottom = "auto";
+      menu.style.top = (r.bottom + 4) + "px";
+      menu.style.maxHeight = Math.min(300, Math.max(140, below - 12)) + "px";
+    }
+  };
+
+  st.highlight = () => {
+    menu.querySelectorAll(".combo-opt").forEach((el, i) => el.classList.toggle("on", i === st.idx));
+    const on = menu.querySelector(".combo-opt.on");
+    if (on) on.scrollIntoView({ block: "nearest" });
+  };
+
+  st.draw = () => {
+    const q = input.value.trim();
+    st.items = typeof st.getItems === "function" ? st.getItems() : st.items;
+    const scored = st.items
+      .map(l => ({ l, s: routeScore(l, q) }))
+      .filter(x => x.s >= 0)
+      .sort((a, b) => b.s - a.s || a.l.localeCompare(b.l, "pt"));
+    st.shown = scored.map(x => x.l);
+    // com filtro, o primeiro já vem marcado (Enter escolhe). Sem filtro, nada
+    // vem marcado, pra Enter não escolher algo que você não olhou.
+    st.idx = q && st.shown.length ? 0 : -1;
+    if (!st.shown.length) {
+      menu.innerHTML = `<div class="combo-empty">nada com "${esc(q)}"</div>`;
+    } else {
+      const head = `<div class="combo-count">${st.shown.length} ${st.shown.length === 1 ? "lugar" : "lugares"}${q ? "" : " · role ou digite pra filtrar"}</div>`;
+      menu.innerHTML = head + st.shown.map((l, i) =>
+        `<div class="combo-opt${i === st.idx ? " on" : ""}" data-i="${i}">${comboHighlight(l, q)}</div>`
+      ).join("");
+    }
+    st.place();
+  };
+
+  st.pick = (i) => {
+    const l = st.shown[i];
+    if (l == null) return;
+    input.value = l;
+    closeCombo();
+    if (onPick) onPick(l);
+  };
+
+  // mousedown só segura o foco; a escolha é no click — assim ARRASTAR pra rolar
+  // a lista no telefone não seleciona nada (o navegador cancela o click).
+  menu.addEventListener("mousedown", (e) => e.preventDefault());
+  menu.addEventListener("click", (e) => {
+    const opt = e.target.closest("[data-i]");
+    if (opt) st.pick(Number(opt.dataset.i));
+  });
+
+  st.draw();
+  return st;
+}
+
+function attachCombo(input, getItems, onPick){
+  if (!input) return;
+  input.setAttribute("autocomplete", "off");
+  const show = () => {
+    const st = openCombo(input, getItems(), onPick);
+    if (st) st.getItems = getItems;
+  };
+  input.addEventListener("focus", show);
+  input.addEventListener("click", show);
+  input.addEventListener("input", show);
+  input.addEventListener("keydown", (e) => {
+    if (!comboOpen || comboOpen.input !== input) {
+      if (e.key === "ArrowDown") { e.preventDefault(); show(); }
+      return;
+    }
+    const st = comboOpen;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!st.shown.length) return;
+      st.idx = e.key === "ArrowDown"
+        ? (st.idx + 1) % st.shown.length
+        : (st.idx <= 0 ? st.shown.length - 1 : st.idx - 1);
+      st.highlight();
+    } else if (e.key === "Enter") {
+      if (st.idx >= 0) { e.preventDefault(); st.pick(st.idx); }
+    } else if (e.key === "Escape") {
+      closeCombo();
+    }
+  });
+}
+
+document.addEventListener("mousedown", (e) => {
+  if (!comboOpen) return;
+  if (e.target === comboOpen.input || comboOpen.menu.contains(e.target)) return;
+  closeCombo();
+});
+window.addEventListener("scroll", () => { if (comboOpen) comboOpen.place(); }, true);
+window.addEventListener("resize", () => { if (comboOpen) comboOpen.place(); });
+
+/* Aceita o rótulo inteiro ("Kiyomizu-dera · Kyoto"), só o nome, e — se você
+   digitou sem escolher da lista — o melhor palpite da busca esperta, mas só
+   quando ele é folgadamente melhor que o segundo colocado. Empate devolve
+   null: é melhor pedir pra escolher do que traçar rota pro lugar errado. */
 function resolveRoutePoint(text){
   if (!text) return null;
   if (routeTargets.has(text)) return routeTargets.get(text);
-  const t = text.toLowerCase().trim();
+  const t = deaccent(text).trim();
   const keys = [...routeTargets.keys()];
-  const exact = keys.find(k => k.toLowerCase() === t);
+  const exact = keys.find(k => deaccent(k) === t);
   if (exact) return routeTargets.get(exact);
-  const byName = keys.find(k => k.toLowerCase().split(" · ")[0] === t);
+  const byName = keys.find(k => deaccent(k).split(" · ")[0] === t);
   if (byName) return routeTargets.get(byName);
-  const partial = keys.filter(k => k.toLowerCase().includes(t));
-  return partial.length === 1 ? routeTargets.get(partial[0]) : null;
+
+  const scored = keys.map(k => ({ k, s: routeScore(k, text) })).filter(x => x.s >= 0).sort((a, b) => b.s - a.s);
+  if (!scored.length) return null;
+  if (scored.length === 1) return routeTargets.get(scored[0].k);
+  if (scored[0].s - scored[1].s >= 25) return routeTargets.get(scored[0].k);
+  return null;
 }
 
 async function handleRouteSearch(){

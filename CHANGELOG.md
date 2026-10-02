@@ -4,6 +4,85 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.5.0 — 2026-10-02
+
+**A lista da rota agora é uma lista de verdade.** O `<datalist>` do navegador
+prometia "escolha ou digite pra filtrar" e não entregava: no telefone ele não
+abre como lista nenhuma — fica esperando você digitar pra talvez sugerir algo.
+O texto no campo dizia uma coisa e o comportamento era outra.
+
+Então a lista passou a ser nossa: **toca e ela abre inteira, com as 85 opções
+pra rolar** (com um cabeçalho dizendo quantas são), e **digitar filtra**. Ela
+fica em `position:fixed`, pendurada na raiz da página, pra não ser cortada pelo
+`overflow` da barra do mapa — no telefone isso acontecia.
+
+Detalhes que importam no uso real:
+
+- **Escolher é no `click`, não no `mousedown`.** Arrastar pra rolar a lista no
+  telefone não seleciona nada, porque o navegador cancela o `click` quando
+  houve rolagem. Mesmo cuidado que o carrossel já tinha.
+- **Tocar de novo reabre.** `focus` não basta: se o campo já está focado, o
+  evento não dispara. O `click` cobre esse caminho, que é o que a mão faz.
+- **Sem filtro, nada vem pré-selecionado**, pra Enter não escolher um item que
+  você não olhou. Com filtro, o primeiro já vem marcado e Enter aceita.
+- **Setas, Enter e Esc** funcionam no teclado, e a lista abre pra cima quando
+  não há espaço embaixo.
+- O trecho que casou aparece em **negrito**, pra ficar claro por que aquele
+  item apareceu.
+
+### A busca
+
+Ignora acento — digitar "toquio" acha "Tóquio", o que em português é
+obrigatório. E casa por **palavra**, não só pelo começo do rótulo:
+
+| digitando | acha |
+|---|---|
+| `ashi` | Lago Ashi + cruzeiro (começo de outra palavra) |
+| `livre` | Museu ao Ar Livre de Hakone |
+| `hak mus` | Museu ao Ar Livre de Hakone (dois pedaços, fora de ordem) |
+| `kyoto fus` | Fushimi Inari · Kyoto (um pedaço é a cidade) |
+| `broadway` | Nakano Broadway |
+
+A ordem de preferência é: começo do nome > começo de outra palavra > no meio de
+uma palavra. Todo pedaço digitado tem que casar com algo — é E, não OU, senão
+digitar mais deixaria a lista maior. Tem teste pra isso: 18 asserções contra os
+rótulos reais, incluindo a monotonicidade ("k" → 62, "ki" → 9, "kiy" → 2).
+
+Casar por **iniciais** ("mal" pra "Museu ao Ar Livre") foi implementado e
+**removido**: as iniciais reais ali são `maaldhh`, porque "ao" e "de" também
+contam — o exemplo que justificava a regra não funcionava. E ela dava a
+pontuação mais alta de todas, então duas letras digitadas jogavam um item
+esquisito na frente de um nome que casava de verdade.
+
+`resolveRoutePoint` passou a usar a mesma busca pra texto digitado sem escolher
+da lista, mas só aceita o melhor palpite quando ele ganha do segundo colocado
+com folga. Empate devolve null: é melhor pedir pra escolher do que traçar rota
+pro lugar errado.
+
+### Botão de atualizar, no topo
+
+Pequeno, do lado do número da versão — em todas as abas, porque o cabeçalho é
+o mesmo. Ele **não recarrega à toa**: busca o arquivo publicado ignorando
+cache, lê o `APP_VERSION` de lá e compara. Se for mais nova, avisa e recarrega
+com um parâmetro novo na URL (que é o que fura o cache do navegador e do CDN).
+Se não, responde "já está na versão mais nova (vX)" e pronto.
+
+A comparação é número por número, não texto: como texto, `"2.10.0" < "2.9.0"`,
+e o botão nunca mais atualizaria depois da 2.9. Tem teste com esse caso.
+
+Só recarrega se a publicada for **mais nova** — nunca se for mais velha. Durante
+um deploy o CDN ainda serve a anterior por alguns instantes, e comparar por
+diferença faria o botão voltar pra versão antiga.
+
+### Correção de armadilha no próprio arquivo
+
+Um comentário no `<style>` continha a tag de abertura do `body` escrita por
+extenso. As ferramentas de teste injetam o script de verificação na primeira
+ocorrência dessa tag — então o script ia pra dentro do comentário, dentro do
+`<style>`, e nenhuma verificação rodava: três tentativas de teste voltaram
+vazias antes de a causa aparecer. O comentário foi reescrito, com um aviso pra
+não repetir.
+
 ## 2.4.0 — 2026-10-02
 
 **As fotos pararam de quebrar porque pararam de vencer.** O sintoma era muito
