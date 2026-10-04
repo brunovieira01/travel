@@ -14,6 +14,7 @@ create table if not exists public.expenses (
   user_id     uuid not null references auth.users(id) on delete cascade,
   trip_id     uuid not null references public.trips(id) on delete cascade,
 
+  kind        text not null default 'planejado',  -- planejado | diario
   label       text not null,              -- "Passagem aérea — parcela 2/3"
   group_name  text,                       -- junta parcelas da mesma compra
   category    text,                       -- voo | hospedagem | transporte | comida | passeio | compras | outro
@@ -27,9 +28,15 @@ create table if not exists public.expenses (
   created_at  timestamptz not null default now()
 );
 
+-- Se você rodou a primeira versão desta migração (sem `kind`), esta linha
+-- completa o que falta. Em banco novo não faz nada: a coluna já nasceu acima.
+alter table public.expenses add column if not exists kind text not null default 'planejado';
+
 -- Consultas da aba são sempre por viagem e ordenadas pela data do débito.
 create index if not exists expenses_trip_charge_idx
   on public.expenses (trip_id, charge_date);
+create index if not exists expenses_trip_kind_idx
+  on public.expenses (trip_id, kind);
 
 -- ---------------------------------------------------------------------------
 -- RLS — as mesmas quatro políticas "só as próprias linhas" das outras tabelas.

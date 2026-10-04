@@ -404,6 +404,76 @@
   .cost-split-head input{ width:auto; }
   .cost-split-hint{ font-size: 11px; color: var(--ink-3); margin-top: 6px; line-height:1.5; }
 
+  /* ---------- CUSTOS · lançamento rápido (No Japão) ---------- */
+  .quick-add{
+    padding: var(--s4) var(--gutter) var(--s4);
+    border-bottom: 1px solid var(--line); background: var(--card);
+  }
+  .qa-row{ display:flex; gap: var(--s2); align-items:stretch; }
+  .qa-amount{
+    flex:1 1 auto; display:flex; align-items:center; gap: 6px;
+    border: 1px solid var(--line); border-radius: var(--r-md);
+    background: var(--card-2); padding: 0 var(--s3); min-width:0;
+  }
+  .qa-amount .qa-cur{ font-size: 20px; font-weight:700; color: var(--ink-3); }
+  .qa-amount input{
+    flex:1 1 auto; min-width:0; border:0; background:none; outline:none;
+    font-size: 26px; font-weight:700; color: var(--ink);
+    padding: 10px 0; font-variant-numeric: tabular-nums;
+  }
+  .qa-cur-btn, .qa-add{ flex:0 0 auto; }
+  .qa-cur-btn{
+    background: var(--card-2); border: 1px solid var(--line); color: var(--ink-2);
+    border-radius: var(--r-md); padding: 0 var(--s3); cursor:pointer; font-size: 12px; font-weight:700;
+  }
+  .qa-cur-btn:hover{ color: var(--ink); }
+  .qa-cats{ display:flex; flex-wrap:wrap; gap: var(--s2); margin-top: var(--s3); }
+  .qa-cat{
+    background: var(--card-2); border: 1px solid var(--line); color: var(--ink-2);
+    border-radius: 999px; padding: 6px var(--s3); cursor:pointer; font-size: 12px;
+  }
+  .qa-cat:hover{ color: var(--ink); }
+  .qa-cat.active{ background: var(--seal); border-color: var(--seal); color:#fff; font-weight:700; }
+  .qa-row2{ display:flex; gap: var(--s2); margin-top: var(--s3); }
+  .qa-row2 input[type="text"]{ flex:1 1 auto; min-width:0; }
+  .qa-row2 input{
+    border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card-2);
+    color: var(--ink); padding: 8px var(--s3); font-size: 13px; font-family:inherit;
+  }
+  .qa-hint{ font-size: 11px; color: var(--ink-3); margin-top: 6px; min-height: 15px; font-variant-numeric: tabular-nums; }
+
+  .daily-day{ padding: 0 var(--gutter); }
+  .daily-day-head{
+    display:flex; align-items:baseline; gap: var(--s3);
+    padding: var(--s3) 0 var(--s2); border-bottom: 1px solid var(--line);
+  }
+  .daily-day-head .dd-name{ font-weight:700; font-size: 13px; color: var(--ink); }
+  .daily-day-head .dd-sub{ font-size: 11px; color: var(--ink-3); }
+  .daily-day-head .dd-total{
+    margin-left:auto; font-weight:700; font-size: 14px; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .daily-row{
+    display:flex; align-items:center; gap: var(--s3); width:100%; text-align:left;
+    background:none; border:0; border-bottom: 1px solid var(--line);
+    padding: var(--s3) 0; cursor:pointer; color: var(--ink-2);
+  }
+  .daily-row:last-child{ border-bottom:0; }
+  .daily-row:hover{ color: var(--ink); }
+  .daily-row .dr-ico{ flex:0 0 26px; font-size: 17px; text-align:center; }
+  .daily-row .dr-main{ flex:1 1 auto; min-width:0; }
+  .daily-row .dr-label{ font-size: 14px; color: var(--ink); display:block; }
+  .daily-row .dr-meta{ font-size: 11px; color: var(--ink-3); display:block; margin-top:1px; }
+  .daily-row .dr-amount{
+    flex:0 0 auto; text-align:right; font-weight:700; font-size: 14px; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .daily-row .dr-amount .dr-conv{ display:block; font-weight:400; font-size: 11px; color: var(--ink-3); }
+  .cat-bar{ display:flex; height:6px; border-radius:999px; overflow:hidden; margin: var(--s2) 0 var(--s3); background: var(--line); }
+  .cat-bar span{ display:block; height:100%; }
+  .cat-legend{ display:flex; flex-wrap:wrap; gap: var(--s2) var(--s4); font-size: 11px; color: var(--ink-3); }
+  .cat-legend b{ color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
   /* ---------- HOSPEDAGEM ---------- */
   .stay-form{ display:flex; flex-direction:column; gap: var(--s3); margin: var(--s2) 0 var(--s4); }
   .stay-form label{
@@ -1104,15 +1174,43 @@
 
 <!-- ================= CUSTOS ================= -->
 <section class="view" id="view-costs">
-  <div class="plan-toolbar">
-    <span id="costs-summary" class="plan-summary"></span>
-    <div class="plan-toolbar-actions">
-      <button class="gmaps-btn" id="cost-new">+ Novo gasto</button>
+  <nav class="sub-tabs">
+    <button class="sub-tab active" data-costsub="plan">Previsto</button>
+    <button class="sub-tab" data-costsub="daily">No Japão</button>
+  </nav>
+
+  <div class="sub-view active" id="costsub-plan">
+    <div class="plan-toolbar">
+      <span id="costs-summary" class="plan-summary"></span>
+      <div class="plan-toolbar-actions">
+        <button class="gmaps-btn" id="cost-new">+ Novo gasto</button>
+      </div>
     </div>
+    <div id="costs-totals"></div>
+    <div id="costs-body"></div>
+    <div class="todo-note" id="costs-fx-note"></div>
   </div>
-  <div id="costs-totals"></div>
-  <div id="costs-body"></div>
-  <div class="todo-note" id="costs-fx-note"></div>
+
+  <div class="sub-view" id="costsub-daily">
+    <div class="quick-add">
+      <div class="qa-row">
+        <div class="qa-amount">
+          <span class="qa-cur" id="qa-cur-sign">¥</span>
+          <input type="number" id="qa-amount" inputmode="decimal" step="1" min="0" placeholder="0">
+        </div>
+        <button class="qa-cur-btn" id="qa-cur-toggle" title="Trocar moeda">¥ / R$</button>
+        <button class="gmaps-btn qa-add" id="qa-add">Lançar</button>
+      </div>
+      <div class="qa-cats" id="qa-cats"></div>
+      <div class="qa-row2">
+        <input type="text" id="qa-label" placeholder="O que foi? (opcional)">
+        <input type="date" id="qa-date">
+      </div>
+      <div class="qa-hint" id="qa-hint"></div>
+    </div>
+    <div id="daily-totals"></div>
+    <div id="daily-body"></div>
+  </div>
 </section>
 
 <div class="modal-backdrop" id="cost-modal">
@@ -1316,7 +1414,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.7.0";
+const APP_VERSION = "2.8.0";
 
 /* ---------- ícones (SVG em vez de emoji: o emoji muda de cara em cada
    sistema e não acompanha a cor do texto) ---------- */
@@ -4272,7 +4370,8 @@ async function pullFromSupabase(){
 
   if (expenses.data?.length) {
     saveExpenses(expenses.data.map(r => ({
-      id: r.id, label: r.label, group: r.group_name || "", category: r.category || "outro",
+      id: r.id, kind: r.kind || EXPENSE_KINDS.PLAN,
+      label: r.label, group: r.group_name || "", category: r.category || "outro",
       currency: r.currency || "BRL", amount: Number(r.amount) || 0, method: r.method || "",
       chargeDate: r.charge_date || "", status: r.status || "agendado",
       notes: r.notes || "", position: r.position
@@ -4352,6 +4451,7 @@ async function pushExpenses(){
     const rows = getExpenses().map((e, i) => ({
       id: isUuid(e.id) ? e.id : uuid(),
       user_id: sbUser.id, trip_id: sbTripId,
+      kind: e.kind || EXPENSE_KINDS.PLAN,
       label: e.label, group_name: e.group || null, category: e.category || null,
       currency: e.currency || "BRL", amount: Number(e.amount) || 0,
       method: e.method || null, charge_date: e.chargeDate || null,
@@ -4490,6 +4590,31 @@ const EXPENSES_REV = 1;
 const EXPENSE_CATEGORIES = ["voo","hospedagem","transporte","comida","passeio","compras","outro"];
 const EXPENSE_STATUSES  = ["pago","agendado","estimado"];
 
+/* Dois tipos de gasto na mesma tabela, separados por `kind`:
+
+   planejado — o que foi contratado antes da viagem. Pergunta: "quanto sai
+               da conta em cada mês". Poucos registros, data futura, parcela.
+   diario    — o que se gasta lá dentro. Pergunta: "quanto já torrei hoje".
+               Muitos registros, data é sempre o passado imediato, iene.
+
+   Mesma tabela porque os campos são os mesmos; `kind` separado porque
+   misturar os dois na mesma lista estragaria as duas perguntas — 200 ramen
+   soterrariam a parcela da passagem, e o total do mês de dezembro viraria
+   um número sem significado nenhum. */
+const EXPENSE_KINDS = { PLAN: "planejado", DAILY: "diario" };
+
+// Categorias do dia a dia: as de planejamento não servem (ninguém lança
+// "voo" em Osaka), e a lista curta é o que deixa o lançamento rápido.
+const DAILY_CATEGORIES = [
+  { id:"comida",     label:"Comida",     icon:"🍜" },
+  { id:"transporte", label:"Transporte", icon:"🚃" },
+  { id:"passeio",    label:"Passeio",    icon:"⛩️" },
+  { id:"compras",    label:"Compras",    icon:"🛍️" },
+  { id:"konbini",    label:"Konbini",    icon:"🏪" },
+  { id:"outro",      label:"Outro",      icon:"•"  }
+];
+function dailyCat(id){ return DAILY_CATEGORIES.find(c => c.id === id) || DAILY_CATEGORIES[5]; }
+
 // Câmbio só pra somar iene e real no mesmo total. Editável na própria aba —
 // é estimativa, nunca o valor cobrado. O que se paga em iene continua
 // guardado em iene.
@@ -4527,13 +4652,18 @@ function saveFx(fx){ storageSet(fxKey(), fx); }
 function getExpenses(){
   const saved = storageGet(expensesKey(), null);
   if (!saved) {
-    const seeded = (EXPENSES_SEED[currentTripId] || []).map((e, i) => ({ ...e, position: i }));
+    const seeded = (EXPENSES_SEED[currentTripId] || [])
+      .map((e, i) => ({ kind: EXPENSE_KINDS.PLAN, ...e, position: i }));
     storageSet(expensesKey(), seeded);
     storageSet(expensesRevKey(), EXPENSES_REV);
     return seeded;
   }
-  return saved;
+  // Registro gravado antes da v2.8.0 não tem `kind`. Sem este default ele
+  // sumiria das duas listas, porque as duas filtram por kind.
+  return saved.map(e => e.kind ? e : { ...e, kind: EXPENSE_KINDS.PLAN });
 }
+function getPlanned(){ return getExpenses().filter(e => e.kind !== EXPENSE_KINDS.DAILY); }
+function getDaily(){ return getExpenses().filter(e => e.kind === EXPENSE_KINDS.DAILY); }
 function saveExpenses(list){ storageSet(expensesKey(), list); }
 function saveExpensesAndSync(list){
   saveExpenses(list);
@@ -4834,8 +4964,14 @@ function costStatusColor(s){ return s === "pago" ? "#2EC4B6" : s === "estimado" 
 function costStatusLabel(s){ return s === "pago" ? "PAGO" : s === "estimado" ? "ESTIMADO" : "AGENDADO"; }
 
 function renderCosts(){
+  document.getElementById("costsub-plan").classList.toggle("active", currentCostSub === "plan");
+  document.getElementById("costsub-daily").classList.toggle("active", currentCostSub === "daily");
+  document.querySelectorAll("[data-costsub]").forEach(b =>
+    b.classList.toggle("active", b.dataset.costsub === currentCostSub));
+  if (currentCostSub === "daily") { renderDaily(); return; }
+
   const fx = getFx();
-  const list = getExpenses();
+  const list = getPlanned();
   const t = expenseTotals(list, fx);
 
   document.getElementById("costs-summary").textContent = list.length
@@ -4901,6 +5037,163 @@ function renderCosts(){
   };
 }
 
+/* ---------- No Japão: lançamento rápido ---------- */
+let currentCostSub = "plan";          // plan | daily
+let qaCategory = "comida";
+let qaCurrency = "JPY";
+
+function todayIso(){ return new Date().toISOString().slice(0, 10); }
+
+/* Dia 1..15 da viagem, pela primeira reserva do itinerary. Fora da viagem
+   devolve null — lançar um café no Brasil não vira "dia -40". */
+function tripDayNumber(iso){
+  const seg = (currentTrip().itinerary || [])[0];
+  if (!seg || !iso) return null;
+  const n = Math.round((parseLocalDate(iso) - parseLocalDate(seg.checkin)) / 86400000) + 1;
+  return n >= 1 ? n : null;
+}
+
+function dailyByDay(list, fx){
+  const days = new Map();
+  list.forEach(e => {
+    const k = e.chargeDate || "sem-data";
+    const d = days.get(k) || { key:k, items:[], brl:0, jpy:0 };
+    d.items.push(e);
+    d.brl += toBrl(e, fx);
+    if (e.currency === "JPY") d.jpy += e.amount;
+    days.set(k, d);
+  });
+  // Dias do mais recente pro mais antigo e, dentro do dia, o último
+  // lançamento primeiro: quem acabou de lançar precisa ver o lançamento
+  // aparecer, e no fim da lista ele nasceria fora da tela.
+  return [...days.values()]
+    .map(d => ({ ...d, items: d.items.slice().sort((a, b) => (b.position ?? 0) - (a.position ?? 0)) }))
+    .sort((a, b) => b.key.localeCompare(a.key));
+}
+
+function renderDaily(){
+  const fx = getFx();
+  const list = getDaily();
+
+  // ---- quick add ----
+  document.getElementById("qa-cur-sign").textContent = qaCurrency === "JPY" ? "¥" : "R$";
+  document.getElementById("qa-cats").innerHTML = DAILY_CATEGORIES.map(c =>
+    `<button class="qa-cat ${c.id === qaCategory ? "active" : ""}" data-qa-cat="${c.id}">${c.icon} ${c.label}</button>`
+  ).join("");
+  document.querySelectorAll("[data-qa-cat]").forEach(b => b.onclick = () => {
+    qaCategory = b.dataset.qaCat; renderDaily();
+    document.getElementById("qa-amount").focus();
+  });
+  const dateEl = document.getElementById("qa-date");
+  if (!dateEl.value) dateEl.value = todayIso();
+
+  // ---- totais ----
+  const totals = document.getElementById("daily-totals");
+  if (!list.length) {
+    totals.innerHTML = "";
+    document.getElementById("daily-body").innerHTML =
+      `<div class="cost-empty">Nada lançado ainda. Digite o valor, toque numa categoria e <b>Lançar</b> — ` +
+      `o resto é opcional. Pensado pra ser rápido com uma mão só, no meio da rua.</div>`;
+    updateQaHint();
+    return;
+  }
+
+  const totJpy = list.filter(e => e.currency === "JPY").reduce((a,e) => a + e.amount, 0);
+  const totBrl = list.reduce((a,e) => a + toBrl(e, fx), 0);
+  const days = dailyByDay(list, fx);
+  const today = todayIso();
+  const hoje = days.find(d => d.key === today);
+  const media = totBrl / days.length;
+
+  const card = (label, value, sub, cls) =>
+    `<div class="cost-card ${cls || ""}"><div class="cc-label">${label}</div>` +
+    `<div class="cc-value">${value}</div>${sub ? `<div class="cc-sub">${sub}</div>` : ""}</div>`;
+  totals.innerHTML = `<div class="cost-cards">` +
+    card("Gasto na viagem", fmtMoney(totBrl, "BRL"), totJpy ? `${fmtMoney(totJpy, "JPY")} em iene` : "") +
+    card("Hoje", hoje ? fmtMoney(hoje.brl, "BRL") : fmtMoney(0, "BRL"),
+         hoje && hoje.jpy ? fmtMoney(hoje.jpy, "JPY") : "nada lançado hoje") +
+    card("Média por dia", fmtMoney(media, "BRL"), `${days.length} dia${days.length === 1 ? "" : "s"} com gasto`) +
+    `</div>`;
+
+  // ---- por categoria ----
+  const porCat = DAILY_CATEGORIES.map(c => ({
+    ...c, total: list.filter(e => e.category === c.id).reduce((a,e) => a + toBrl(e, fx), 0)
+  })).filter(c => c.total > 0).sort((a,b) => b.total - a.total);
+  const cores = ["#FF6F91","#00B4D8","#52B788","#FFB238","#C9184A","#8B96A8"];
+  const barra = porCat.length ? `<div class="cost-month">
+      <div class="cat-bar">${porCat.map((c,i) =>
+        `<span style="width:${(c.total/totBrl*100).toFixed(2)}%;background:${cores[i % cores.length]}"></span>`).join("")}</div>
+      <div class="cat-legend">${porCat.map((c,i) =>
+        `<span style="color:${cores[i % cores.length]}">■</span>&nbsp;${c.label} <b>${fmtMoney(c.total,"BRL")}</b>`).join("")}</div>
+    </div>` : "";
+
+  // ---- lista por dia ----
+  document.getElementById("daily-body").innerHTML = barra + days.map(d => {
+    const n = tripDayNumber(d.key);
+    const rows = d.items.map(e => {
+      const c = dailyCat(e.category);
+      const conv = e.currency === "JPY"
+        ? `<span class="dr-conv">≈ ${fmtMoney(e.amount * fx.jpyBrl, "BRL")}</span>` : "";
+      return `<button class="daily-row" data-daily-edit="${e.id}">
+          <span class="dr-ico">${c.icon}</span>
+          <span class="dr-main">
+            <span class="dr-label">${esc(e.label || c.label)}</span>
+            ${e.method ? `<span class="dr-meta">${esc(e.method)}</span>` : ""}
+          </span>
+          <span class="dr-amount">${fmtMoney(e.amount, e.currency)}${conv}</span>
+        </button>`;
+    }).join("");
+    return `<div class="daily-day">
+        <div class="daily-day-head">
+          <span class="dd-name">${d.key === "sem-data" ? "Sem data" : fmtDate(d.key)}</span>
+          ${n ? `<span class="dd-sub">dia ${n} da viagem</span>` : ""}
+          <span class="dd-total">${fmtMoney(d.brl, "BRL")}${d.jpy ? ` · ${fmtMoney(d.jpy, "JPY")}` : ""}</span>
+        </div>${rows}</div>`;
+  }).join("");
+
+  document.querySelectorAll("[data-daily-edit]").forEach(b => b.onclick = () => {
+    openCostModal(getExpenses().find(e => e.id === b.dataset.dailyEdit));
+  });
+  updateQaHint();
+}
+
+function updateQaHint(){
+  const fx = getFx();
+  const v = parseFloat(document.getElementById("qa-amount").value);
+  const hint = document.getElementById("qa-hint");
+  if (!isFinite(v) || v <= 0) { hint.textContent = ""; return; }
+  hint.textContent = qaCurrency === "JPY"
+    ? `${fmtMoney(v, "JPY")} ≈ ${fmtMoney(v * fx.jpyBrl, "BRL")}`
+    : `${fmtMoney(v, "BRL")} ≈ ${fmtMoney(v / (fx.jpyBrl || 1), "JPY")}`;
+}
+
+function quickAddExpense(){
+  const amountEl = document.getElementById("qa-amount");
+  const v = parseFloat(amountEl.value);
+  if (!isFinite(v) || v <= 0) { amountEl.focus(); return; }
+  const labelEl = document.getElementById("qa-label");
+  const date = document.getElementById("qa-date").value || todayIso();
+  const c = dailyCat(qaCategory);
+
+  const list = getExpenses();
+  list.push({
+    id: newItemId(), kind: EXPENSE_KINDS.DAILY,
+    label: labelEl.value.trim() || c.label,
+    group: "", category: qaCategory,
+    currency: qaCurrency, amount: v,
+    method: "", chargeDate: date, status: "pago", notes: "",
+    position: list.length
+  });
+  saveExpensesAndSync(list);
+
+  // Só o valor e o texto limpam. Categoria, moeda e data ficam: lançar três
+  // refeições seguidas no mesmo dia é o caso normal, e reescolher tudo a cada
+  // lançamento é o que faz esse tipo de tela ser abandonada na segunda semana.
+  amountEl.value = ""; labelEl.value = "";
+  renderDaily();
+  amountEl.focus();
+}
+
 let editingCostId = null;
 
 function openCostModal(exp){
@@ -4913,7 +5206,14 @@ function openCostModal(exp){
     el.value = val || opts[0];
   };
   sel("cost-status", EXPENSE_STATUSES, exp?.status);
-  sel("cost-category", EXPENSE_CATEGORIES, exp?.category);
+  // As duas listas de categoria são diferentes ("konbini" só existe no dia a
+  // dia, "voo" só no planejado). Oferecer a lista errada fazia o <select>
+  // cair em "" ao editar, e salvar apagava a categoria do lançamento.
+  const cats = [...new Set([
+    ...(exp?.kind === EXPENSE_KINDS.DAILY ? DAILY_CATEGORIES.map(c => c.id) : EXPENSE_CATEGORIES),
+    ...(exp?.category ? [exp.category] : [])
+  ])];
+  sel("cost-category", cats, exp?.category);
 
   const v = (id, val) => document.getElementById(id).value = val ?? "";
   v("cost-label", exp?.label);
@@ -4985,13 +5285,13 @@ function saveCostFromForm(){
     const parts = splitInstallments(amount, n);
     const group = base.group || label;
     parts.forEach((p, i) => list.push({
-      ...base, id: newItemId(), group,
+      ...base, id: newItemId(), kind: EXPENSE_KINDS.PLAN, group,
       label: `${label} — parcela ${i + 1}/${n}`,
       amount: p, chargeDate: addMonths(chargeDate, i),
       position: list.length + i
     }));
   } else {
-    list.push({ ...base, id: newItemId(), amount, chargeDate, position: list.length });
+    list.push({ ...base, id: newItemId(), kind: EXPENSE_KINDS.PLAN, amount, chargeDate, position: list.length });
   }
 
   saveExpensesAndSync(list);
@@ -5008,6 +5308,23 @@ function deleteCost(){
 }
 
 function wireCosts(){
+  document.querySelectorAll("[data-costsub]").forEach(b => b.onclick = () => {
+    currentCostSub = b.dataset.costsub;
+    renderCosts();
+  });
+  document.getElementById("qa-add").onclick = quickAddExpense;
+  document.getElementById("qa-amount").addEventListener("input", updateQaHint);
+  document.getElementById("qa-amount").addEventListener("keydown", ev => {
+    if (ev.key === "Enter") { ev.preventDefault(); quickAddExpense(); }
+  });
+  document.getElementById("qa-label").addEventListener("keydown", ev => {
+    if (ev.key === "Enter") { ev.preventDefault(); quickAddExpense(); }
+  });
+  document.getElementById("qa-cur-toggle").onclick = () => {
+    qaCurrency = qaCurrency === "JPY" ? "BRL" : "JPY";
+    renderDaily();
+  };
+
   document.getElementById("cost-new").onclick = () => openCostModal(null);
   document.getElementById("cost-modal-close").onclick = closeCostModal;
   document.getElementById("cost-save").onclick = saveCostFromForm;

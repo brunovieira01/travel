@@ -4,6 +4,66 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.8.0 — 2026-10-04
+
+**"No Japão": lançar gasto em três toques.** A aba Custos virou duas
+sub-abas, porque são duas perguntas diferentes e misturá-las estragaria as
+duas:
+
+| | pergunta | formato |
+|---|---|---|
+| **Previsto** | quanto sai da conta em cada mês | poucos registros, data futura, parcela |
+| **No Japão** | quanto já torrei hoje | muitos registros, iene, data de hoje |
+
+Duzentos ramen na mesma lista soterrariam a parcela da passagem, e o total
+de dezembro viraria um número sem significado. Mesma tabela, campo `kind`
+separando (`planejado` | `diario`).
+
+O lançamento é um campo de valor grande, seis categorias em chip
+(🍜 comida · 🚃 transporte · ⛩️ passeio · 🛍️ compras · 🏪 konbini · outro) e
+**Lançar**. Iene é o padrão, data é hoje, Enter lança. Depois de lançar,
+**só o valor e o texto limpam** — categoria, moeda e data ficam onde
+estavam, porque lançar três refeições seguidas no mesmo dia é o caso normal
+e reescolher tudo toda vez é o que faz esse tipo de tela ser abandonada na
+segunda semana. O "o que foi" é opcional: em branco, vira o nome da
+categoria.
+
+A lista agrupa por dia, do mais recente pro mais antigo, com o número do dia
+da viagem ("dia 3 da viagem", calculado a partir do `itinerary`). **Dentro do
+dia, o último lançamento vem primeiro** — quem acabou de lançar precisa ver o
+lançamento aparecer, e no fim da lista ele nasceria fora da tela.
+
+Três cartões: gasto total da viagem, hoje, e média por dia. A média é por
+**dia com gasto**, não por dia de calendário: dividir por dias em que você
+não lançou nada daria um número artificialmente baixo. Abaixo, uma barra de
+proporção por categoria.
+
+### Correções pegas no caminho
+
+- **Editar um gasto do dia apagava a categoria.** O `<select>` do modal era
+  montado sempre com as categorias de planejamento, e "konbini" não está
+  nelas — o valor caía em `""` ao abrir, e salvar gravava vazio. Agora a
+  lista depende do `kind`, e a categoria atual é sempre incluída.
+- **Registro gravado antes desta versão não tem `kind`** e sumiria das duas
+  listas, já que as duas filtram por ele. O `getExpenses()` trata ausência
+  como `planejado`.
+
+### Migração
+
+`supabase_migration_2.7.0.sql` ganhou a coluna `kind`. Se você ainda não
+rodou, é o mesmo arquivo de sempre, uma vez só. Se já rodou a versão
+anterior, **rode de novo**: o `alter table ... add column if not exists`
+completa o que falta e o resto não faz nada.
+
+### Verificação
+
+33 asserções novas, dirigindo a tela como um dedo dirige — clicando nos
+chips, digitando no campo e apertando Lançar. Cobrem o que o uso real
+quebraria: o estado que fica entre lançamentos, a ordem dentro do dia, a
+média por dia-com-gasto, a soma da barra dando 100%, lançar em real com o
+toggle, editar um konbini sem perder a categoria, e um registro antigo sem
+`kind` não sumindo. Com as anteriores, são 6 suítes, todas passando.
+
 ## 2.7.0 — 2026-10-04
 
 **Aba Custos.** A pergunta que ela responde é uma só: *quanto sai da minha
