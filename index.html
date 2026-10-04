@@ -731,6 +731,22 @@
     transition: color .16s ease, background .16s ease;
   }
   .day-tab:hover{ color: var(--ink-2); }
+
+  /* Divisor de grupo dentro da própria faixa de abas: a faixa continua
+     rolando na horizontal, só passa a ter cabeçalho por cidade/janela. */
+  .day-group{
+    flex:0 0 auto; align-self:stretch; display:flex; flex-direction:column; justify-content:flex-end;
+    padding: 0 var(--s3) var(--s3) 0; margin-right: var(--s2);
+    border-right: 1px solid var(--line); line-height:1.25;
+  }
+  .day-group:not(:first-child){ padding-left: var(--s3); }
+  .day-group .dg-label{
+    font-weight:700; font-size: 11px; letter-spacing:.08em; text-transform:uppercase;
+    color: var(--ink); white-space:nowrap;
+  }
+  .day-group .dg-meta{ font-size: 11px; color: var(--ink-3); white-space:nowrap; font-variant-numeric: tabular-nums; }
+  .day-group .dg-n{ font-size: 10px; color: var(--ink-3); white-space:nowrap; }
+  .day-group.is-off .dg-label{ color: var(--ink-3); }
   .day-tab .d-num{ font-weight:700; font-size: 14px; color: var(--ink); display:block; margin-bottom:2px; }
   .day-tab.active{
     background: var(--card-2); color: var(--ink);
@@ -828,6 +844,8 @@
     color: var(--ink-3); font-size: 13px; line-height:1.55;
   }
   .todo-note b{ color: var(--ink-2); }
+  /* O note do bloco fica no topo da timeline, antes da primeira parada. */
+  .block-note{ margin-bottom: var(--s5); border-style: solid; border-left: 3px solid var(--seal); }
 
   /* ==========================================================
      TELEFONE — abaixo de 760px.
@@ -1176,7 +1194,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.5.0";
+const APP_VERSION = "2.6.0";
 
 /* ---------- ícones (SVG em vez de emoji: o emoji muda de cara em cada
    sistema e não acompanha a cor do texto) ---------- */
@@ -1934,6 +1952,34 @@ const TRIPS = [
   {
     id: "japan-2026",
     title: "Viagem ao Japão",
+    // Ordem das cidades na aba Atrações, na sequência do roteiro — não
+    // alfabética. Alfabética punha Fujiyoshida (que não tem nenhuma noite
+    // reservada) em primeiro e Tóquio (8 das 15 noites) em último.
+    // Nara entra depois de Kyoto porque é bate-volta de lá; Fujiyoshida
+    // fica no fim de propósito: está no catálogo, mas fora do roteiro.
+    cityOrder: ["Tóquio", "Hakone", "Kyoto", "Nara", "Osaka", "Fujiyoshida"],
+    // As 6 reservas, com as cidades que cada noite dá acesso. É isto que
+    // deixa os Blocos cientes de data: cada bloco é agrupado pela janela
+    // de noites da cidade dele, e bloco de cidade sem noite nenhuma cai
+    // em "Fora do roteiro".
+    //
+    // Por que ficar aqui e não sair de getStays(): estas datas são fixas
+    // (passagem comprada), e getStays() é dado do usuário — pode estar
+    // vazio num aparelho novo e guarda cidade como texto livre
+    // ("Hakone, Tonosawa"), que não casa com as cidades do catálogo. Os
+    // Blocos mudariam de forma de aparelho pra aparelho. Custo aceito:
+    // se uma data mudar, muda aqui E no CHECKLIST_SEED.
+    //
+    // `cities` é o que a noite alcança, não onde se dorme: Nara entra na
+    // janela de Kyoto porque é bate-volta de lá.
+    itinerary: [
+      { label:"Tóquio 1",  cities:["Tóquio"],         checkin:"2026-11-28", checkout:"2026-12-02" },
+      { label:"Hakone",    cities:["Hakone"],         checkin:"2026-12-02", checkout:"2026-12-03" },
+      { label:"Kyoto",     cities:["Kyoto","Nara"],   checkin:"2026-12-03", checkout:"2026-12-06" },
+      { label:"Osaka",     cities:["Osaka"],          checkin:"2026-12-06", checkout:"2026-12-08" },
+      { label:"Tóquio 2",  cities:["Tóquio"],         checkin:"2026-12-08", checkout:"2026-12-12" },
+      { label:"Aeroporto", cities:[],                 checkin:"2026-12-12", checkout:"2026-12-13" }
+    ],
     places: [
       // ===================== TÓQUIO =====================
       // --- Akihabara ---
@@ -2071,6 +2117,24 @@ const TRIPS = [
         blurb:"Saiu à noite? Pega o café da manhã do dia seguinte na konbini.",
         detail:"Lojas de conveniência japonesas têm bentos, onigiri e sanduíches de qualidade surpreendente, abertas 24h.",
         bestTime:"Compre na volta da noite, coma de manhã." },
+
+      // --- Conhecer gente (viagem solo) ---
+      { id:"free-walking-tour", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Nihonbashi_Bridge_2012.JPG/1280px-Nihonbashi_Bridge_2012.JPG", name:"Free walking tour (Nihonbashi / Asakusa)", city:"Tóquio", district:"Nihonbashi", lat:35.6837, lng:139.7745, mapQuery:"Nihonbashi Bridge Tokyo", photoQuery:"Nihonbashi bridge Tokyo street", tags:["Conhecer gente","Guia local","Gorjeta"], visitMin:150, tier:1, period:"manha",
+        blurb:"Jeito mais fácil de começar o dia com companhia — e o guia é quem sabe onde beber depois.",
+        detail:"Dois operadores cobrem a cidade: o Tokyo Free Walking Tour faz Nihonbashi (ponte histórica, Mitsukoshi, lojas-vitrine das províncias) e o Tokyo Localized faz Asakusa (Senso-ji, Kaminarimon, Nakamise). Grupos pequenos — o TFWT costuma ficar abaixo de 5 pessoas por guia. Não precisa reservar, mas chegar 5 min antes é obrigatório: a saída é no horário exato, e a inscrição fecha 20 min antes.",
+        bestTime:"Manhã, e chegue cedo — as saídas lotam. Reserve 2-3h e vá de tênis.", cost:"Grátis, mas gorjeta de ¥1.000–2.000 é o esperado — os guias são voluntários e vivem disso. Leve dinheiro vivo." },
+      { id:"language-cafe", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Cafe_by_Koichi_Suzuki_in_Kanda-Jinbocho%2C_Tokyo.jpg/1280px-Cafe_by_Koichi_Suzuki_in_Kanda-Jinbocho%2C_Tokyo.jpg", name:"Café de intercâmbio de idioma (Mickey House)", city:"Tóquio", district:"Takadanobaba", lat:35.7124, lng:139.7038, mapQuery:"Mickey House Takadanobaba Tokyo", photoQuery:"language exchange cafe Tokyo", tags:["Conhecer gente","Japoneses de verdade","Barato"], visitMin:120, tier:1, period:"noite",
+        blurb:"Onde se conhece japonês de verdade, não outro turista: eles vão justamente pra praticar idioma.",
+        detail:"Funciona em Takadanobaba há ~35 anos, a 4 min da estação, no 4º andar do Yashiro Building. Hoje tem mesas de 16 idiomas. ¥500 de entrada pra estrangeiro, sem limite de tempo, com café e chá à vontade. A mesa de japonês roda segunda, quinta e sábado à noite, e quarta e sexta à tarde — vale conferir no site antes de subir.",
+        bestTime:"Noite. O dia 3 da viagem cai numa segunda, que é dia de mesa de japonês.", cost:"¥500" },
+      { id:"cooking-class", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Sushi_platter.jpg/1280px-Sushi_platter.jpg", name:"Aula de culinária (sushi/ramen, Asakusa)", city:"Tóquio", district:"Asakusa", lat:35.7148, lng:139.7967, mapQuery:"Asakusa Tokyo cooking class", photoQuery:"Japanese cooking class sushi making", tags:["Conhecer gente","Experiência","Reserva obrigatória"], visitMin:180, tier:2, period:"tarde", mealType:"Almoço/Jantar",
+        blurb:"Três horas cozinhando ao lado de desconhecidos termina em mesa compartilhada — é quase trapaça pra fazer amizade.",
+        detail:"Asakusa concentra a maior oferta. As aulas de sushi saem por volta de US$40–60 e as de gyoza/ramen e udon na faixa de US$78–85, quase todas em grupo pequeno e com instrução em inglês. Workshop de matcha com doces japoneses é a opção mais barata, perto de US$33. Solo é bem-vindo — boa parte das turmas é feita disso.",
+        bestTime:"Tarde, e reserve com alguns dias de antecedência.", cost:"US$33–85, conforme a aula", booking:"Reservar antes (byFood, Cookly, GetYourGuide ou airKitchen)" },
+      { id:"bike-tour", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Cycling_in_Tokyo.jpg/1280px-Cycling_in_Tokyo.jpg", name:"Bike tour por Tóquio", city:"Tóquio", district:"—", lat:35.6812, lng:139.7671, mapQuery:"Tokyo bicycle tour", photoQuery:"bicycle tour Tokyo street", tags:["Conhecer gente","Experiência"], visitMin:180, tier:2, period:"manha",
+        blurb:"Cobre num período o que a pé levaria o dia — e em grupo pequeno dá conversa.",
+        detail:"Os roteiros guiados normalmente ligam bairros que não se conectam bem de metrô, costurando o rio Sumida, Asakusa e o centro antigo. Grupo pequeno e ritmo tranquilo; Tóquio é mais plana e mais calma de pedalar do que a fama sugere.",
+        bestTime:"Manhã, antes do calor e do trânsito.", booking:"Reservar antes" },
 
       // ===================== FUJI =====================
       { id:"chureito", heroImageOverride:"https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Chuurei-tou_Fujiyoshida_17025277650_c59733d6ba_o.jpg/1280px-Chuurei-tou_Fujiyoshida_17025277650_c59733d6ba_o.jpg", name:"Chureito Pagoda (Arakurayama Sengen Park)", city:"Fujiyoshida", district:"Shimoyoshida", lat:35.4986, lng:138.8003, mapQuery:"Chureito Pagoda Fujiyoshida", tags:["Vista do Fuji","Icônico","Grátis"], visitMin:90, tier: 3, period:"manha",
@@ -2373,6 +2437,25 @@ const TRIPS = [
           { time:"13:00", stationLabel:"Almoço", placeIds:["restaurantes-escondidos","sukiya"] },
           { time:"14:30", stationLabel:"Mangá & colecionáveis", placeIds:["mandarake"] },
           { time:"16:00", stationLabel:"Santuário (opcional)", placeIds:["kandamyojin"] }
+        ]
+      },
+      {
+        label: "Conhecer gente (solo)",
+        lineColor: "#2EC4B6",
+        note: "<b>Dia 3 da viagem — segunda, 30/11.</b> Bloco pensado pra viagem solo: "
+            + "nada aqui exige companhia pra começar, e todos terminam com ela.<br><br>"
+            + "<b>Comece pelo próprio hostel.</b> A cozinha vira clube de debate no café da "
+            + "manhã, e o mural costuma anunciar de ingresso de sumô a rolê em brechó — é a "
+            + "fonte mais barata de programa com gente. (Por isso o critério de área comum e "
+            + "bar na busca do hostel de Tóquio 1, no Checklist.)<br><br>"
+            + "<b>Diga sim com frequência.</b> Tóquio recompensa quem topa — o convite que "
+            + "aparece no meio do dia costuma valer mais que o que estava planejado.",
+        slots: [
+          { time:"08:30", stationLabel:"Café no hostel (área comum)", placeIds:["konbini"] },
+          { time:"10:00", stationLabel:"Free walking tour", placeIds:["free-walking-tour","bike-tour"] },
+          { time:"14:00", stationLabel:"Experiência (escolher uma)", placeIds:["cooking-class","bike-tour"] },
+          { time:"19:00", stationLabel:"Mesa de japonês", placeIds:["language-cafe"] },
+          { time:"21:30", stationLabel:"Fechar com karaokê", placeIds:["karaoke-chakura"] }
         ]
       },
       {
@@ -5009,6 +5092,21 @@ function wireCheckControls(){
    ========================================================== */
 function tierLabel(t){ return t === 1 ? "ESSENCIAL" : t === 2 ? "SE DER TEMPO" : "BÔNUS"; }
 
+/* Cidades na ordem do roteiro (trip.cityOrder). Qualquer cidade que não
+   esteja na lista vai pro fim, em ordem alfabética — nunca é descartada:
+   quem consome isto faz `order.filter(k => groups[k])`, então uma cidade
+   que faltasse aqui simplesmente desapareceria do catálogo. Sem cityOrder
+   (viagem nova), o resultado é o alfabético de antes. */
+function cityGroupOrder(keys, trip){
+  const seq = trip.cityOrder || [];
+  const rank = new Map(seq.map((c, i) => [c, i]));
+  return keys.slice().sort((a, b) => {
+    const ra = rank.has(a) ? rank.get(a) : Infinity;
+    const rb = rank.has(b) ? rank.get(b) : Infinity;
+    return ra - rb || a.localeCompare(b, "pt");
+  });
+}
+
 function renderCatalog(){
   const trip = currentTrip();
   const body = document.getElementById("catalog-body");
@@ -5034,10 +5132,13 @@ function renderCatalog(){
   const groups = {};
   list.forEach(p => { (groups[keyOf(p)] = groups[keyOf(p)] || []).push(p); });
 
-  // ordena grupos: por tier segue a importância; nos demais, alfabético
+  // ordena grupos: tier segue a importância, cidade segue o roteiro,
+  // bairro é alfabético (com localeCompare, não .sort(), que compara
+  // code point e jogaria qualquer acento pro fim da lista).
   const order = groupBy === "tier" ? ["ESSENCIAL","SE DER TEMPO","BÔNUS"]
     : groupBy === "period" ? ["Manhã","Tarde","Noite"]
-    : Object.keys(groups).sort();
+    : groupBy === "city" ? cityGroupOrder(Object.keys(groups), trip)
+    : Object.keys(groups).sort((a,b) => a.localeCompare(b,"pt"));
 
   body.innerHTML = order.filter(k => groups[k]).map(k => {
     const cards = groups[k].sort((a,b) => a.tier - b.tier || a.name.localeCompare(b.name)).map(p => {
@@ -5125,11 +5226,82 @@ function clusterPeriodLabel(day){
   return ord.length === 3 ? "Dia inteiro" : ord.join(" + ");
 }
 
+/* ---------- BLOCOS CIENTES DE DATA ----------
+   Um bloco não tem data própria: ele herda a janela de noites da cidade
+   das atrações dele. Agrupar por cidade (e não por reserva) é de propósito
+   — Tóquio tem duas reservas separadas, 28/11–02/12 e 08–12/12, e os
+   mesmos 14 blocos servem as duas. Agrupar por reserva duplicaria os 14
+   em 28 abas, com duas abas disputando o mesmo currentDayIndex. */
+
+// Cidades que um bloco toca, pelas atrações dele.
+function blockCities(day){
+  return [...new Set(day.slots.flatMap(s => s.placeIds).map(id => placeById(id)?.city).filter(Boolean))];
+}
+
+/* Cada cidade é mapeada pra cidade-âncora da reserva — a primeira de
+   `cities`, onde se dorme de verdade. Nara é bate-volta de Kyoto, então
+   âncora de Nara é Kyoto: o bloco "Nara" entra no grupo de Kyoto em vez
+   de abrir um grupo próprio repetindo as mesmas 3 noites num segundo
+   cabeçalho (era o que acontecia quando o mapa era cidade -> janela).
+   As noites são contadas uma vez por reserva, na âncora. */
+function cityWindows(trip){
+  const anchorOf = new Map();   // cidade -> cidade-âncora
+  const windows = new Map();    // âncora -> { nights, windows }
+  (trip.itinerary || []).forEach(seg => {
+    const cities = seg.cities || [];
+    if (!cities.length) return;      // noite sem cidade (capsule do aeroporto)
+    const anchor = cities[0];
+    cities.forEach(c => { if (!anchorOf.has(c)) anchorOf.set(c, anchor); });
+    const e = windows.get(anchor) || { nights: 0, windows: [] };
+    e.nights += nightsBetween(seg.checkin, seg.checkout);
+    e.windows.push({ checkin: seg.checkin, checkout: seg.checkout });
+    windows.set(anchor, e);
+  });
+  return { anchorOf, windows };
+}
+
+function fmtShort(iso){ const [, m, d] = iso.split("-"); return `${d}/${m}`; }
+function fmtWindow(w){ return `${fmtShort(w.checkin)}–${fmtShort(w.checkout)}`; }
+
+/* Blocos agrupados na ordem do roteiro. Bloco de cidade sem nenhuma noite
+   reservada (Fuji, hoje) cai num grupo final "Fora do roteiro" em vez de
+   ser escondido: continua sendo um bloco válido, só não tem data. */
+function blockGroups(trip){
+  const { anchorOf, windows } = cityWindows(trip);
+  const rank = new Map((trip.cityOrder || []).map((c, i) => [c, i]));
+  const rankOf = c => rank.has(c) ? rank.get(c) : Infinity;
+
+  const groups = new Map();
+  trip.days.forEach((day, i) => {
+    // Bloco multi-cidade é agrupado pela âncora que vem primeiro no roteiro.
+    const anchors = [...new Set(blockCities(day).map(c => anchorOf.get(c)).filter(Boolean))]
+      .sort((a, b) => rankOf(a) - rankOf(b) || a.localeCompare(b, "pt"));
+    const key = anchors.length ? anchors[0] : "\u0000fora";
+    const g = groups.get(key) || { key, city: anchors[0] || null, indexes: [] };
+    g.indexes.push(i);
+    groups.set(key, g);
+  });
+
+  return [...groups.values()]
+    .sort((a, b) => rankOf(a.city ?? "\u0000") - rankOf(b.city ?? "\u0000"))
+    .map(g => {
+      if (!g.city) return { ...g, label: "Fora do roteiro", meta: "sem noite reservada" };
+      const w = windows.get(g.city);
+      return {
+        ...g,
+        label: g.city,
+        meta: `${w.windows.map(fmtWindow).join(" + ")} · ${w.nights} ${w.nights === 1 ? "noite" : "noites"}`
+      };
+    });
+}
+
 function renderDayTabs(){
   const trip = currentTrip();
   const tabs = document.getElementById("day-tabs");
   tabs.innerHTML = "";
-  trip.days.forEach((day, i) => {
+
+  const makeTab = i => {
+    const day = trip.days[i];
     const tab = document.createElement("button");
     tab.className = "day-tab" + (i === currentDayIndex ? " active" : "");
     tab.style.setProperty("--line-color", day.lineColor);
@@ -5138,7 +5310,24 @@ function renderDayTabs(){
     const hrs = mins >= 60 ? `${(mins/60).toFixed(1).replace(".0","")}h` : `${mins}min`;
     tab.innerHTML = `<span class="d-num">${day.label}</span><span>${per} · ~${hrs}</span>`;
     tab.onclick = () => { currentDayIndex = i; renderDayTabs(); renderTimeline(); updateCronoMap(); };
-    tabs.appendChild(tab);
+    return tab;
+  };
+
+  const groups = blockGroups(trip);
+  // Sem itinerary (viagem nova), cai na faixa corrida de antes.
+  if (!(trip.itinerary || []).length) {
+    trip.days.forEach((_, i) => tabs.appendChild(makeTab(i)));
+    return;
+  }
+
+  groups.forEach(g => {
+    const head = document.createElement("div");
+    head.className = "day-group" + (g.city ? "" : " is-off");
+    head.innerHTML = `<span class="dg-label">${esc(g.label)}</span>`
+      + `<span class="dg-meta">${esc(g.meta)}</span>`
+      + `<span class="dg-n">${g.indexes.length} ${g.indexes.length === 1 ? "bloco" : "blocos"}</span>`;
+    tabs.appendChild(head);
+    g.indexes.forEach(i => tabs.appendChild(makeTab(i)));
   });
 }
 
@@ -5155,6 +5344,18 @@ function renderTimeline(){
   const timeline = document.getElementById("timeline");
   timeline.style.setProperty("--line-color", day.lineColor);
   timeline.innerHTML = "";
+
+  // Bloco pode trazer um recado próprio (day.note), pra conselho que não é
+  // lugar nenhum e portanto não cabe num slot — "comece pela área comum do
+  // hostel", "leve dinheiro vivo pra gorjeta". Opcional: bloco sem note
+  // renderiza exatamente como antes.
+  if (day.note) {
+    const note = document.createElement("div");
+    note.className = "todo-note block-note";
+    note.innerHTML = day.note;
+    timeline.appendChild(note);
+  }
+
   const maxOrder = Math.max(10, day.slots.length);
   // as capas são pintadas só no fim: durante o laço os cards ainda não estão
   // no documento, e paintHero procura por querySelectorAll.

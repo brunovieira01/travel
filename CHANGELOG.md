@@ -4,6 +4,100 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.6.0 — 2026-10-04
+
+**Os Blocos passaram a saber em que data cabem.** Até aqui a aba era um menu
+de 31 rotas temáticas sem nenhuma ligação com as 6 reservas — dava pra abrir
+"Fuji — amanhecer" sem nada no ecrã dizendo que não existe noite reservada em
+Fuji. Agora a faixa de abas tem cabeçalho por cidade, com a janela de noites:
+
+| grupo | janela | blocos |
+|---|---|---|
+| Tóquio | 28/11–02/12 + 08/12–12/12 · 8 noites | 15 |
+| Hakone | 02/12–03/12 · 1 noite | 3 |
+| Kyoto | 03/12–06/12 · 3 noites | 8 |
+| Osaka | 06/12–08/12 · 2 noites | 4 |
+| Fora do roteiro | sem noite reservada | 2 |
+
+O agrupamento é **por cidade, não por reserva**. Tóquio tem duas reservas
+separadas e os mesmos 15 blocos servem as duas: agrupar por reserva
+duplicaria 15 abas em 30, com duas abas disputando o mesmo `currentDayIndex`.
+
+Nara entra na janela de Kyoto, porque é bate-volta de lá. A primeira versão
+mapeava cidade → janela e por isso abria um grupo "Nara · 03–06/12 · 3
+noites" separado, repetindo as mesmas 3 noites de Kyoto num segundo
+cabeçalho — como se fossem 6. Passou a mapear cada cidade pra
+**cidade-âncora** da reserva (a primeira de `cities`, onde se dorme de
+verdade), e a contar as noites uma vez, na âncora.
+
+Nada foi apagado: bloco de cidade sem noite cai em "Fora do roteiro", que é
+onde os 2 blocos de Fuji estão. Continuam abrindo e funcionando.
+
+As datas ficam em `trip.itinerary`, no código, e **não** saem de
+`getStays()`. Motivo: são fixas (passagem comprada), e `getStays()` é dado do
+usuário — pode estar vazio num aparelho novo e guarda cidade como texto livre
+("Hakone, Tonosawa"), que não casa com as cidades do catálogo. Os Blocos
+mudariam de forma de aparelho pra aparelho. Custo aceito: mudar uma data
+exige mexer em `itinerary` **e** no `CHECKLIST_SEED`.
+
+Viagem sem `itinerary` (uma futura) cai na faixa corrida de antes.
+
+### Fujiyoshida não abre mais a aba Atrações
+
+As cidades eram ordenadas com `Object.keys(groups).sort()` — alfabético. O
+resultado era abrir Atrações em **Fujiyoshida**, a única cidade onde não se
+dorme nenhuma noite, e encontrar **Tóquio** (8 das 15 noites, 48 das 89
+atrações) em último. Agora a ordem é a do roteiro, em `trip.cityOrder`:
+
+    antes:  Fujiyoshida · Hakone · Kyoto · Nara · Osaka · Tóquio
+    agora:  Tóquio · Hakone · Kyoto · Nara · Osaka · Fujiyoshida
+
+Fujiyoshida ficou no fim de propósito — está no catálogo, fora do roteiro.
+Cidade que não esteja em `cityOrder` vai pro fim em ordem alfabética, nunca é
+descartada: quem consome a lista faz `order.filter(k => groups[k])`, então uma
+cidade ausente dali simplesmente desapareceria do catálogo.
+
+O agrupamento por bairro passou a usar `localeCompare("pt")` em vez de
+`.sort()`, que compara code point e jogaria qualquer acento pro fim. Hoje
+nenhum bairro tem acento, então isto não corrige nada visível — só evita que
+o próximo bairro acentuado entre torto.
+
+### Bloco novo: "Conhecer gente (solo)"
+
+Pensado pro dia 3 (segunda, 30/11), em Tóquio:
+
+- **Free walking tour** em Nihonbashi (Tokyo Free Walking Tour) ou Asakusa
+  (Tokyo Localized). Grupos pequenos, sem reserva, mas a saída é no horário
+  exato e a inscrição fecha 20 min antes. Gorjeta de ¥1.000–2.000 é o
+  esperado — os guias são voluntários. Leve dinheiro vivo.
+- **Café de intercâmbio de idioma** — Mickey House, Takadanobaba, ¥500 sem
+  limite de tempo, com café e chá à vontade. A mesa de japonês roda segunda,
+  quinta e sábado à noite: **o dia 3 cai numa segunda**, então encaixa.
+- **Aula de culinária** em Asakusa (sushi US$40–60; gyoza/ramen e udon
+  US$78–85; workshop de matcha ~US$33) e **bike tour**, ambos com reserva.
+- Fecha no karaokê que já existia no catálogo.
+
+Blocos ganharam um campo `note` opcional, pro conselho que não é lugar nenhum
+e portanto não cabe em slot — começar pela área comum do hostel, levar
+dinheiro pra gorjeta, dizer sim com frequência. Renderiza no topo da timeline;
+bloco sem `note` renderiza igual a antes.
+
+São 4 atrações novas (89 no total) e 1 bloco novo (32). O `konbini` entrou num
+bloco e saiu da lista de órfãos — restam 4 (`ramen-estacao`, `seven-eleven`,
+`silk-hat`, `fuji-excursion`).
+
+### Verificação
+
+22 asserções: 6 sobre a ordem das cidades (ordem do roteiro, estabilidade
+contra input embaralhado, subconjunto filtrado, cidade não listada no fim,
+viagem sem `cityOrder`, nada descartado), 8 sobre o agrupamento (ordem dos
+grupos, Tóquio somando as duas reservas, singular/plural de "noite", Nara
+dentro de Kyoto, Fuji isolado, cada bloco exatamente uma vez) e 8 contra o DOM
+de verdade, via jsdom (5 cabeçalhos, 32 abas, cabeçalho em primeiro, "fora do
+roteiro" marcado, uma só aba ativa, o `note` renderizando como HTML no topo da
+timeline, bloco sem `note` sem elemento sobrando, e a ordem das cidades como
+ela sai no ecrã).
+
 ## 2.5.0 — 2026-10-02
 
 **A lista da rota agora é uma lista de verdade.** O `<datalist>` do navegador
