@@ -4,6 +4,87 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.7.0 — 2026-10-04
+
+**Aba Custos.** A pergunta que ela responde é uma só: *quanto sai da minha
+conta, e quando*. Por isso a unidade de registro é o **débito**, não a compra
+— uma passagem em 3x são três linhas, em três meses, porque é assim que o
+dinheiro sai. `chargeDate` é quando o dinheiro sai, não quando se comprou nem
+quando se usa: a W-Inn é hospedagem de 28/11 mas aparece em **novembro**, e o
+ryokan, reservado em setembro, aparece em **dezembro**.
+
+    set 2026   R$   860,72        (cinza: já saiu)
+    out 2026   R$   860,72
+    nov 2026   R$ 1.457,97        parcela 3/3 + W-Inn
+    dez 2026   R$ 1.789,48 ~      ¥53.900 em espécie
+
+Quatro cartões no topo: total previsto, já pago, a pagar e — separado de
+propósito — **quanto separar em iene**. Esse último não é fatura de cartão: é
+dinheiro que precisa estar na conta iene do Revolut antes de 02/12, e somar
+com o resto esconderia justamente o que precisa de ação.
+
+Os três lançamentos reais já vêm semeados:
+
+| o quê | quanto | sai em |
+|---|---|---|
+| Passagem aérea 1/3 | R$ 860,72 | 28/09/2026 · pago |
+| Passagem aérea 2/3 | R$ 860,72 | 28/10/2026 |
+| Passagem aérea 3/3 | R$ 860,73 | 28/11/2026 |
+| TOKYO-W-INN Asakusa | R$ 597,24 | 24/11/2026 · Visa ••1511 |
+| Fukuzumiro (ryokan) | ¥53.900 | 02/12/2026 · espécie |
+
+Nada além disso foi inventado: não há estimativa chutada para as hospedagens
+que faltam. O resto se lança na própria aba.
+
+**Parcelamento sem perder centavo.** R$ 2.582,17 em 3x não divide redondo. O
+`splitInstallments` distribui em centavos e joga a diferença na última
+parcela — 860,72 + 860,72 + **860,73** —, que é o que o cartão faz. E
+`addMonths` prende no último dia do mês: 31/01 + 1 mês vira 28/02, não 03/03,
+senão a parcela pularia de mês sozinha.
+
+**Câmbio é estimativa e está escrito na tela.** ¥ e R$ só se somam para
+totalizar, a 1 ¥ = R$ 0,0332 (cotação de 02/10/2026), editável na própria
+aba. O que se paga em iene continua guardado em iene; a conversão nunca
+substitui o valor real.
+
+### A aba funciona antes da migração
+
+`expenses` é tabela nova — precisa rodar `supabase_migration_2.7.0.sql` no SQL
+Editor do Supabase. Até lá a aba funciona normalmente, só que **apenas neste
+aparelho**: a leitura de `expenses` ficou fora do `Promise.all` do
+`pullFromSupabase` de propósito, porque dentro dele o 42P01 ("relation does
+not exist") derrubaria a leitura das outras quatro tabelas junto. A falta da
+tabela é tratada como "ainda não migrou", não como erro de sincronização.
+
+### TOKYO-W-INN Asakusa entrou na Hospedagem
+
+28/11 → 02/12, 4 noites, 1 cama. Kotobuki 4-6-1 1F, Taito. Reserva
+1207315601937650.
+
+Duas coisas que o e-mail diz e vale ter à mão:
+
+- **O débito (24/11) cai um dia antes de fechar o cancelamento grátis**
+  (25/11, 23:59). Cancelando, é estorno, não "não cobrança".
+- A "taxa de acomodação na chegada" deve ser **¥0**: Tóquio só cobra a partir
+  de ¥10.000 por pessoa por noite, e esta diária fica bem abaixo disso.
+
+Pra isso aparecer num aparelho que já tinha dados salvos foi preciso um
+`STAYS_REV` + `reconcileStays`, iguais aos do checklist: o `getStays()` antigo
+via `saved` e retornava cedo, então o seed só valia em aparelho virgem e a
+W-Inn nunca chegaria aqui. A reconciliação preserva o que você editou à mão e
+só preenche campo vazio. O `pullFromSupabase` também marca a revisão como
+antiga antes de salvar o que veio do banco — senão a linha velha do banco
+apagaria a reserva nova.
+
+### Verificação
+
+33 asserções no DOM de verdade, via jsdom. As que importam são as de dinheiro:
+as 3 parcelas somando exatamente R$ 2.582,17; `splitInstallments` devolvendo o
+total original em 999,99/7, 1.234,56/12, 50/4 e 0,05/2; 31/01 + 1 mês caindo
+em 28/02, e em 29/02 em ano bissexto; o total de novembro dando R$ 1.457,97; e
+`reconcileStays` trazendo a reserva nova sem apagar status, nota nem a reserva
+que você mesmo criou.
+
 ## 2.6.0 — 2026-10-04
 
 **Os Blocos passaram a saber em que data cabem.** Até aqui a aba era um menu

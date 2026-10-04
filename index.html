@@ -340,6 +340,70 @@
   .plan-summary b{ color: var(--ink); font-weight:700; }
   .plan-toolbar-actions{ display:flex; gap: var(--s4); align-items:center; }
 
+  /* ---------- CUSTOS ---------- */
+  .cost-cards{
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--s3); padding: 0 var(--gutter) var(--s5);
+  }
+  .cost-card{
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
+    padding: var(--s3) var(--s4);
+  }
+  .cost-card .cc-label{ font-size: 11px; letter-spacing:.06em; text-transform:uppercase; color: var(--ink-3); }
+  .cost-card .cc-value{
+    font-size: 20px; font-weight:700; color: var(--ink); margin-top:2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .cost-card .cc-sub{ font-size: 11px; color: var(--ink-3); margin-top:2px; font-variant-numeric: tabular-nums; }
+  .cost-card.is-cash{ border-color: var(--seal); }
+  .cost-card.is-cash .cc-value{ color: var(--seal); }
+
+  .cost-month{ padding: 0 var(--gutter) var(--s5); }
+  .cost-month-head{
+    display:flex; align-items:baseline; gap: var(--s3);
+    padding: var(--s3) 0 var(--s2); border-bottom: 1px solid var(--line); margin-bottom: var(--s2);
+  }
+  .cost-month-head .cm-name{
+    font-weight:700; font-size: 13px; letter-spacing:.06em; text-transform:uppercase; color: var(--ink);
+  }
+  .cost-month-head .cm-total{
+    margin-left:auto; font-weight:700; font-size: 14px; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .cost-month.is-past .cm-name, .cost-month.is-past .cm-total{ color: var(--ink-3); }
+
+  .cost-row{
+    display:flex; align-items:flex-start; gap: var(--s3); width:100%; text-align:left;
+    background:none; border:0; border-bottom: 1px solid var(--line);
+    padding: var(--s3) 0; cursor:pointer; color: var(--ink-2);
+  }
+  .cost-row:last-child{ border-bottom:0; }
+  .cost-row:hover{ color: var(--ink); }
+  .cost-row .cr-day{
+    flex:0 0 42px; font-size: 12px; color: var(--ink-3);
+    font-variant-numeric: tabular-nums; padding-top:2px;
+  }
+  .cost-row .cr-main{ flex:1 1 auto; min-width:0; }
+  .cost-row .cr-label{ font-size: 14px; color: var(--ink); display:block; }
+  .cost-row .cr-meta{ font-size: 11px; color: var(--ink-3); display:block; margin-top:2px; }
+  .cost-row .cr-amount{
+    flex:0 0 auto; text-align:right; font-weight:700; font-size: 14px;
+    color: var(--ink); font-variant-numeric: tabular-nums; padding-top:1px;
+  }
+  .cost-row .cr-amount .cr-conv{ display:block; font-weight:400; font-size: 11px; color: var(--ink-3); }
+  .cost-row.is-paid .cr-label, .cost-row.is-paid .cr-amount{ color: var(--ink-3); }
+
+  .cost-pill{
+    display:inline-block; font-size: 10px; letter-spacing:.06em; text-transform:uppercase;
+    padding: 1px 6px; border-radius: 999px; font-weight:700; margin-right: 6px;
+  }
+  .cost-empty{ padding: var(--s5) var(--gutter); color: var(--ink-3); font-size: 13px; }
+
+  .cost-split{ border-top: 1px dashed var(--line); padding-top: var(--s3); margin-top: var(--s2); }
+  .cost-split-head{ display:flex; align-items:center; gap: 8px; flex-direction:row !important; cursor:pointer; }
+  .cost-split-head input{ width:auto; }
+  .cost-split-hint{ font-size: 11px; color: var(--ink-3); margin-top: 6px; line-height:1.5; }
+
   /* ---------- HOSPEDAGEM ---------- */
   .stay-form{ display:flex; flex-direction:column; gap: var(--s3); margin: var(--s2) 0 var(--s4); }
   .stay-form label{
@@ -942,6 +1006,7 @@
     <button class="view-tab" data-view="schedule">Cronograma</button>
     <button class="view-tab" data-view="catalog">Atrações</button>
     <button class="view-tab" data-view="stays">Hospedagem</button>
+    <button class="view-tab" data-view="costs">Custos</button>
     <button class="view-tab" data-view="checklist">Checklist</button>
   </div>
 </header>
@@ -1032,6 +1097,62 @@
       <div class="modal-actions">
         <button class="gmaps-btn" id="plan-save">Salvar</button>
         <button class="link-btn" id="plan-delete" style="display:none;">Excluir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CUSTOS ================= -->
+<section class="view" id="view-costs">
+  <div class="plan-toolbar">
+    <span id="costs-summary" class="plan-summary"></span>
+    <div class="plan-toolbar-actions">
+      <button class="gmaps-btn" id="cost-new">+ Novo gasto</button>
+    </div>
+  </div>
+  <div id="costs-totals"></div>
+  <div id="costs-body"></div>
+  <div class="todo-note" id="costs-fx-note"></div>
+</section>
+
+<div class="modal-backdrop" id="cost-modal">
+  <div class="modal-sheet" style="position:relative;">
+    <button class="modal-close" id="cost-modal-close">✕</button>
+    <div class="modal-body">
+      <div class="modal-title" id="cost-modal-title">Novo gasto</div>
+      <div class="stay-form">
+        <label>O que é<input type="text" id="cost-label" placeholder="Ex: Hostel em Kyoto — 3 noites"></label>
+        <div class="stay-row2">
+          <label>Valor<input type="number" id="cost-amount" step="0.01" min="0" placeholder="0,00"></label>
+          <label>Moeda<select id="cost-currency">
+            <option value="BRL">R$ (real)</option>
+            <option value="JPY">¥ (iene)</option>
+          </select></label>
+        </div>
+        <div class="stay-row2">
+          <label>Sai da conta em<input type="date" id="cost-date"></label>
+          <label>Situação<select id="cost-status"></select></label>
+        </div>
+        <div class="stay-row2">
+          <label>Categoria<select id="cost-category"></select></label>
+          <label>Como paga<input type="text" id="cost-method" placeholder="Ex: Visa ••1511"></label>
+        </div>
+        <label>Agrupar com (opcional)<input type="text" id="cost-group" placeholder="Ex: Passagem aérea — junta as parcelas"></label>
+        <label>Notas<textarea id="cost-notes" rows="3" placeholder="Número da reserva, política de cancelamento, etc"></textarea></label>
+        <div class="cost-split" id="cost-split-wrap">
+          <label class="cost-split-head"><input type="checkbox" id="cost-split"> Parcelar</label>
+          <div class="stay-row2" id="cost-split-fields" style="display:none;">
+            <label>Em quantas vezes<input type="number" id="cost-split-n" min="2" max="24" value="3"></label>
+            <label>Intervalo<select id="cost-split-step">
+              <option value="1">Mensal</option>
+            </select></label>
+          </div>
+          <div class="cost-split-hint" id="cost-split-hint"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="gmaps-btn" id="cost-save">Salvar</button>
+        <button class="link-btn" id="cost-delete" style="display:none;">Excluir</button>
       </div>
     </div>
   </div>
@@ -1176,6 +1297,7 @@
   <button class="view-tab tabbar-btn" data-view="schedule"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>Dias</button>
   <button class="view-tab tabbar-btn" data-view="catalog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>Atrações</button>
   <button class="view-tab tabbar-btn" data-view="stays"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Hotéis</button>
+  <button class="view-tab tabbar-btn" data-view="costs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>Custos</button>
   <button class="view-tab tabbar-btn" data-view="checklist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Checklist</button>
 </nav>
 
@@ -1194,7 +1316,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.6.0";
+const APP_VERSION = "2.7.0";
 
 /* ---------- ícones (SVG em vez de emoji: o emoji muda de cara em cada
    sistema e não acompanha a cor do texto) ---------- */
@@ -2895,6 +3017,7 @@ function boot(){
   wireCatalogControls();
   wirePlanControls();
   wireStayControls();
+  wireCosts();
   wireCheckControls();
   wireLoginGate();
   initSupabase();
@@ -2959,14 +3082,16 @@ function renderViewTabs(){
       document.getElementById("view-catalog").classList.toggle("active", currentView === "catalog");
       if (currentView === "catalog") renderCatalog();
       document.getElementById("view-stays").classList.toggle("active", currentView === "stays");
+      document.getElementById("view-costs").classList.toggle("active", currentView === "costs");
       document.getElementById("view-checklist").classList.toggle("active", currentView === "checklist");
       if (currentView === "schedule" && currentSubView === "dias") renderMyPlan();
       if (currentView === "stays") renderStays();
+      if (currentView === "costs") renderCosts();
       if (currentView === "checklist") renderChecklist();
       // Leaflet/Google precisam de um resize quando o container volta a ficar visível.
       // As abas sem mapa não entram aqui.
       setTimeout(() => {
-        if (["catalog","stays","checklist"].includes(currentView)) return;
+        if (["catalog","stays","costs","checklist"].includes(currentView)) return;
         if (usingGoogle) {
           google.maps.event.trigger(currentView === "map" ? gMapMapa : gMapCrono, "resize");
         } else {
@@ -4130,17 +4255,39 @@ async function pullFromSupabase(){
     sbRun(sb.from("place_status").select("*").eq("trip_id", sbTripId), "ler status"),
     sbRun(sb.from("checklist_items").select("*").eq("trip_id", sbTripId).order("position"), "ler checklist")
   ]);
+  // Fora do Promise.all de propósito: sem a migração 2.7.0 esta consulta
+  // falha, e dentro do all ela derrubaria a leitura das outras quatro.
+  const expenses = await sbExpenses(
+    sb.from("expenses").select("*").eq("trip_id", sbTripId).order("charge_date"), "ler custos"
+  ).catch(e => { console.error(e); return { data: null }; });
   // Banco vazio nesta viagem = primeira entrada. Aí o que vale é o que está local:
   // sobe. Sem isso, a lista vazia do banco sobrescreveria tudo que foi montado aqui
   // (array vazio é truthy, então os `if` abaixo não protegem sozinhos).
   const bancoVazio = !stays.data?.length && !items.data?.length
                   && !status.data?.length && !checks.data?.length;
-  if (bancoVazio) {
-    await Promise.all([pushStays(), pushPlan(), pushPlaceStatus(), pushChecklist()]);
+  if (bancoVazio && !expenses.data?.length) {
+    await Promise.all([pushStays(), pushPlan(), pushPlaceStatus(), pushChecklist(), pushExpenses()]);
     return;
   }
 
+  if (expenses.data?.length) {
+    saveExpenses(expenses.data.map(r => ({
+      id: r.id, label: r.label, group: r.group_name || "", category: r.category || "outro",
+      currency: r.currency || "BRL", amount: Number(r.amount) || 0, method: r.method || "",
+      chargeDate: r.charge_date || "", status: r.status || "agendado",
+      notes: r.notes || "", position: r.position
+    })));
+  } else if (!expensesTableMissing) {
+    // Tabela existe e está vazia nesta viagem: sobe o que foi semeado aqui.
+    await pushExpenses();
+  }
+
   if (stays.data?.length) {
+    // O banco pode estar numa revisão anterior do seed (outro aparelho, ou de
+    // antes desta versão). Marca como antiga: o próximo getStays() reconcilia
+    // e devolve a versão nova pro banco. Sem isto, a reserva nova do seed era
+    // apagada pela linha velha que veio do banco.
+    storageSet(staysRevKey(), 1);
     saveStays(stays.data.map(r => ({
       id: r.id, name: r.name, city: r.city, address: r.address, type: r.type,
       status: r.status, checkin: r.checkin, checkout: r.checkout, price: r.price,
@@ -4171,10 +4318,51 @@ async function pullFromSupabase(){
     })));
   }
   if (currentView === "stays") renderStays();
+  if (currentView === "costs") renderCosts();
   if (currentView === "schedule" && currentSubView === "dias") renderMyPlan();
   if (currentView === "catalog") renderCatalog();
   if (currentView === "checklist") renderChecklist();
   renderTimeline(); renderMapView();
+}
+
+/* A tabela `expenses` só existe depois da migração 2.7.0. Enquanto não
+   rodar, qualquer consulta a ela volta 42P01 ("relation does not exist").
+   Isso NÃO pode derrubar o resto: a aba Custos segue funcionando local, e
+   as outras quatro tabelas continuam sincronizando normalmente. Por isso
+   todo acesso a expenses passa por aqui, e a falta da tabela é tratada
+   como "ainda não migrou", não como erro de sincronização. */
+let expensesTableMissing = false;
+function isMissingTable(err){
+  const s = (err && (err.code || err.message || "")) + "";
+  return s.includes("42P01") || /does not exist|schema cache|Could not find the table/i.test(s);
+}
+async function sbExpenses(promise, what){
+  const res = await promise;
+  if (res && res.error) {
+    if (isMissingTable(res.error)) { expensesTableMissing = true; return { data: null, skipped: true }; }
+    throw new Error(what + ": " + [res.error.message, res.error.details, res.error.hint].filter(Boolean).join(" · "));
+  }
+  expensesTableMissing = false;
+  return res;
+}
+
+async function pushExpenses(){
+  if (!sbReady()) return;
+  try {
+    const rows = getExpenses().map((e, i) => ({
+      id: isUuid(e.id) ? e.id : uuid(),
+      user_id: sbUser.id, trip_id: sbTripId,
+      label: e.label, group_name: e.group || null, category: e.category || null,
+      currency: e.currency || "BRL", amount: Number(e.amount) || 0,
+      method: e.method || null, charge_date: e.chargeDate || null,
+      status: e.status || "agendado", notes: e.notes || null, position: i
+    }));
+    const del = await sbExpenses(sb.from("expenses").delete().eq("trip_id", sbTripId), "apagar custos");
+    if (del.skipped) return;                       // sem tabela: fica só local
+    if (rows.length) await sbExpenses(sb.from("expenses").insert(rows), "salvar custos");
+    syncState = "on"; syncErrorMsg = "";
+  } catch (e) { console.error(e); syncState = "err"; syncErrorMsg = e.message || String(e); }
+  renderAuthBar();
 }
 
 /* ---- espelhamento: chamado depois de cada alteração local ---- */
@@ -4282,8 +4470,130 @@ function renderAuthBar(){
    HOSPEDAGEM — registro das reservas, com aviso de noite descoberta.
    ========================================================== */
 function staysKey(){ return `stays_${currentTripId}`; }
+function staysRevKey(){ return `stays_rev_${currentTripId}`; }
+
+/* ==========================================================
+   CUSTOS — um registro por débito, não por compra.
+
+   Parcela é linha própria: a pergunta que a aba responde é "quanto sai da
+   conta em cada mês", e uma compra em 3x sai em três meses diferentes.
+   Guardar o total numa linha só obrigaria a recalcular as datas na hora de
+   desenhar, e erraria sempre que uma parcela tivesse centavo diferente.
+   `group` é o que volta a juntar as parcelas na tela.
+
+   `chargeDate` é quando o dinheiro SAI, não quando se comprou nem quando se
+   usa o serviço. É por isso que a W-Inn (hospedagem de 28/11) aparece em
+   novembro, e o ryokan (reservado em setembro) aparece em dezembro.
+   ========================================================== */
+const EXPENSES_REV = 1;
+
+const EXPENSE_CATEGORIES = ["voo","hospedagem","transporte","comida","passeio","compras","outro"];
+const EXPENSE_STATUSES  = ["pago","agendado","estimado"];
+
+// Câmbio só pra somar iene e real no mesmo total. Editável na própria aba —
+// é estimativa, nunca o valor cobrado. O que se paga em iene continua
+// guardado em iene.
+const FX_DEFAULT = { jpyBrl: 0.0332, asOf: "2026-10-02" };
+
+const EXPENSES_SEED = {
+  "japan-2026": [
+    { id:"exp-voo-1", label:"Passagem aérea — parcela 1/3", group:"Passagem aérea", category:"voo",
+      currency:"BRL", amount:860.72, method:"Cartão de crédito", chargeDate:"2026-09-28", status:"pago",
+      notes:"Total R$ 2.582,17 em 3x, sempre no dia 28 (set/out/nov)." },
+    { id:"exp-voo-2", label:"Passagem aérea — parcela 2/3", group:"Passagem aérea", category:"voo",
+      currency:"BRL", amount:860.72, method:"Cartão de crédito", chargeDate:"2026-10-28", status:"agendado",
+      notes:"" },
+    { id:"exp-voo-3", label:"Passagem aérea — parcela 3/3", group:"Passagem aérea", category:"voo",
+      currency:"BRL", amount:860.73, method:"Cartão de crédito", chargeDate:"2026-11-28", status:"agendado",
+      notes:"Leva o centavo que sobra da divisão: 860,72 + 860,72 + 860,73 = 2.582,17." },
+
+    { id:"exp-winn", label:"TOKYO-W-INN Asakusa — 4 noites", group:"", category:"hospedagem",
+      currency:"BRL", amount:597.24, method:"Visa ••1511", chargeDate:"2026-11-24", status:"agendado",
+      notes:"Quarto R$ 684,17 (IVA R$ 60,33 incluído) · desconto -R$ 20,56 · cupom 1ª reserva -R$ 66,37.\n⚠️ Debita em 24/11, um dia ANTES de fechar o cancelamento grátis (25/11, 23:59).\nReserva 1207315601937650." },
+
+    { id:"exp-fukuzumiro", label:"Fukuzumiro (ryokan) — 1 noite", group:"", category:"hospedagem",
+      currency:"JPY", amount:53900, method:"Espécie · conta iene Revolut", chargeDate:"2026-12-02", status:"agendado",
+      notes:"Pago só na chegada, em iene. Separar ¥53.900 no Revolut antes de 02/12." }
+  ]
+};
+
+function expensesKey(){ return `expenses_${currentTripId}`; }
+function expensesRevKey(){ return `expenses_rev_${currentTripId}`; }
+function fxKey(){ return `fx_${currentTripId}`; }
+
+function getFx(){ return storageGet(fxKey(), null) || { ...FX_DEFAULT }; }
+function saveFx(fx){ storageSet(fxKey(), fx); }
+
+function getExpenses(){
+  const saved = storageGet(expensesKey(), null);
+  if (!saved) {
+    const seeded = (EXPENSES_SEED[currentTripId] || []).map((e, i) => ({ ...e, position: i }));
+    storageSet(expensesKey(), seeded);
+    storageSet(expensesRevKey(), EXPENSES_REV);
+    return seeded;
+  }
+  return saved;
+}
+function saveExpenses(list){ storageSet(expensesKey(), list); }
+function saveExpensesAndSync(list){
+  saveExpenses(list);
+  pushExpenses().then(() => {
+    if (syncState === "err") alert("O gasto foi salvo neste aparelho, mas o banco recusou:\n\n" + syncErrorMsg);
+  });
+}
+
+// ¥ -> R$ pelo câmbio guardado. Só pra somar; nunca substitui o valor em iene.
+function toBrl(e, fx){ return e.currency === "JPY" ? e.amount * (fx.jpyBrl || 0) : e.amount; }
+
+function fmtMoney(amount, currency){
+  return currency === "JPY"
+    ? "¥" + Math.round(amount).toLocaleString("pt-BR")
+    : "R$ " + amount.toLocaleString("pt-BR", { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+function monthKey(iso){ return (iso || "").slice(0, 7); }
+function monthLabel(key){
+  const [y, m] = key.split("-");
+  const names = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  return `${names[+m - 1]} ${y}`;
+}
+
+/* Agrupa os débitos por mês, na ordem do calendário. Cada mês soma em real
+   (iene convertido) e guarda à parte quanto sai em espécie, que é dinheiro
+   que precisa estar na conta iene e não na fatura do cartão. */
+function expensesByMonth(list, fx){
+  const months = new Map();
+  list.forEach(e => {
+    const k = monthKey(e.chargeDate) || "sem-data";
+    const m = months.get(k) || { key:k, items:[], brl:0, jpy:0 };
+    m.items.push(e);
+    m.brl += toBrl(e, fx);
+    if (e.currency === "JPY") m.jpy += e.amount;
+    months.set(k, m);
+  });
+  return [...months.values()]
+    .map(m => ({ ...m, items: m.items.sort((a,b) => (a.chargeDate||"").localeCompare(b.chargeDate||"")) }))
+    .sort((a,b) => a.key === "sem-data" ? 1 : b.key === "sem-data" ? -1 : a.key.localeCompare(b.key));
+}
+
+function expenseTotals(list, fx){
+  const t = { total:0, pago:0, aPagar:0, estimado:0, jpy:0 };
+  list.forEach(e => {
+    const v = toBrl(e, fx);
+    t.total += v;
+    if (e.status === "pago") t.pago += v;
+    else if (e.status === "estimado") t.estimado += v;
+    else t.aPagar += v;
+    if (e.currency === "JPY" && e.status !== "pago") t.jpy += e.amount;
+  });
+  return t;
+}
 // Reservas já fechadas, que vêm junto com a viagem. Depois de semeadas viram
 // dados normais: dá pra editar e excluir pela interface como qualquer outra.
+// Subir isto faz as reservas novas do seed chegarem a quem já tem dados
+// salvos. Sem isso, getStays() via `saved` e devolvia cedo — o seed só valia
+// num aparelho virgem, e a W-Inn nunca apareceria neste aqui.
+const STAYS_REV = 2;
+
 const STAYS_SEED = {
   "japan-2026": [{
     id: "stay-fukuzumiro",
@@ -4293,17 +4603,63 @@ const STAYS_SEED = {
     type: "Ryokan",
     status: "reservado",
     checkin: "2026-12-02", checkout: "2026-12-03",
-    price: "", bookedOn: "", site: "", code: "",
-    notes: "1x quarto japonês (tipo Sekirei). Check-in 15:00, check-out 10:00.\nCancelamento grátis até 29/11/2026.\nNota 4,6 (151 avaliações)."
+    price: "¥53.900 (na chegada, em espécie)", bookedOn: "", site: "", code: "",
+    notes: "1x quarto japonês (tipo Sekirei). Check-in 15:00, check-out 10:00.\nCancelamento grátis até 29/11/2026.\nNota 4,6 (151 avaliações).\n\n¥53.900 pagos SÓ na chegada, em iene — separar na conta iene do Revolut antes de 02/12."
+  }, {
+    id: "stay-tokyo-w-inn",
+    name: "TOKYO-W-INN Asakusa",
+    city: "Tóquio, Asakusa (Taito)",
+    address: "Kotobuki 4-6-1 1F, Taito, 111-0042 Tóquio, Japão (〒111-0042 東京台東区寿４丁目６−１ １Ｆ)",
+    type: "Hotel",
+    status: "pago",
+    checkin: "2026-11-28", checkout: "2026-12-02",
+    price: "R$ 597,24 (pago on-line)", bookedOn: "2026-10-04",
+    site: "", code: "Reserva 1207315601937650 · Confirmação 1207315601938070",
+    notes: "1 cama, 4 noites. Check-in 28/11 das 16:00 às 23:00 — chegando depois das 23:00, avisar o hotel antes por e-mail/telefone. Check-out 02/12 até 11:00.\nTelefone: +81-3-68028985\n\nDébito no Visa ••1511 em 24/11 (horário do hotel).\n⚠️ O débito cai ANTES do fim do cancelamento grátis (25/11, 23:59) — se for cancelar, cancele e confira o estorno.\n\nPreço: quarto R$ 684,17 (IVA R$ 60,33 incluído) · desconto -R$ 20,56 · cupom 1ª reserva -R$ 66,37 = R$ 597,24.\nTaxa de acomodação na chegada: Tóquio só cobra a partir de ¥10.000/pessoa/noite, e esta diária fica bem abaixo — esperado ¥0.\n\nPIN 3107 (não compartilhar)."
   }]
 };
 
+/* Igual ao reconcileChecklist: reserva do seed entra/atualiza pelo id, reserva
+   que VOCÊ criou é preservada inteira. Campo que você editou à mão não é
+   sobrescrito — só preenche o que estiver vazio. */
+function reconcileStays(saved){
+  const byId = new Map(saved.map(s => [s.id, s]));
+  const seed = STAYS_SEED[currentTripId] || [];
+  const seedIds = new Set(seed.map(s => s.id));
+  const out = seed.map(s => {
+    const old = byId.get(s.id);
+    if (!old) return { ...s };
+    const keep = (a, b) => (a !== undefined && a !== null && a !== "") ? a : b;
+    return {
+      ...s,
+      status:   keep(old.status, s.status),
+      price:    keep(old.price, s.price),
+      bookedOn: keep(old.bookedOn, s.bookedOn),
+      site:     keep(old.site, s.site),
+      code:     keep(old.code, s.code),
+      notes:    keep(old.notes, s.notes)
+    };
+  });
+  saved.forEach(s => { if (!seedIds.has(s.id)) out.push(s); });
+  return out;
+}
+
 function getStays(){
   const saved = storageGet(staysKey(), null);
-  if (saved) return saved;
-  const seeded = STAYS_SEED[currentTripId] || [];
-  storageSet(staysKey(), seeded);
-  return seeded;
+  if (!saved) {
+    const seeded = STAYS_SEED[currentTripId] || [];
+    storageSet(staysKey(), seeded);
+    storageSet(staysRevKey(), STAYS_REV);
+    return seeded;
+  }
+  if (storageGet(staysRevKey(), 1) < STAYS_REV) {
+    const merged = reconcileStays(saved);
+    storageSet(staysKey(), merged);
+    storageSet(staysRevKey(), STAYS_REV);
+    setTimeout(() => { if (sbReady()) pushStays(); }, 0);
+    return merged;
+  }
+  return saved;
 }
 function saveStays(list){ storageSet(staysKey(), list); }
 function saveStaysAndSync(list){
@@ -4470,6 +4826,217 @@ const TRIP_DATES = (() => {
   }
   return out;
 })();
+
+/* ==========================================================
+   CUSTOS — tela
+   ========================================================== */
+function costStatusColor(s){ return s === "pago" ? "#2EC4B6" : s === "estimado" ? "#8B96A8" : "#FFB238"; }
+function costStatusLabel(s){ return s === "pago" ? "PAGO" : s === "estimado" ? "ESTIMADO" : "AGENDADO"; }
+
+function renderCosts(){
+  const fx = getFx();
+  const list = getExpenses();
+  const t = expenseTotals(list, fx);
+
+  document.getElementById("costs-summary").textContent = list.length
+    ? `${list.length} lançamento${list.length === 1 ? "" : "s"} · ${fmtMoney(t.total, "BRL")} no total`
+    : "Nenhum gasto lançado ainda";
+
+  const card = (label, value, sub, cls) =>
+    `<div class="cost-card ${cls || ""}"><div class="cc-label">${label}</div>` +
+    `<div class="cc-value">${value}</div>${sub ? `<div class="cc-sub">${sub}</div>` : ""}</div>`;
+
+  document.getElementById("costs-totals").innerHTML = `<div class="cost-cards">` +
+    card("Total previsto", fmtMoney(t.total, "BRL"), t.estimado ? `inclui ${fmtMoney(t.estimado,"BRL")} estimado` : "confirmado") +
+    card("Já pago", fmtMoney(t.pago, "BRL"), "saiu da conta") +
+    card("A pagar", fmtMoney(t.aPagar + t.estimado, "BRL"), "ainda vai sair") +
+    (t.jpy ? card("Separar em iene", fmtMoney(t.jpy, "JPY"),
+        `≈ ${fmtMoney(t.jpy * fx.jpyBrl, "BRL")} · conta iene do Revolut`, "is-cash") : "") +
+    `</div>`;
+
+  const body = document.getElementById("costs-body");
+  if (!list.length) {
+    body.innerHTML = `<div class="cost-empty">Nada lançado. Use <b>+ Novo gasto</b> — cada linha é um débito, e parcelado vira uma linha por mês.</div>`;
+  } else {
+    const hoje = new Date().toISOString().slice(0, 10);
+    body.innerHTML = expensesByMonth(list, fx).map(m => {
+      const past = m.key !== "sem-data" && m.key < hoje.slice(0, 7);
+      const rows = m.items.map(e => {
+        const dia = e.chargeDate ? e.chargeDate.slice(8, 10) + "/" + e.chargeDate.slice(5, 7) : "—";
+        const conv = e.currency === "JPY"
+          ? `<span class="cr-conv">≈ ${fmtMoney(e.amount * fx.jpyBrl, "BRL")}</span>` : "";
+        const meta = [e.method, e.group, e.category].filter(Boolean).join(" · ");
+        return `<button class="cost-row ${e.status === "pago" ? "is-paid" : ""}" data-cost-edit="${e.id}">
+            <span class="cr-day">${dia}</span>
+            <span class="cr-main">
+              <span class="cr-label">${esc(e.label)}</span>
+              <span class="cr-meta"><span class="cost-pill" style="background:${costStatusColor(e.status)}22;color:${costStatusColor(e.status)}">${costStatusLabel(e.status)}</span>${esc(meta)}</span>
+            </span>
+            <span class="cr-amount">${fmtMoney(e.amount, e.currency)}${conv}</span>
+          </button>`;
+      }).join("");
+      return `<div class="cost-month ${past ? "is-past" : ""}">
+          <div class="cost-month-head">
+            <span class="cm-name">${m.key === "sem-data" ? "Sem data" : monthLabel(m.key)}</span>
+            <span class="cm-total">${fmtMoney(m.brl, "BRL")}${m.jpy ? ` · ${fmtMoney(m.jpy, "JPY")} em espécie` : ""}</span>
+          </div>${rows}</div>`;
+    }).join("");
+    body.querySelectorAll("[data-cost-edit]").forEach(b => {
+      b.onclick = () => openCostModal(getExpenses().find(e => e.id === b.dataset.costEdit));
+    });
+  }
+
+  document.getElementById("costs-fx-note").innerHTML =
+    `Iene convertido a <b>1 ¥ = R$ <input type="number" id="fx-input" step="0.0001" min="0" ` +
+    `value="${fx.jpyBrl}" style="width:90px;display:inline-block;margin:0 2px;"></b> ` +
+    `(cotação de ${fmtDate(fx.asOf)}). Serve só pra somar real e iene no mesmo total — ` +
+    `o que se paga em iene continua guardado em iene, e o valor real do dia pode variar. ` +
+    `<b>Os totais em real de linhas em iene são estimativa.</b>`;
+  const fxInput = document.getElementById("fx-input");
+  fxInput.onchange = () => {
+    const v = parseFloat(fxInput.value);
+    if (!isFinite(v) || v <= 0) { renderCosts(); return; }
+    saveFx({ jpyBrl: v, asOf: new Date().toISOString().slice(0, 10) });
+    renderCosts();
+  };
+}
+
+let editingCostId = null;
+
+function openCostModal(exp){
+  editingCostId = exp ? exp.id : null;
+  document.getElementById("cost-modal-title").textContent = exp ? "Editar gasto" : "Novo gasto";
+
+  const sel = (id, opts, val) => {
+    const el = document.getElementById(id);
+    el.innerHTML = opts.map(o => `<option value="${o}">${o}</option>`).join("");
+    el.value = val || opts[0];
+  };
+  sel("cost-status", EXPENSE_STATUSES, exp?.status);
+  sel("cost-category", EXPENSE_CATEGORIES, exp?.category);
+
+  const v = (id, val) => document.getElementById(id).value = val ?? "";
+  v("cost-label", exp?.label);
+  v("cost-amount", exp?.amount);
+  v("cost-date", exp?.chargeDate);
+  v("cost-method", exp?.method);
+  v("cost-group", exp?.group);
+  v("cost-notes", exp?.notes);
+  document.getElementById("cost-currency").value = exp?.currency || "BRL";
+
+  // Parcelar só faz sentido ao criar: num gasto que já existe, cada parcela
+  // já é uma linha, e re-parcelar duplicaria em vez de dividir.
+  document.getElementById("cost-split-wrap").style.display = exp ? "none" : "";
+  document.getElementById("cost-split").checked = false;
+  document.getElementById("cost-split-fields").style.display = "none";
+  document.getElementById("cost-split-hint").textContent = "";
+
+  document.getElementById("cost-delete").style.display = exp ? "" : "none";
+  document.getElementById("cost-modal").classList.add("open");
+}
+function closeCostModal(){
+  document.getElementById("cost-modal").classList.remove("open");
+  editingCostId = null;
+}
+
+/* Divide um total em N parcelas mensais sem perder centavo: todas iguais,
+   e a última recebe a diferença. É o que o cartão faz, e é por isso que a
+   3ª parcela da passagem é 860,73 e não 860,72. */
+function splitInstallments(total, n){
+  const cents = Math.round(total * 100);
+  const base = Math.floor(cents / n);
+  return Array.from({ length: n }, (_, i) => (i === n - 1 ? cents - base * (n - 1) : base) / 100);
+}
+function addMonths(iso, n){
+  const [y, m, d] = iso.split("-").map(Number);
+  // Dia 31 + 1 mês não existe em todo mês: o Date normaliza pra frente, o que
+  // jogaria a parcela pro mês seguinte. Prende no último dia do mês alvo.
+  const target = new Date(y, m - 1 + n, 1);
+  const last = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(d, last));
+  const p = x => String(x).padStart(2, "0");
+  return `${target.getFullYear()}-${p(target.getMonth() + 1)}-${p(target.getDate())}`;
+}
+
+function saveCostFromForm(){
+  const g = id => document.getElementById(id).value.trim();
+  const label = g("cost-label");
+  const amount = parseFloat(document.getElementById("cost-amount").value);
+  const chargeDate = g("cost-date");
+  if (!label) { alert("Dá um nome pro gasto."); return; }
+  if (!isFinite(amount) || amount < 0) { alert("Valor inválido."); return; }
+
+  const base = {
+    label,
+    group: g("cost-group"),
+    category: g("cost-category"),
+    currency: document.getElementById("cost-currency").value,
+    method: g("cost-method"),
+    status: g("cost-status"),
+    notes: document.getElementById("cost-notes").value.trim()
+  };
+
+  let list = getExpenses();
+  if (editingCostId) {
+    list = list.map(e => e.id === editingCostId ? { ...e, ...base, amount, chargeDate } : e);
+  } else if (document.getElementById("cost-split").checked) {
+    const n = Math.max(2, Math.min(24, parseInt(document.getElementById("cost-split-n").value, 10) || 2));
+    if (!chargeDate) { alert("Parcelar precisa da data da 1ª parcela."); return; }
+    const parts = splitInstallments(amount, n);
+    const group = base.group || label;
+    parts.forEach((p, i) => list.push({
+      ...base, id: newItemId(), group,
+      label: `${label} — parcela ${i + 1}/${n}`,
+      amount: p, chargeDate: addMonths(chargeDate, i),
+      position: list.length + i
+    }));
+  } else {
+    list.push({ ...base, id: newItemId(), amount, chargeDate, position: list.length });
+  }
+
+  saveExpensesAndSync(list);
+  closeCostModal();
+  renderCosts();
+}
+
+function deleteCost(){
+  if (!editingCostId) return;
+  if (!confirm("Excluir este lançamento?")) return;
+  saveExpensesAndSync(getExpenses().filter(e => e.id !== editingCostId));
+  closeCostModal();
+  renderCosts();
+}
+
+function wireCosts(){
+  document.getElementById("cost-new").onclick = () => openCostModal(null);
+  document.getElementById("cost-modal-close").onclick = closeCostModal;
+  document.getElementById("cost-save").onclick = saveCostFromForm;
+  document.getElementById("cost-delete").onclick = deleteCost;
+  document.getElementById("cost-modal").onclick = ev => {
+    if (ev.target.id === "cost-modal") closeCostModal();
+  };
+  const split = document.getElementById("cost-split");
+  const refreshHint = () => {
+    const on = split.checked;
+    document.getElementById("cost-split-fields").style.display = on ? "" : "none";
+    const hint = document.getElementById("cost-split-hint");
+    if (!on) { hint.textContent = ""; return; }
+    const total = parseFloat(document.getElementById("cost-amount").value);
+    const n = parseInt(document.getElementById("cost-split-n").value, 10);
+    const d = document.getElementById("cost-date").value;
+    if (!isFinite(total) || !n || n < 2 || !d) { hint.textContent = "Preencha valor e data da 1ª parcela."; return; }
+    const parts = splitInstallments(total, n);
+    const cur = document.getElementById("cost-currency").value;
+    const same = parts.every(p => p === parts[0]);
+    hint.textContent = `${n}× de ${fmtMoney(parts[0], cur)}`
+      + (same ? "" : ` (a última, ${fmtMoney(parts[n-1], cur)})`)
+      + ` · de ${fmtDate(d)} a ${fmtDate(addMonths(d, n - 1))}`;
+  };
+  split.onchange = refreshHint;
+  ["cost-amount","cost-split-n","cost-date","cost-currency"].forEach(id => {
+    document.getElementById(id).addEventListener("input", refreshHint);
+  });
+}
 
 function planKey(){ return `myplan_${currentTripId}`; }
 function getPlan(){ return storageGet(planKey(), {}); }
