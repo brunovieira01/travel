@@ -1414,7 +1414,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.8.0";
+const APP_VERSION = "2.8.1";
 
 /* ---------- ícones (SVG em vez de emoji: o emoji muda de cara em cada
    sistema e não acompanha a cor do texto) ---------- */
@@ -4369,6 +4369,10 @@ async function pullFromSupabase(){
   }
 
   if (expenses.data?.length) {
+    // Igual às outras: marca a revisão como antiga pro próximo getExpenses()
+    // reconciliar. Sem isto, a linha velha do banco reinstalaria o valor
+    // errado da passagem por cima da correção.
+    storageSet(expensesRevKey(), 1);
     saveExpenses(expenses.data.map(r => ({
       id: r.id, kind: r.kind || EXPENSE_KINDS.PLAN,
       label: r.label, group: r.group_name || "", category: r.category || "outro",
@@ -4448,8 +4452,8 @@ async function sbExpenses(promise, what){
 async function pushExpenses(){
   if (!sbReady()) return;
   try {
-    const rows = getExpenses().map((e, i) => ({
-      id: isUuid(e.id) ? e.id : uuid(),
+    const rows = stabilizeIds(getExpenses(), saveExpenses).map((e, i) => ({
+      id: e.id,
       user_id: sbUser.id, trip_id: sbTripId,
       kind: e.kind || EXPENSE_KINDS.PLAN,
       label: e.label, group_name: e.group || null, category: e.category || null,
@@ -4466,11 +4470,29 @@ async function pushExpenses(){
 }
 
 /* ---- espelhamento: chamado depois de cada alteração local ---- */
+/* Carimba uuid em id que ainda não é uuid e GRAVA DE VOLTA no local.
+
+   Antes o uuid só existia na linha enviada: o banco recebia um id novo a
+   cada push e o id local nunca convergia. Com isso, uma reserva do seed
+   ("stay-fukuzumiro") virava uuid no banco, voltava como uuid no pull, e o
+   reconcile — que casava por id — não a reconhecia mais como do seed e
+   adicionava outra. Uma cópia por sincronização: 2, 4, 6, 8, 10. */
+function stabilizeIds(list, save){
+  let changed = false;
+  const out = list.map(x => {
+    if (isUuid(x.id)) return x;
+    changed = true;
+    return { ...x, id: uuid() };
+  });
+  if (changed) save(out);
+  return out;
+}
+
 async function pushStays(){
   if (!sbReady()) return;
   try {
-    const rows = getStays().map(s => ({
-      id: isUuid(s.id) ? s.id : uuid(),   // id local antigo ("stay_1727…") vira uuid aqui
+    const rows = stabilizeIds(getStays(), saveStays).map(s => ({
+      id: s.id,
       user_id: sbUser.id, trip_id: sbTripId,
       name: s.name, city: s.city || null, address: s.address || null,
       type: s.type, status: s.status,
@@ -4585,7 +4607,7 @@ function staysRevKey(){ return `stays_rev_${currentTripId}`; }
    usa o serviço. É por isso que a W-Inn (hospedagem de 28/11) aparece em
    novembro, e o ryokan (reservado em setembro) aparece em dezembro.
    ========================================================== */
-const EXPENSES_REV = 1;
+const EXPENSES_REV = 2;   // 2: passagem corrigida pra 3x R$ 2.582,17 (v2.8.1)
 
 const EXPENSE_CATEGORIES = ["voo","hospedagem","transporte","comida","passeio","compras","outro"];
 const EXPENSE_STATUSES  = ["pago","agendado","estimado"];
@@ -4622,15 +4644,17 @@ const FX_DEFAULT = { jpyBrl: 0.0332, asOf: "2026-10-02" };
 
 const EXPENSES_SEED = {
   "japan-2026": [
+    // R$ 2.582,17 é o valor DE CADA parcela, não o total. Três delas, sempre
+    // no dia 28 (set/out/nov) = R$ 7.746,51.
     { id:"exp-voo-1", label:"Passagem aérea — parcela 1/3", group:"Passagem aérea", category:"voo",
-      currency:"BRL", amount:860.72, method:"Cartão de crédito", chargeDate:"2026-09-28", status:"pago",
-      notes:"Total R$ 2.582,17 em 3x, sempre no dia 28 (set/out/nov)." },
+      currency:"BRL", amount:2582.17, method:"Cartão de crédito", chargeDate:"2026-09-28", status:"pago",
+      notes:"3 parcelas de R$ 2.582,17, sempre no dia 28 (set/out/nov). Total R$ 7.746,51." },
     { id:"exp-voo-2", label:"Passagem aérea — parcela 2/3", group:"Passagem aérea", category:"voo",
-      currency:"BRL", amount:860.72, method:"Cartão de crédito", chargeDate:"2026-10-28", status:"agendado",
+      currency:"BRL", amount:2582.17, method:"Cartão de crédito", chargeDate:"2026-10-28", status:"agendado",
       notes:"" },
     { id:"exp-voo-3", label:"Passagem aérea — parcela 3/3", group:"Passagem aérea", category:"voo",
-      currency:"BRL", amount:860.73, method:"Cartão de crédito", chargeDate:"2026-11-28", status:"agendado",
-      notes:"Leva o centavo que sobra da divisão: 860,72 + 860,72 + 860,73 = 2.582,17." },
+      currency:"BRL", amount:2582.17, method:"Cartão de crédito", chargeDate:"2026-11-28", status:"agendado",
+      notes:"" },
 
     { id:"exp-winn", label:"TOKYO-W-INN Asakusa — 4 noites", group:"", category:"hospedagem",
       currency:"BRL", amount:597.24, method:"Visa ••1511", chargeDate:"2026-11-24", status:"agendado",
@@ -4649,6 +4673,45 @@ function fxKey(){ return `fx_${currentTripId}`; }
 function getFx(){ return storageGet(fxKey(), null) || { ...FX_DEFAULT }; }
 function saveFx(fx){ storageSet(fxKey(), fx); }
 
+/* Corrige os lançamentos semeados quando o seed muda — foi preciso quando a
+   passagem virou 3x R$ 2.582,17 (o valor informado era de cada parcela, não
+   o total). Vale pro que veio do seed e mais nada:
+
+   - casa por rótulo, porque o id não sobrevive à ida ao banco;
+   - de propósito, SOBRESCREVE valor, moeda e data, que são justamente os
+     fatos que estavam errados; preserva situação e nota se você mexeu;
+   - lançamento do dia a dia (`diario`) passa intocado e NÃO é deduplicado:
+     dois "Comida" de R$ 20 no mesmo dia são dois gastos reais, e juntá-los
+     apagaria dinheiro de verdade. */
+function expenseLabelKey(e){ return (e.label || "").trim().toLowerCase().replace(/\s+/g, " "); }
+
+function reconcileExpenses(saved){
+  const seed = (EXPENSES_SEED[currentTripId] || []).map(e => ({ kind: EXPENSE_KINDS.PLAN, ...e }));
+  const keep = (a, b) => (a !== undefined && a !== null && a !== "") ? a : b;
+
+  const planned = saved.filter(e => (e.kind || EXPENSE_KINDS.PLAN) !== EXPENSE_KINDS.DAILY);
+  const daily   = saved.filter(e => (e.kind || EXPENSE_KINDS.PLAN) === EXPENSE_KINDS.DAILY);
+
+  const byLabel = new Map(), byId = new Map();
+  planned.forEach(e => { byId.set(e.id, e); if (!byLabel.has(expenseLabelKey(e))) byLabel.set(expenseLabelKey(e), e); });
+
+  const used = new Set();
+  const out = seed.map(s => {
+    const old = byLabel.get(expenseLabelKey(s)) || byId.get(s.id);
+    used.add(expenseLabelKey(s));
+    if (old) used.add(expenseLabelKey(old));
+    if (!old) return { ...s };
+    return {
+      ...s,
+      id: old.id,                                  // mantém o id conhecido pelo banco
+      status: keep(old.status, s.status),
+      notes:  keep(old.notes, s.notes)
+    };
+  });
+  planned.forEach(e => { if (!used.has(expenseLabelKey(e))) out.push(e); });
+  return [...out, ...daily].map((e, i) => ({ ...e, position: i }));
+}
+
 function getExpenses(){
   const saved = storageGet(expensesKey(), null);
   if (!saved) {
@@ -4660,7 +4723,15 @@ function getExpenses(){
   }
   // Registro gravado antes da v2.8.0 não tem `kind`. Sem este default ele
   // sumiria das duas listas, porque as duas filtram por kind.
-  return saved.map(e => e.kind ? e : { ...e, kind: EXPENSE_KINDS.PLAN });
+  const withKind = saved.map(e => e.kind ? e : { ...e, kind: EXPENSE_KINDS.PLAN });
+  if (storageGet(expensesRevKey(), 1) < EXPENSES_REV) {
+    const merged = reconcileExpenses(withKind);
+    storageSet(expensesKey(), merged);
+    storageSet(expensesRevKey(), EXPENSES_REV);
+    setTimeout(() => { if (sbReady()) pushExpenses(); }, 0);
+    return merged;
+  }
+  return withKind;
 }
 function getPlanned(){ return getExpenses().filter(e => e.kind !== EXPENSE_KINDS.DAILY); }
 function getDaily(){ return getExpenses().filter(e => e.kind === EXPENSE_KINDS.DAILY); }
@@ -4722,7 +4793,7 @@ function expenseTotals(list, fx){
 // Subir isto faz as reservas novas do seed chegarem a quem já tem dados
 // salvos. Sem isso, getStays() via `saved` e devolvia cedo — o seed só valia
 // num aparelho virgem, e a W-Inn nunca apareceria neste aqui.
-const STAYS_REV = 2;
+const STAYS_REV = 3;   // 3: dedupe das cópias geradas pelo bug de id (v2.8.1)
 
 const STAYS_SEED = {
   "japan-2026": [{
@@ -4749,19 +4820,46 @@ const STAYS_SEED = {
   }]
 };
 
-/* Igual ao reconcileChecklist: reserva do seed entra/atualiza pelo id, reserva
-   que VOCÊ criou é preservada inteira. Campo que você editou à mão não é
-   sobrescrito — só preenche o que estiver vazio. */
+/* Nome + check-in, normalizados. É a identidade estável de uma reserva: o id
+   muda ao passar pelo banco, o par nome+entrada não. Duas reservas com o
+   mesmo nome E a mesma data de entrada são a mesma reserva. */
+function stayKey(s){
+  return `${(s.name || "").trim().toLowerCase().replace(/\s+/g, " ")}|${s.checkin || ""}`;
+}
+
+/* Reserva do seed entra/atualiza, reserva que VOCÊ criou é preservada
+   inteira, e campo que você editou à mão não é sobrescrito — só preenche o
+   que estiver vazio.
+
+   Casa por nome+check-in, NÃO por id: casar por id era o que duplicava as
+   reservas a cada sincronização, porque o id do seed não sobrevive à ida ao
+   banco. Como efeito colateral útil, isto também junta as cópias que já
+   estavam salvas — a lista se limpa sozinha no próximo carregamento. */
 function reconcileStays(saved){
-  const byId = new Map(saved.map(s => [s.id, s]));
   const seed = STAYS_SEED[currentTripId] || [];
-  const seedIds = new Set(seed.map(s => s.id));
+  const keep = (a, b) => (a !== undefined && a !== null && a !== "") ? a : b;
+  // Entre cópias, sobrevive a mais preenchida: é a que tem suas edições.
+  const score = x => ["status","price","bookedOn","site","code","notes"]
+    .reduce((n, f) => n + (x[f] ? 1 : 0), 0);
+
+  const byKey = new Map(), byId = new Map();
+  saved.forEach(s => {
+    byId.set(s.id, s);
+    const k = stayKey(s), prev = byKey.get(k);
+    if (!prev || score(s) > score(prev)) byKey.set(k, s);
+  });
+
+  const used = new Set();
   const out = seed.map(s => {
-    const old = byId.get(s.id);
+    const k = stayKey(s);
+    // byId é fallback pro aparelho virgem, onde o id ainda é o literal do seed.
+    const old = byKey.get(k) || byId.get(s.id);
+    used.add(k);
+    if (old) used.add(stayKey(old));
     if (!old) return { ...s };
-    const keep = (a, b) => (a !== undefined && a !== null && a !== "") ? a : b;
     return {
       ...s,
+      id:       old.id,                     // mantém o id que o banco já conhece
       status:   keep(old.status, s.status),
       price:    keep(old.price, s.price),
       bookedOn: keep(old.bookedOn, s.bookedOn),
@@ -4770,7 +4868,7 @@ function reconcileStays(saved){
       notes:    keep(old.notes, s.notes)
     };
   });
-  saved.forEach(s => { if (!seedIds.has(s.id)) out.push(s); });
+  byKey.forEach((s, k) => { if (!used.has(k)) out.push(s); });
   return out;
 }
 

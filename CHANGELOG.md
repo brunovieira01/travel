@@ -4,6 +4,75 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.8.1 — 2026-10-04
+
+**As reservas apareciam repetidas na Hospedagem — bug meu, da 2.7.0.**
+
+O `pushStays` carimbava um uuid nos ids que não eram uuid, mas **só na linha
+enviada ao banco**: o local continuava com `stay-fukuzumiro`. Então o banco
+recebia um id novo a cada push, e o `reconcileStays` que introduzi na 2.7.0
+casava por id. Resultado: a reserva voltava do banco como uuid, o reconcile
+não a reconhecia mais como vinda do seed, e adicionava outra. Uma cópia por
+sincronização.
+
+Reproduzido antes de consertar, e o número bate com o que você viu:
+
+    cópias por ciclo de sync:  2 → 4 → 6 → 8 → 10
+
+Dois consertos, porque um só não bastava:
+
+- **`stabilizeIds`** carimba o uuid e **grava de volta no local**. O id passa
+  a convergir, e o ida-e-volta ao banco deixa de inventar identidade nova.
+  Vale pra `stays` e pra `expenses`.
+- **`reconcileStays` casa por nome + check-in**, não por id — duas reservas
+  com o mesmo nome *e* a mesma data de entrada são a mesma reserva. O id não
+  sobrevive ao banco; esse par sobrevive.
+
+Como efeito colateral útil, o reconcile agora **junta as cópias que já estão
+salvas**: a lista se limpa sozinha no próximo carregamento, sem você apagar
+nada à mão. Entre cópias sobrevive a mais preenchida — a que tem suas
+edições — e ela mantém o id que o banco já conhece. A reserva que você mesmo
+criou passa intocada.
+
+### Passagem aérea: R$ 2.582,17 era cada parcela, não o total
+
+Eu havia lido o valor como total e dividido em 3 (860,72 + 860,72 + 860,73).
+É o contrário: **são 3 parcelas de R$ 2.582,17**, sempre no dia 28
+(set/out/nov).
+
+| | antes | agora |
+|---|---|---|
+| cada parcela | R$ 860,72 | **R$ 2.582,17** |
+| total da passagem | R$ 2.582,17 | **R$ 7.746,51** |
+| novembro | R$ 1.457,97 | **R$ 3.179,41** |
+| total em real | R$ 3.179,41 | **R$ 8.343,75** |
+
+O `splitInstallments` continua existindo e testado — é o que divide um total
+quando *você* marca "Parcelar". Só não era o caso desta compra.
+
+Pra correção chegar a um aparelho que já tinha os valores velhos salvos, um
+`reconcileExpenses` com `EXPENSES_REV`. Ele sobrescreve valor, moeda e data
+de propósito — são os fatos que estavam errados — e preserva situação e nota
+se você mexeu.
+
+**O cuidado que importa nesse reconcile:** lançamento do dia a dia passa
+intocado e **não é deduplicado**. Dois "Comida" de ¥20 no mesmo dia são dois
+gastos reais, e juntá-los apagaria dinheiro de verdade. Só o que vem do seed
+é reconciliado. Tem teste dedicado pra isso.
+
+O `pullFromSupabase` também marca a revisão dos custos como antiga antes de
+salvar o que veio do banco — senão a linha velha reinstalaria o valor errado
+por cima da correção.
+
+### Verificação
+
+20 asserções novas, e a primeira coisa escrita foi o repro do bug, não o
+conserto. Cobrem: o ciclo de sync ficando em 2 reservas em vez de subir;
+6 linhas duplicadas colapsando em 3 com a cópia editada sobrevivendo e o id
+do banco preservado; idempotência; a passagem corrigida sem perder os ids;
+e as duas entradas idênticas de ¥20 **não** sendo juntadas. 7 suítes no
+total, todas passando.
+
 ## 2.8.0 — 2026-10-04
 
 **"No Japão": lançar gasto em três toques.** A aba Custos virou duas
