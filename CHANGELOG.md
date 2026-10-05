@@ -4,6 +4,75 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.9.0 — 2026-10-04
+
+**37 itens de transporte no checklist**, em 8 seções cronológicas, de
+outubro (criar conta no smartEX) até 08/12 (Shin-Osaka → Tóquio). Cada um
+marcável de forma independente, com custo e horário onde faz diferença.
+
+### Duas correções nos dados de entrada
+
+**Os alarmes.** A tabela-resumo e a lista de alarmes se contradiziam, e a
+tabela estava errada em dois dos três:
+
+| trecho | viagem | abre (JST) | Brasília | a tabela dizia |
+|---|---|---|---|---|
+| Romancecar | 02/12 | 02/11 10h | **01/11 22h** | 1/nov 22h ✓ |
+| Odawara → Kyoto | 03/12 | 03/11 10h | **02/11 22h** | 3/nov 22h ✗ |
+| Shin-Osaka → Tóquio | 08/12 | 08/11 10h | **07/11 22h** | 8/nov 22h ✗ |
+
+É exatamente a armadilha de 12h descrita no próprio documento: a tabela
+somava o fuso no sentido errado. Valem as datas da seção de alarmes, e os
+dois itens errados levam nota dizendo por quê.
+
+**O Free Pass não compensa neste roteiro.** A conta anterior dava economia
+de ¥1.290; ela incluía um trecho Odawara → Hakone-Yumoto (¥360) que o
+Romancecar já cobre, porque o Romancecar vai direto a Hakone-Yumoto.
+Refeito, com o teleférico Sounzan↔Owakudani a ¥900 por perna:
+
+| roteiro | avulso | passe ¥6.000 |
+|---|---|---|
+| museu + Owakudani (o recomendado) | **¥3.960** | prejuízo de ¥2.040 |
+| loop completo com teleférico e barco | ¥6.010 | economia de ¥10 |
+
+Ou seja: o passe nunca ganha de verdade. No loop empata, no roteiro
+recomendado perde. E dá pra comprar em Hakone-Yumoto, sem quebrar a viagem
+do Romancecar em Odawara.
+
+Total do transporte: **¥33.630**, não ¥35.280.
+
+### O roteiro de Hakone
+
+Dois achados de horário que mudam o dia: em dezembro **Owakudani fecha às
+16h** (não 17h) e o último teleférico é **16h15**; e o sol se põe às
+**16h33** em Hakone. A janela útil é menor do que parecia.
+
+O recomendado virou museu + Owakudani + onsen, não o loop clássico — o
+raciocínio está na resposta do chat. O loop ficou registrado como
+alternativa, num item só, com os horários e o aviso dos ônibus da Izu
+Hakone. Fazer o loop **e** o museu no mesmo dia não cabe, e isso está
+escrito.
+
+### Kyoto
+
+A iluminação do **Kodaiji está confirmada para 2026**: 23/10 a 13/12, 17h
+às 22h, última entrada 21h30, ¥800 — cai dentro das 3 noites em Kyoto, e o
+pico das folhas é fim de nov/início de dez. Por isso chegar ~13h no dia 3 é
+suficiente: a noite rende sozinha (Gion no entardecer, Kodaiji, Yasaka com
+as lanternas, Fushimi Inari vazio).
+
+O Kenninji ficou como item de conferir: não achei data confirmada pra 2026,
+e o ¥2.000 anotado é de anos anteriores. Preferi dizer isso a inventar.
+
+### Verificação
+
+16 asserções: as 8 seções na ordem cronológica, os 37 itens, cada um com
+caixa própria e começando desmarcado, as três datas de alarme corrigidas, os
+dois itens errados sinalizados, os custos presentes nos itens do dia de
+Hakone, e — o que mais importa num checklist que já estava em uso — o
+`CHECKLIST_REV` 3 mesclando sem desmarcar nem duplicar nada que você já
+tinha marcado ou anotado. 8 suítes, todas passando.
+
 ## 2.8.1 — 2026-10-04
 
 **As reservas apareciam repetidas na Hospedagem — bug meu, da 2.7.0.**
