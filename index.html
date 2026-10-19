@@ -335,21 +335,6 @@
     display:flex; justify-content:space-between; align-items:center;
     gap: var(--s3); flex-wrap:wrap;
   }
-  /* Modo visita: quem chega sem login vê o roteiro montado e mais nada.
-     Esconder por CSS, e não deixar de desenhar, mantém um caminho só de
-     render — o que aparece a menos é escolha de folha de estilo, não um
-     segundo renderMyPlan() pra manter em dia. O que é privado nem chega
-     ao navegador do visitante: hospedagem, custos e checklist moram no
-     Supabase atrás de RLS, e a sessão anônima não lê nenhum dos três. */
-  body.visitor .view-tabs,
-  body.visitor .tabbar,
-  body.visitor .sub-tabs,
-  body.visitor .plan-toolbar-actions,
-  body.visitor .plan-item-actions,
-  body.visitor .plan-add,
-  body.visitor .trip-select,
-  body.visitor .refresh-btn{ display:none !important; }
-  body.visitor .app{ padding-bottom: var(--s6); }
   .plan-summary{ font-size: 13px; color: var(--ink-3); }
   .plan-summary b{ color: var(--ink); font-weight:700; }
   .plan-toolbar-actions{ display:flex; gap: var(--s4); align-items:center; }
@@ -1148,7 +1133,6 @@
   </div>
 
   <div class="sub-view" id="sub-dias">
-    <div class="todo-note" id="plan-public-note"></div>
     <div class="plan-toolbar">
       <span id="plan-summary" class="plan-summary"></span>
       <div class="plan-toolbar-actions">
@@ -1428,7 +1412,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.11.0";
+const APP_VERSION = "2.12.0";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    Não escreva aqui número de reserva, código de confirmação, PIN, telefone,
@@ -4270,16 +4254,12 @@ function initSupabase(){
     sbUser = session?.user || null;
     if (sbUser) {
       storageSet(TRUSTED_DEVICE_KEY, true);
-      // Entrar estando em modo visita: recarregar é mais honesto do que
-      // desmontar o modo leitura peça por peça (classe no body, plano em
-      // memória, abas escondidas). O app já sabe começar completo sozinho.
-      if (visitorMode) { location.reload(); return; }
       startApp();
     }
     renderAuthBar();
     if (sbUser) setTimeout(afterLogin, 0);
   });
-  sb.auth.getSession().then(async ({ data }) => {
+  sb.auth.getSession().then(({ data }) => {
     sbUser = data?.session?.user || null;
     if (sbUser) {
       storageSet(TRUSTED_DEVICE_KEY, true);
@@ -4288,10 +4268,9 @@ function initSupabase(){
       setTimeout(afterLogin, 0);
       return;
     }
-    // Sem sessão: ainda pode haver um roteiro público pra mostrar.
-    const plan = await loadPublicPlan();
-    if (plan) startVisitor(plan);
-    else { showLoginGate(true); renderAuthBar(); }
+    // Sem sessão não existe app: nem tela, nem chamada de API. Só a porta.
+    showLoginGate(true);
+    renderAuthBar();
   });
 }
 
@@ -4624,73 +4603,10 @@ async function pushPlaceStatus(){
   renderAuthBar();
 }
 
-/* ==========================================================
-   MODO VISITA — o roteiro público, sem conta
-
-   Só a aba "Meus dias" aparece, e só pra ler. O que o visitante enxerga é
-   exatamente o que você montou, porque sai da mesma tabela que o seu app
-   grava (`itinerary_items`) — não de uma cópia que envelhece.
-
-   Depende da migração 2.11.0: ela cria `trips.is_public` e deixa a sessão
-   anônima LER as linhas de uma viagem marcada como pública. Enquanto não
-   rodar, não há roteiro público nenhum e a tela de login continua de pé.
-   Hospedagem, custos e checklist ficam de fora da política: continuam
-   ilegíveis sem login.
-   ========================================================== */
-let visitorMode = false;
-let visitorPlan = null;
-
-async function loadPublicPlan(){
-  if (!sb) return null;
-  try {
-    const { data: trip, error: e1 } = await sb.from("trips")
-      .select("id, slug").eq("slug", currentTripId).maybeSingle();
-    if (e1 || !trip) return null;
-    const { data: items, error: e2 } = await sb.from("itinerary_items")
-      .select("*").eq("trip_id", trip.id).order("position");
-    if (e2 || !items || !items.length) return null;
-    const plan = {};
-    items.forEach(r => {
-      (plan[r.day_date] = plan[r.day_date] || []).push({
-        id: r.id, placeId: r.place_id || "", title: r.title || "",
-        start: (r.start_time || "").slice(0, 5), notes: r.notes || ""
-      });
-    });
-    return plan;
-  } catch (e) { console.warn("roteiro público:", e); return null; }
-}
-
-function startVisitor(plan){
-  if (appStarted) return;
-  appStarted = true;
-  visitorMode = true;
-  visitorPlan = plan;
-  usingGoogle = false;            // nenhuma chamada à chave do Maps sem login
-  document.body.classList.add("visitor");
-  showLoginGate(false);
-  document.getElementById("version-badge").textContent = "v" + APP_VERSION;
-  currentView = "schedule";
-  currentSubView = "dias";
-  document.getElementById("view-schedule").classList.add("active");
-  document.getElementById("view-map").classList.remove("active");
-  document.getElementById("sub-dias").classList.add("active");
-  document.getElementById("sub-blocos").classList.remove("active");
-  renderTripSelect();
-  renderMyPlan();
-  renderAuthBar();
-}
-
 /* ---- barra de login ---- */
 function renderAuthBar(){
   const bar = document.getElementById("auth-bar");
   if (!bar) return;
-  // O modo visita vem antes de qualquer outra coisa: quem está lendo um
-  // roteiro público não precisa saber se o Supabase está configurado.
-  if (visitorMode) {
-    bar.innerHTML = `<span class="sync-dot sync-off"></span> Roteiro público · somente leitura <button id="auth-open">Entrar</button>`;
-    document.getElementById("auth-open").onclick = () => { loginMsg(""); showLoginGate(true); };
-    return;
-  }
   if (!sb) {
     bar.innerHTML = `<span class="sync-dot sync-off"></span> Dados salvos só neste navegador (Supabase não configurado)`;
     return;
@@ -5615,11 +5531,8 @@ function wireCosts(){
 
 function planKey(){ return `myplan_${currentTripId}`; }
 
-/* No modo visita o roteiro vem do banco e fica só na memória. Não grava no
-   localStorage de propósito: se quem está olhando for você, deslogado, o
-   plano público não pode passar por cima do que está salvo no aparelho. */
-function getPlan(){ return visitorMode ? (visitorPlan || {}) : storageGet(planKey(), {}); }
-function savePlan(plan){ if (visitorMode) return; storageSet(planKey(), plan); }
+function getPlan(){ return storageGet(planKey(), {}); }
+function savePlan(plan){ storageSet(planKey(), plan); }
 function savePlanAndSync(plan){ savePlan(plan); pushPlan(); }
 function newItemId(){ return `it_${Date.now().toString(36)}${Math.random().toString(36).slice(2,7)}`; }
 function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
@@ -5800,11 +5713,6 @@ function renderMyPlan(){
   const trip = currentTrip();
   const plan = getPlan();
   const body = document.getElementById("plan-body");
-
-  const note = document.getElementById("plan-public-note");
-  if (note) note.innerHTML = visitorMode
-    ? `Roteiro público de uma viagem montada no Journey Planner. Dá pra olhar — editar, só quem é dono.`
-    : `<b>Esta aba é a única pública.</b> Quem abrir o link sem entrar vê o que está aqui, notas incluídas. Hospedagem, Custos e Checklist não saem do banco sem login.`;
 
   const all = Object.values(plan).flat();
   const withTime = all.filter(i => i.start).length;

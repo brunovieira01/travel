@@ -4,6 +4,59 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.12.0 — 2026-10-19
+
+**O modo visita acabou, um dia depois de nascer.** Agora não existe mais
+nenhuma forma de ver qualquer coisa sem entrar com senha. A regra ficou de
+uma linha só: sem sessão, nada.
+
+### Por quê
+
+O roteiro público da v2.11.0 dependia da migração 2.11.0, que abria leitura
+anônima (`to anon`) em duas tabelas do Supabase, `trips` e `itinerary_items`.
+Era pouco, e era bem delimitado, mas ainda assim era uma porta aberta —
+mantida à mão, numa base que também guarda hospedagem, custos e checklist.
+Ele decidiu não abrir nenhuma: prefere não ter a porta a ter que confiar que
+ela está bem trancada.
+
+A migração nunca chegou a rodar, então na prática nenhum visitante chegou a
+ver nada: a v2.11.0 já se comportava, no site no ar, exatamente como esta
+versão se comporta de propósito.
+
+### O que saiu
+
+- `loadPublicPlan()`, `startVisitor()`, `visitorMode`, `visitorPlan` e as
+  regras de CSS `body.visitor` — o caminho inteiro do modo leitura.
+- O aviso "esta aba é a única pública" em Meus dias. Não é mais verdade: aba
+  pública não existe.
+- `getPlan()` e `savePlan()` voltaram a ser o que eram, sem o desvio de
+  memória que servia o visitante.
+- O arquivo `supabase_migration_2.11.0.sql` foi removido do repositório. Nada
+  a rodar, nada esquecido no meio do caminho.
+- O recarregamento ao entrar estando em modo visita, que existia só pra
+  resolver um estado que não existe mais.
+
+### O que fica, da v2.11.0
+
+Tudo o mais, que é o que importava:
+
+- O `<script>` do Google Maps só é pedido depois que existe sessão. Quem abre
+  a URL sem conta não gasta um pedido de API.
+- A tela de login nasce aberta no HTML.
+- Aparelho confiável: navegador que já entrou com senha abre offline com o que
+  está salvo nele; navegador que nunca entrou não abre.
+- Nenhum dado de reserva no `index.html` nem neste arquivo.
+
+> Continua valendo: isto protege o **uso** da chave do Maps, não a leitura
+> dela. Num site estático a chave está no arquivo. A proteção de verdade é
+> restringi-la no Google Cloud — referrer `brunovieira01.github.io/travel/*`,
+> só as APIs usadas, e teto de cota.
+
+**Testes.** 146 asserções, incluindo as que verificam que cada peça do modo
+visita saiu do arquivo, que `getPlan()`/`savePlan()` voltaram ao
+armazenamento local, que a tela de login continua de pé sem sessão e que
+nenhuma migração que ficou no repo abre leitura anônima.
+
 ## 2.11.0 — 2026-10-18
 
 O site é público; os dados deixaram de ser. Três mudanças que andam juntas:
