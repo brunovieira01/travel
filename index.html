@@ -1412,7 +1412,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.12.0";
+const APP_VERSION = "2.13.0";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    Não escreva aqui número de reserva, código de confirmação, PIN, telefone,
@@ -4652,7 +4652,7 @@ function staysRevKey(){ return `stays_rev_${currentTripId}`; }
    usa o serviço. É por isso que a W-Inn (hospedagem de 28/11) aparece em
    novembro, e o ryokan (reservado em setembro) aparece em dezembro.
    ========================================================== */
-const EXPENSES_REV = 4;   // 4: rótulos sem o nome do hotel (repo público, v2.11.0)
+const EXPENSES_REV = 5;   // 5: hostel de Kyoto, reservado em 23/10 (v2.13.0)
 
 const EXPENSE_CATEGORIES = ["voo","hospedagem","transporte","comida","passeio","compras","outro"];
 const EXPENSE_STATUSES  = ["pago","agendado","estimado"];
@@ -4708,6 +4708,10 @@ const EXPENSES_SEED = {
     { id:"exp-ryokan", label:"Ryokan em Hakone — 1 noite", group:"", category:"hospedagem",
       currency:"JPY", amount:53900, method:"Espécie · conta iene Revolut", chargeDate:"2026-12-02", status:"agendado",
       notes:"Pago só na chegada, em iene. Separar ¥53.900 no Revolut antes de 02/12." },
+
+    { id:"exp-hostel-kyoto", label:"Hostel em Kyoto — 3 noites", group:"", category:"hospedagem",
+      currency:"BRL", amount:451.04, method:"Cartão de crédito", chargeDate:"2026-10-23", status:"pago",
+      notes:"Cama em dormitório misto de 8, 03→06/12. Pago on-line, impostos R$ 82,33 inclusos.\nFora disso: taxa de hospedagem de Kyoto, ¥200 por noite (¥600), em espécie no check-in.\nNome, endereço e código da reserva ficam na aba Hospedagem, que só carrega depois do login." },
 
     { id:"exp-anel", label:"Oficina de anel em Kyoto (GetYourGuide)", group:"", category:"passeio",
       currency:"BRL", amount:132.15, method:"Cartão de crédito", chargeDate:"2026-10-15", status:"pago",
@@ -5882,8 +5886,9 @@ const CHECKLIST_SEED = [
   { section:"Hospedagem — as 6 reservas", title:"Tóquio 1 (hostel) — 28/11 → 02/12 · 4 noites",
     notes:"Priorizar área comum, bar e programação social; filtrar avaliações por atmosfera; preferir quarto compartilhado.\nCandidatos: The Citan (Akihabara, bar no subsolo, 8.8★) · um a 5 min do Golden Gai (8.3★).\nBairro: Shinjuku ou Shibuya pra noite; Asakusa é mais quieto." },
   { section:"Hospedagem — as 6 reservas", title:"Hakone (ryokan) — 02/12 → 03/12 · 1 noite", done:true,
-    notes:"Única reserva já fechada. Nome e endereço na aba Hospedagem." },
-  { section:"Hospedagem — as 6 reservas", title:"Kyoto (hostel) — 03/12 → 06/12 · 3 noites" },
+    notes:"Nome e endereço na aba Hospedagem, que só carrega depois do login." },
+  { section:"Hospedagem — as 6 reservas", title:"Kyoto (hostel) — 03/12 → 06/12 · 3 noites", done:true,
+    notes:"Reservado em 23/10/2026: cama em dormitório misto de 8, R$ 451,04 já pagos on-line (impostos R$ 82,33 inclusos).\nCheck-in 15h–21h · check-out 8h–11h. A poucos minutos a pé da estação de Kyoto.\n⚠️ A taxa de hospedagem de Kyoto é cobrada no balcão, em espécie: ¥200 por noite = ¥600.\nNão aparecer gera cobrança de no-show — não há reembolso.\nNome, endereço, telefone e código da reserva ficam na aba Hospedagem, que só carrega depois do login." },
   { section:"Hospedagem — as 6 reservas", title:"Osaka (hostel) — 06/12 → 08/12 · 2 noites",
     notes:"Candidatos: Hostel Chillax (Nipponbashi) · Mad Cat Hostel & Bar · Backstage Osaka." },
   { section:"Hospedagem — as 6 reservas", title:"Tóquio 2 (hostel diferente) — 08/12 → 12/12 · 4 noites",
@@ -6011,6 +6016,8 @@ const CHECKLIST_SEED = [
   { section:"Transporte — 03/12 · Hakone → Kyoto", title:"Shinkansen Odawara → Kyoto — ¥12.100, ~1h54",
     notes:"⚠️ Filtrar por Hikari ou Kodama. O Nozomi NÃO para em Odawara. O Hikari tem poucas saídas — conferir o horário na hora de reservar." },
 
+  { section:"Kyoto — 03/12 · noite de chegada", title:"13h · Largar a mochila no hostel antes de sair pra Gion",
+    notes:"O check-in abre às 15h, mas hostel guarda mochila antes — e você chega em Kyoto por volta das 13h.\nO hostel fica a poucos minutos a pé da estação de Kyoto, então o desvio custa meia hora, não uma tarde.\nLevar ¥600 em espécie: é a taxa de hospedagem da cidade (¥200 × 3 noites), cobrada no balcão." },
   { section:"Kyoto — 03/12 · noite de chegada", title:"17h–18h · Gion ao entardecer — grátis",
     notes:"Hora em que as maiko saem. O sol se põe às 16h45 em Kyoto no dia 3, então chegar ~13h já dá uma tarde e a noite inteira." },
   { section:"Kyoto — 03/12 · noite de chegada", title:"17h30–19h30 · Kodaiji, iluminação noturna — ¥800",
@@ -6068,7 +6075,7 @@ const CHECKLIST_RETIRED = [
 
 /* Sobe quando o conteúdo acima muda. A lista guardada no navegador é
    reconciliada com o seed novo sem perder o que você já marcou. */
-const CHECKLIST_REV = 4;   // 4: loop de Hakone sem museu + oficina em Kyoto (v2.10.0)
+const CHECKLIST_REV = 5;   // 5: hostel de Kyoto reservado (v2.13.0)
 
 function checkKey(){ return `checklist_${currentTripId}`; }
 
@@ -6089,6 +6096,8 @@ function checkSeedRevKey(){ return `checklist_seedrev_${currentTripId}`; }
 /* Títulos cujas NOTAS mudaram de fato e precisam vir do seed novo. Nos demais
    itens a sua nota vence, pra não apagar nada que você escreveu. */
 const CHECKLIST_RENOTED = [
+  "Kyoto (hostel) — 03/12 → 06/12 · 3 noites",
+  "Hakone (ryokan) — 02/12 → 03/12 · 1 noite",
   "Comprar o Hakone Free Pass — a versão de ODAWARA, não a de Shinjuku",
   "Reservar o ryokan em Hakone (02→03/12)",
   "Definir quantas noites em cada ponta de Tóquio",

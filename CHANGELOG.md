@@ -4,6 +4,52 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.13.0 — 2026-10-23
+
+**Kyoto está reservado.** Hostel de 03/12 a 06/12, três noites, cama em
+dormitório misto de 8. R$ 451,04 pagos on-line, impostos R$ 82,33 inclusos.
+As datas batem exatamente com o segmento "Kyoto" do roteiro — nenhuma noite
+mudou de lugar.
+
+Quatro das seis reservas de hospedagem ainda estão abertas: Tóquio 1, Osaka,
+Tóquio 2 e a cápsula do aeroporto.
+
+### O que entrou
+
+- **Custos**: lançamento "Hostel em Kyoto — 3 noites", R$ 451,04, pago,
+  debitado em 23/10. `EXPENSES_REV` subiu pra 5.
+- **Checklist**: o item "Kyoto (hostel) — 03/12 → 06/12 · 3 noites" passou a
+  vir marcado, com valor, janela de check-in (15h–21h) e de check-out
+  (8h–11h). `CHECKLIST_REV` subiu pra 5 e o título entrou em
+  `CHECKLIST_RENOTED`, pra nota nova chegar a quem já tem a lista salva.
+- **Dia 03/12**: item novo, "13h · Largar a mochila no hostel antes de sair
+  pra Gion". O check-in só abre às 15h, mas o Shinkansen chega por volta das
+  13h e hostel guarda mochila antes — sem isso, ou se carrega a mochila por
+  Gion e pelo Kodaiji, ou se perde a tarde esperando a recepção.
+- **Taxa de hospedagem de Kyoto**: ¥200 por noite, ¥600 no total, cobrada em
+  espécie no balcão. Não está na diária paga — está anotada na nota do gasto
+  e no item da mochila, que é onde dá tempo de agir. A cidade reajustou a
+  taxa em 01/03/2026, mas a faixa de quem paga menos de ¥6.000 por noite
+  continua em ¥200.
+- A nota do ryokan dizia "única reserva já fechada". Não era mais verdade
+  desde setembro.
+
+### Onde a reserva em si foi guardada
+
+Não no repositório. Nome, endereço, telefone, número da reserva, confirmação
+e PIN ficam na aba **Hospedagem** (Supabase, atrás de RLS) e numa cópia fora
+do repositório, em `06. Viagens/01. Nipon/reservas-privadas.md`. O
+`STAYS_SEED` segue vazio de propósito, como desde a v2.11.0 — o que este
+commit traz é o rótulo genérico e o valor, nada que identifique onde ele
+dorme.
+
+É o custo da escolha de 18/10: cada reserva nova é um formulário digitado na
+aba Hospedagem, uma vez, em vez de uma linha no código.
+
+**Testes.** 176 asserções, incluindo as que verificam que nenhum dado do
+voucher novo (nome, endereço, CEP, telefone, confirmação, número da reserva)
+está no `index.html` nem no CHANGELOG, e que o `STAYS_SEED` continua vazio.
+
 ## 2.12.0 — 2026-10-19
 
 **O modo visita acabou, um dia depois de nascer.** Agora não existe mais
