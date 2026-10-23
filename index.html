@@ -1412,14 +1412,26 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.13.0";
+const APP_VERSION = "2.14.0";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
-   Não escreva aqui número de reserva, código de confirmação, PIN, telefone,
-   endereço de hospedagem nem dígitos de cartão: a tela de login esconde a
-   interface, não o fonte. Esses dados vivem no Supabase, protegidos por RLS,
-   e chegam ao app depois do login. Cópia de segurança fora do repositório em
-   "06. Viagens/01. Nipon/reservas-privadas.md". */
+   A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
+   este arquivo e lê tudo que está escrito nele, logada ou não.
+
+   Decisão dele em 23/10/2026, com isso explicado: o resto da reserva pode
+   voltar pro arquivo — nome, endereço, telefone, datas, valor e número da
+   reserva —, porque o que isso custa (um estranho saber onde ele dorme) ele
+   aceita, e ter os dados no app durante a viagem vale mais.
+
+   NUNCA, porém, estes dois:
+     · PIN de reserva (Booking, GetYourGuide). Número + PIN é a chave que
+       abre, muda e cancela a reserva na página de "gerenciar reserva". Sem
+       o PIN, o número sozinho não abre nada.
+     · Dígitos de cartão.
+
+   Esses dois ficam só em "06. Viagens/01. Nipon/reservas-privadas.md" (fora
+   do repositório) e, se ele quiser no celular, digitados na aba Hospedagem,
+   que grava no Supabase atrás de RLS e não passa por aqui. */
 
 /* ---------- ícones (SVG em vez de emoji: o emoji muda de cara em cada
    sistema e não acompanha a cor do texto) ---------- */
@@ -3441,6 +3453,9 @@ const STAY_COLOR = "#F2B01E";   // amarelo: hotel não se confunde com atração
 /* As reservas guardam nome e cidade, não coordenada. O Places resolve isso e o
    resultado fica guardado — então é uma busca por hotel, uma vez só na vida. */
 async function resolveStayLocation(stay){
+  // Coordenada no próprio registro vence tudo: nada de chamada ao Places, e
+  // funciona no mapa do Leaflet também (que é o que roda sem o Google).
+  if (Number.isFinite(stay.lat) && Number.isFinite(stay.lng)) return { lat: stay.lat, lng: stay.lng };
   const cached = storageGet(`stayloc_${stay.id}`, null);
   if (cached) return cached;
   if (!usingGoogle || !stay.name) return null;
@@ -4652,7 +4667,7 @@ function staysRevKey(){ return `stays_rev_${currentTripId}`; }
    usa o serviço. É por isso que a W-Inn (hospedagem de 28/11) aparece em
    novembro, e o ryokan (reservado em setembro) aparece em dezembro.
    ========================================================== */
-const EXPENSES_REV = 5;   // 5: hostel de Kyoto, reservado em 23/10 (v2.13.0)
+const EXPENSES_REV = 6;   // 6: rótulos com o nome da hospedagem de volta (v2.14.0)
 
 const EXPENSE_CATEGORIES = ["voo","hospedagem","transporte","comida","passeio","compras","outro"];
 const EXPENSE_STATUSES  = ["pago","agendado","estimado"];
@@ -4701,21 +4716,21 @@ const EXPENSES_SEED = {
       currency:"BRL", amount:2582.17, method:"Cartão de crédito", chargeDate:"2026-11-28", status:"agendado",
       notes:"" },
 
-    { id:"exp-winn", label:"Hotel em Asakusa — 4 noites", group:"", category:"hospedagem",
+    { id:"exp-winn", label:"TOKYO-W-INN Asakusa — 4 noites", group:"", category:"hospedagem",
       currency:"BRL", amount:597.24, method:"Cartão de crédito", chargeDate:"2026-11-24", status:"agendado",
-      notes:"Quarto R$ 684,17 (IVA R$ 60,33 incluído) · desconto -R$ 20,56 · cupom 1ª reserva -R$ 66,37.\n⚠️ Debita em 24/11, um dia ANTES de fechar o cancelamento grátis (25/11, 23:59).\nNome, endereço e número da reserva ficam na aba Hospedagem, que só carrega depois do login." },
+      notes:"Reserva fechada e paga on-line. Quarto R$ 684,17 (IVA R$ 60,33 incluído) · desconto -R$ 20,56 · cupom 1ª reserva -R$ 66,37.\n⚠️ Fica em \"agendado\" porque o DÉBITO no cartão só cai em 24/11 — um dia ANTES de fechar o cancelamento grátis (25/11, 23:59). Quando o extrato mostrar, marque como pago.\nEndereço, telefone e número da reserva na aba Hospedagem." },
 
-    { id:"exp-ryokan", label:"Ryokan em Hakone — 1 noite", group:"", category:"hospedagem",
+    { id:"exp-ryokan", label:"Fukuzumiro (ryokan em Hakone) — 1 noite", group:"", category:"hospedagem",
       currency:"JPY", amount:53900, method:"Espécie · conta iene Revolut", chargeDate:"2026-12-02", status:"agendado",
-      notes:"Pago só na chegada, em iene. Separar ¥53.900 no Revolut antes de 02/12." },
+      notes:"Pago só na chegada, em iene. Separar ¥53.900 no Revolut antes de 02/12.\nCancelamento grátis até 29/11." },
 
-    { id:"exp-hostel-kyoto", label:"Hostel em Kyoto — 3 noites", group:"", category:"hospedagem",
+    { id:"exp-hostel-kyoto", label:"K's House Kyoto — 3 noites", group:"", category:"hospedagem",
       currency:"BRL", amount:451.04, method:"Cartão de crédito", chargeDate:"2026-10-23", status:"pago",
-      notes:"Cama em dormitório misto de 8, 03→06/12. Pago on-line, impostos R$ 82,33 inclusos.\nFora disso: taxa de hospedagem de Kyoto, ¥200 por noite (¥600), em espécie no check-in.\nNome, endereço e código da reserva ficam na aba Hospedagem, que só carrega depois do login." },
+      notes:"Cama em dormitório misto de 8, 03→06/12. Pago on-line, impostos R$ 82,33 inclusos.\nFora disso: taxa de hospedagem de Kyoto, ¥200 por noite (¥600), em espécie no balcão.\nEndereço, telefone e número da reserva na aba Hospedagem." },
 
     { id:"exp-anel", label:"Oficina de anel em Kyoto (GetYourGuide)", group:"", category:"passeio",
       currency:"BRL", amount:132.15, method:"Cartão de crédito", chargeDate:"2026-10-15", status:"pago",
-      notes:"Kyoto Ring Making Workshop: Vintage Japanese Coin Ring — 05/12 às 12h, 1h, em inglês.\nO código da reserva e o PIN estão no app da GetYourGuide e no e-mail de confirmação.\nCancelamento grátis até 04/12 às 12h; depois disso não há reembolso." }
+      notes:"Kyoto Ring Making Workshop: Vintage Japanese Coin Ring — 05/12 às 12h, 1h, em inglês.\nReserva GYGLMRMV598B (o PIN fica no app da GetYourGuide e no e-mail — não aqui).\nCancelamento grátis até 04/12 às 12h; depois disso não há reembolso." }
   ]
 };
 
@@ -4876,28 +4891,48 @@ function expenseTotals(list, fx){
 // Subir isto faz as reservas novas do seed chegarem a quem já tem dados
 // salvos. Sem isso, getStays() via `saved` e devolvia cedo — o seed só valia
 // num aparelho virgem, e a W-Inn nunca apareceria neste aqui.
-const STAYS_REV = 3;   // 3: dedupe das cópias geradas pelo bug de id (v2.8.1)
+const STAYS_REV = 4;   // 4: as três reservas voltaram ao seed, com coordenada (v2.14.0)
 
-/* Vazio de propósito, desde a v2.11.0.
+/* As reservas já fechadas, que vêm junto com a viagem.
 
-   Este arquivo é servido por um repositório PÚBLICO no GitHub. Qualquer
-   pessoa lê o fonte — a tela de login protege a interface, não o arquivo.
-   Nome do hotel, endereço, telefone, número de reserva, código de
-   confirmação e PIN estavam aqui dentro, à vista de quem abrisse o
-   "view-source" ou o repo.
+   Voltaram ao arquivo em 23/10/2026 (v2.14.0) por decisão dele, sabendo que
+   o repositório é público — ver o aviso no topo do script. PIN e cartão
+   continuam fora, e só eles.
 
-   Reserva é dado do usuário: vive na tabela `stays` do Supabase, protegida
-   por RLS, e no armazenamento local de cada aparelho seu. O app continua
-   mostrando tudo depois que você entra; o que mudou é que ele não CARREGA
-   mais esses dados junto com o código.
+   `lat`/`lng` são explícitos de propósito: antes o pino da hospedagem
+   dependia de o Places achar o hotel pelo nome, o que custa uma chamada de
+   API, só funciona com o Google carregado e erra em nome ambíguo. Coordenada
+   no seed aparece na hora, também no mapa do Leaflet, e não gasta cota.
+   (Conferidas uma a uma no OpenStreetMap, pelo CEP de cada endereço.)
 
-   Quem já tinha as reservas salvas não perde nada: o reconcile preserva o
-   que está no aparelho e o seed vazio não apaga linha nenhuma.
-
-   Uma cópia de segurança, fora do repositório, está em
-   "06. Viagens/01. Nipon/reservas-privadas.md". */
+   Depois de semeadas viram dados normais: dá pra editar e excluir pela
+   interface. O que você editar à mão não é sobrescrito pelo seed. */
 const STAYS_SEED = {
-  "japan-2026": []
+  "japan-2026": [
+    { id:"stay-winn", name:"TOKYO-W-INN Asakusa", city:"Tóquio", type:"Hotel",
+      status:"pago", checkin:"2026-11-28", checkout:"2026-12-02",
+      price:"R$ 597,24", bookedOn:"2026-09-20", site:"Booking",
+      code:"Reserva 1207315601937650 · Confirmação 1207315601938070",
+      address:"Kotobuki 4-6-1 1F, Taito, 111-0042 Tóquio (〒111-0042 東京台東区寿４丁目６−１ １Ｆ)",
+      lat:35.7082844, lng:139.7922715,
+      notes:"Telefone +81-3-68028985.\n1 cama, 4 noites. Check-in das 16h às 23h (chegando depois das 23h, avisar antes) · check-out até 11h.\nPago on-line: R$ 597,24. O débito no cartão cai em 24/11, um dia ANTES de fechar o cancelamento grátis (25/11, 23:59).\nTaxa de acomodação de Tóquio só vale a partir de ¥10.000/pessoa/noite — aqui dá ¥0.\nO PIN está no e-mail de confirmação e no arquivo privado, de propósito não aqui." },
+
+    { id:"stay-fukuzumiro", name:"Fukuzumiro (ryokan)", city:"Hakone", type:"Ryokan",
+      status:"reservado", checkin:"2026-12-02", checkout:"2026-12-03",
+      price:"¥53.900", bookedOn:"2026-09-20", site:"Direto",
+      code:"",
+      address:"74 Tonosawa, Hakone-machi, Ashigarashimo-gun, Kanagawa 250-0315",
+      lat:35.2329198, lng:139.0946391,
+      notes:"Quarto japonês tradicional. Check-in 15h · check-out 10h.\n¥53.900 pagos SÓ NA CHEGADA, em espécie — separar na conta iene do Revolut antes de 02/12.\nJantar kaiseki às 17h: é o limite duro do dia 02/12.\nCancelamento grátis até 29/11/2026. Nota 4,6 (151 avaliações)." },
+
+    { id:"stay-kshouse", name:"K's House Kyoto – Travelers Hostel", city:"Kyoto", type:"Hostel",
+      status:"pago", checkin:"2026-12-03", checkout:"2026-12-06",
+      price:"R$ 451,04", bookedOn:"2026-10-23", site:"Booking",
+      code:"Reserva 1207316193603183 · Confirmação 2587383671",
+      address:"Dotemachi-dori Shichijo-agaru, Naya-cho 418, Shimogyo-ku, 600-8142 Kyoto",
+      lat:34.9898378, lng:135.7649002,
+      notes:"Telefone +81-75-3422444.\nCama em dormitório misto de 8 (1 beliche). Banheiro privativo no quarto + banheiro compartilhado. Sem refeições.\nCheck-in das 15h às 21h · check-out das 8h às 11h.\nR$ 451,04 pagos on-line (impostos R$ 82,33 inclusos).\n⚠️ Taxa de hospedagem de Kyoto cobrada no balcão, em espécie: ¥200 por noite = ¥600.\n~700 m da estação de Kyoto, a pé.\nNão aparecer gera cobrança de no-show.\nO PIN está no e-mail de confirmação e no arquivo privado, de propósito não aqui." }
+  ]
 };
 
 /* Nome + check-in, normalizados. É a identidade estável de uma reserva: o id
@@ -4922,18 +4957,27 @@ function reconcileStays(saved){
   const score = x => ["status","price","bookedOn","site","code","notes"]
     .reduce((n, f) => n + (x[f] ? 1 : 0), 0);
 
-  const byKey = new Map(), byId = new Map();
+  const byKey = new Map(), byId = new Map(), byWindow = new Map();
   saved.forEach(s => {
     byId.set(s.id, s);
     const k = stayKey(s), prev = byKey.get(k);
     if (!prev || score(s) > score(prev)) byKey.set(k, s);
+    // Terceira chave: as datas. Serve pro caso em que a MESMA reserva foi
+    // digitada à mão com o nome escrito de outro jeito ("K's House Kyoto" vs
+    // "K's House Kyoto – Travelers Hostel"). Sem isto o seed entraria ao lado
+    // da linha digitada e a mesma noite apareceria duas vezes.
+    const w = `${s.checkin || ""}|${s.checkout || ""}`;
+    if (s.checkin && s.checkout) {
+      const p2 = byWindow.get(w);
+      if (!p2 || score(s) > score(p2)) byWindow.set(w, s);
+    }
   });
 
   const used = new Set();
   const out = seed.map(s => {
     const k = stayKey(s);
     // byId é fallback pro aparelho virgem, onde o id ainda é o literal do seed.
-    const old = byKey.get(k) || byId.get(s.id);
+    const old = byKey.get(k) || byId.get(s.id) || byWindow.get(`${s.checkin || ""}|${s.checkout || ""}`);
     used.add(k);
     if (old) used.add(stayKey(old));
     if (!old) return { ...s };
@@ -5022,7 +5066,12 @@ function saveStayFromForm(){
     alert("O check-out precisa ser depois do check-in."); return;
   }
   const list = getStays();
+  // Parte do registro antigo: o formulário não tem campo pra lat/lng (vêm do
+  // seed), e montar o objeto só com o que está na tela apagava a coordenada —
+  // o pino da hospedagem sumia do mapa ao editar qualquer outra coisa.
+  const prev = list.find(s => s.id === editingStayId) || {};
   const data = {
+    ...prev,
     id: editingStayId || uuid(),
     name: g("stay-name"), city: g("stay-city"),
     checkin: g("stay-in"), checkout: g("stay-out"),
@@ -5883,12 +5932,12 @@ const CHECKLIST_SEED = [
   { section:"Agora (setembro)", title:"Pedir o cartão físico da Revolut", notes:"Leva semanas pra chegar." },
   { section:"Agora (setembro)", title:"Confirmar com o amigo qual era o karaokê recomendado" },
 
-  { section:"Hospedagem — as 6 reservas", title:"Tóquio 1 (hostel) — 28/11 → 02/12 · 4 noites",
-    notes:"Priorizar área comum, bar e programação social; filtrar avaliações por atmosfera; preferir quarto compartilhado.\nCandidatos: The Citan (Akihabara, bar no subsolo, 8.8★) · um a 5 min do Golden Gai (8.3★).\nBairro: Shinjuku ou Shibuya pra noite; Asakusa é mais quieto." },
+  { section:"Hospedagem — as 6 reservas", title:"Tóquio 1 (hostel) — 28/11 → 02/12 · 4 noites", done:true,
+    notes:"Fechado: TOKYO-W-INN Asakusa, 4 noites, R$ 597,24 pagos on-line (débito do cartão em 24/11).\nSaiu hotel em Asakusa em vez de hostel em Shinjuku: é mais quieto do que o plano original, então a parte social dos 4 primeiros dias depende de sair — o item do bar do hostel não serve aqui.\nEndereço, telefone e número da reserva na aba Hospedagem." },
   { section:"Hospedagem — as 6 reservas", title:"Hakone (ryokan) — 02/12 → 03/12 · 1 noite", done:true,
-    notes:"Nome e endereço na aba Hospedagem, que só carrega depois do login." },
+    notes:"Fukuzumiro, em Tonosawa. ¥53.900 em espécie na chegada · jantar kaiseki às 17h · cancelamento grátis até 29/11." },
   { section:"Hospedagem — as 6 reservas", title:"Kyoto (hostel) — 03/12 → 06/12 · 3 noites", done:true,
-    notes:"Reservado em 23/10/2026: cama em dormitório misto de 8, R$ 451,04 já pagos on-line (impostos R$ 82,33 inclusos).\nCheck-in 15h–21h · check-out 8h–11h. A poucos minutos a pé da estação de Kyoto.\n⚠️ A taxa de hospedagem de Kyoto é cobrada no balcão, em espécie: ¥200 por noite = ¥600.\nNão aparecer gera cobrança de no-show — não há reembolso.\nNome, endereço, telefone e código da reserva ficam na aba Hospedagem, que só carrega depois do login." },
+    notes:"Fechado em 23/10: K's House Kyoto – Travelers Hostel, cama em dormitório misto de 8, R$ 451,04 já pagos on-line (impostos R$ 82,33 inclusos).\nCheck-in 15h–21h · check-out 8h–11h. A poucos minutos a pé da estação de Kyoto.\n⚠️ A taxa de hospedagem de Kyoto é cobrada no balcão, em espécie: ¥200 por noite = ¥600.\nNão aparecer gera cobrança de no-show — não há reembolso.\nNome, endereço, telefone e código da reserva ficam na aba Hospedagem, que só carrega depois do login." },
   { section:"Hospedagem — as 6 reservas", title:"Osaka (hostel) — 06/12 → 08/12 · 2 noites",
     notes:"Candidatos: Hostel Chillax (Nipponbashi) · Mad Cat Hostel & Bar · Backstage Osaka." },
   { section:"Hospedagem — as 6 reservas", title:"Tóquio 2 (hostel diferente) — 08/12 → 12/12 · 4 noites",
@@ -5896,7 +5945,7 @@ const CHECKLIST_SEED = [
   { section:"Hospedagem — as 6 reservas", title:"Capsule perto do aeroporto — 12/12 → 13/12 · 1 noite",
     notes:"Última noite, pra não depender de trem cedo no dia do voo." },
   { section:"Hospedagem — as 6 reservas", title:"Fechar tudo com cancelamento grátis",
-    notes:"São 15 noites, ¥102.000 (econômico) a ¥167.000 (confortável).\nBooking · Agoda (melhor preço na Ásia) · Rakuten Travel." },
+    notes:"3 de 6 fechadas (Tóquio 1, Hakone, Kyoto) = 8 das 15 noites. Faltam 7 noites: Osaka (2), Tóquio 2 (4) e a cápsula do aeroporto (1).\nBooking · Agoda (melhor preço na Ásia) · Rakuten Travel." },
 
   { section:"Durante outubro", title:"2º aporte BRL→JPY na Revolut",
     notes:"Você optou por esperar o iene cair — lembrar que isso é aposta de câmbio, não a média que a estratégia original buscava." },
@@ -6032,7 +6081,7 @@ const CHECKLIST_SEED = [
   { section:"Kyoto — 05/12 · oficina do anel (hora marcada)", title:"⏰ 05/12, 11h55 · Chegar na oficina do anel — já pago, R$ 132,15",
     notes:"Kyoto Ring Making Workshop: Vintage Japanese Coin Ring. Começa 12h, dura 1h, em inglês.\nFukuya Building, 1º andar — 628-1 Suiginyacho, Shimogyo-ku, 600-8411, perto de Shijo/Karasuma. Entrada no nível da rua, com a placa da oficina na porta; o instrutor te recebe lá.\nChegar 11h55: cinco minutos antes, senão você perde o horário.\nVocê escolhe a moeda antiga, martela, dá textura e polimento. Não precisa experiência." },
   { section:"Kyoto — 05/12 · oficina do anel (hora marcada)", title:"Deixar a reserva acessível no celular antes de sair do hostel",
-    notes:"O ingresso fica no app da GetYourGuide e funciona offline — abrir uma vez antes de sair.\nO código da reserva e o PIN estão lá e no e-mail de confirmação; de propósito não estão escritos aqui, porque este app mora num repositório público.\nDúvida no dia (achar a porta, atraso): dá pra falar com a operadora pelo app. A operadora é a Traveling Tokyo." },
+    notes:"O ingresso fica no app da GetYourGuide e funciona offline — abrir uma vez antes de sair.\nReserva GYGLMRMV598B. O PIN fica no app e no e-mail — ele não entra neste arquivo, que é público.\nDúvida no dia (achar a porta, atraso): dá pra falar com a operadora pelo app. A operadora é a Traveling Tokyo." },
   { section:"Kyoto — 05/12 · oficina do anel (hora marcada)", title:"Cancelamento grátis até 04/12 às 12h",
     notes:"Depois desse horário não há reembolso: se não aparecer, perde os R$ 132,15.\nComo é no meio do dia 05/12, o dia inteiro gira em torno dela — o bloco \"Kyoto — 05/12 · oficina do anel\" já sai da oficina pra Gion e termina no Kodaiji." },
 
@@ -6075,7 +6124,7 @@ const CHECKLIST_RETIRED = [
 
 /* Sobe quando o conteúdo acima muda. A lista guardada no navegador é
    reconciliada com o seed novo sem perder o que você já marcou. */
-const CHECKLIST_REV = 5;   // 5: hostel de Kyoto reservado (v2.13.0)
+const CHECKLIST_REV = 6;   // 6: Tóquio 1 fechado + nomes de hospedagem de volta (v2.14.0)
 
 function checkKey(){ return `checklist_${currentTripId}`; }
 
@@ -6096,6 +6145,9 @@ function checkSeedRevKey(){ return `checklist_seedrev_${currentTripId}`; }
 /* Títulos cujas NOTAS mudaram de fato e precisam vir do seed novo. Nos demais
    itens a sua nota vence, pra não apagar nada que você escreveu. */
 const CHECKLIST_RENOTED = [
+  "Tóquio 1 (hostel) — 28/11 → 02/12 · 4 noites",
+  "Fechar tudo com cancelamento grátis",
+  "Deixar a reserva acessível no celular antes de sair do hostel",
   "Kyoto (hostel) — 03/12 → 06/12 · 3 noites",
   "Hakone (ryokan) — 02/12 → 03/12 · 1 noite",
   "Comprar o Hakone Free Pass — a versão de ODAWARA, não a de Shinjuku",

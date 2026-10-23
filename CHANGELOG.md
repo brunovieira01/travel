@@ -4,6 +4,92 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.14.0 — 2026-10-23
+
+**As reservas voltaram pro app**, com uma exceção curta e deliberada. Decisão
+dele, com o custo explicado: o repositório é público, então nome, endereço,
+telefone, datas, valor e número da reserva passam a ser legíveis por qualquer
+pessoa que baixe o arquivo. Fora ficam **só o PIN de cada reserva e dígitos de
+cartão** — e esses dois são o que importa, porque número + PIN é a chave que
+abre, altera e cancela a reserva na página de "gerenciar reserva" da Booking.
+Sem o PIN, o número sozinho não abre nada.
+
+O aviso no topo do `<script>` foi reescrito pra dizer exatamente essa regra.
+Sem isso, a próxima sessão leria a regra antiga e desfaria a decisão.
+
+### As três reservas no seed
+
+`STAYS_SEED` voltou a ter conteúdo: TOKYO-W-INN Asakusa (28/11→02/12),
+Fukuzumiro (02/12→03/12) e K's House Kyoto (03/12→06/12). Oito das quinze
+noites. Cada uma com endereço, telefone na nota, janela de check-in e
+check-out, valor e número da reserva.
+
+`STAYS_REV` subiu pra 4, então a lista chega a quem já tem reservas salvas sem
+apagar nada — o que você editou à mão continua vencendo o seed.
+
+### O pino da hospedagem deixou de depender do Places
+
+Antes a coordenada de um hotel saía de uma busca por nome no Places: custava
+uma chamada de API por reserva nova, só funcionava com o Google carregado (no
+mapa do Leaflet, nada) e errava quando o nome é ambíguo. Agora `lat`/`lng` são
+campos do próprio registro, conferidos um a um no OpenStreetMap pelo CEP de
+cada endereço:
+
+- TOKYO-W-INN Asakusa — 35,7083 / 139,7923 (寿四丁目, 111-0042)
+- Fukuzumiro — 35,2329 / 139,0946 (塔之澤, 250-0315)
+- K's House Kyoto — 34,9898 / 135,7649 (土手町通, ~700 m da estação)
+
+`resolveStayLocation()` devolve a coordenada do registro antes de pensar em
+chamar o Places. Pino aparece na hora, nos dois mapas, sem gastar cota.
+
+**Dois bugs que isso revelou:**
+
+1. **Editar uma reserva apagava a coordenada.** `saveStayFromForm()` montava o
+   registro só com o que existe no formulário — e não existe campo de
+   coordenada. Trocar uma vírgula na nota fazia o pino desaparecer do mapa.
+   Agora o formulário parte do registro antigo e sobrescreve só os campos que
+   ele tem.
+2. **A mesma reserva digitada à mão viraria uma segunda linha.** O reconcile
+   casava por nome+check-in; "K's House Kyoto" digitado na mão não casa com
+   "K's House Kyoto – Travelers Hostel" do seed, e a mesma noite apareceria
+   duas vezes. Entrou uma terceira chave de casamento: a janela de datas
+   (check-in + check-out).
+
+### Custos e checklist
+
+- Os rótulos genéricos saíram: "Hotel em Asakusa" voltou a ser **TOKYO-W-INN
+  Asakusa**, "Ryokan em Hakone" virou **Fukuzumiro (ryokan em Hakone)** e
+  "Hostel em Kyoto" virou **K's House Kyoto**. O casamento por impressão
+  digital (categoria + data + valor + moeda) garante que renomear não duplica
+  — é o mesmo mecanismo que protegeu o rename contrário na v2.11.0, agora
+  testado nas duas direções.
+- **Tóquio 1 está fechado** e o checklist dizia o contrário desde setembro,
+  listando hostels candidatos. Marcado, com a observação que importa: saiu
+  hotel em Asakusa em vez de hostel em Shinjuku, então a parte social dos
+  quatro primeiros dias depende de sair, não da área comum.
+- "Fechar tudo com cancelamento grátis" agora diz o que falta: 7 noites —
+  Osaka (2), Tóquio 2 (4), cápsula do aeroporto (1).
+- O W-Inn segue em **"agendado"** de propósito: a reserva está paga, mas o
+  débito no cartão só cai em 24/11, e é isso que a aba Custos mede.
+
+### Correção de rumo
+
+A migração **2.7.0 já tinha sido rodada** — a tabela `expenses` existe e
+responde no banco. Este CHANGELOG e as últimas três respostas pediam pra
+rodá-la; era conversa fiada. Conferido direto na API REST do projeto: as cinco
+tabelas existem; `trips.is_public` não existe, o que confirma que a migração
+2.11.0 (a do roteiro público, removida na v2.12.0) nunca rodou e não precisa.
+
+A chave do Google Maps **foi restringida no Google Cloud** por ele. Era o
+último item em aberto da v2.11.0.
+
+**Testes.** 183 asserções. As novas cobrem as três reservas (datas,
+coordenada dentro da região certa, endereço, nenhum PIN no campo de código),
+a ausência dos três PINs e dos dígitos de cartão no `index.html` e no
+CHANGELOG, o reconcile que não duplica a reserva digitada à mão, a coordenada
+que sobrevive a uma edição no formulário, e o rename de rótulo nas duas
+direções.
+
 ## 2.13.0 — 2026-10-23
 
 **Kyoto está reservado.** Hostel de 03/12 a 06/12, três noites, cama em
