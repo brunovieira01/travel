@@ -4,6 +4,56 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.15.0 — 2026-10-25
+
+**Osaka fechada: Hostel Chillax, 06/12 → 09/12.** Agoda, reserva 1070495302,
+dormitório de 6 beliches, ¥6.318 no total (quarto ¥5.220 + impostos e taxas
+¥1.098). Com ela são **11 das 15 noites** cobertas e 4 de 6 reservas fechadas.
+
+**Mas a reserva saiu com 3 noites, e o plano previa 2** — e isso não é detalhe
+de uma linha na aba Hospedagem, é uma mudança no roteiro:
+
+- A perna de **Osaka** virou 06→09/12 e a de **Tóquio 2** encolheu pra
+  **09→12/12 · 3 noites**. É uma noite de Tóquio trocada por uma de Osaka.
+  As pernas são o que agrupa os Blocos por data, então os blocos de Osaka
+  passam a ter três noites de janela e os de Tóquio 2, três.
+- O trem **Shin-Osaka → Tóquio** mudou de 08 pra **09/12**.
+- E o **alarme** desse trem andou um dia: a venda no smartEX abre 1 mês antes
+  da viagem, 10h JST, então saiu de 7/nov 22h pra **8/nov 22h** (Brasília).
+  Esse foi o item que eu quase deixei passar; o teste que varre títulos com
+  data velha é que o pegou.
+
+**Taxa de hospedagem de Osaka: ¥0**, e vale registrar por quê. A faixa de
+isenção mudou em 01/09/2025 — era ¥7.000 por pessoa por noite com tarifa de
+¥100–300, hoje começa em **¥5.000** com tarifa de ¥200–500. A ¥1.740 por noite
+a reserva passa longe, mas metade dos guias de viagem ainda publica o valor
+antigo. O voucher da Agoda avisa que "pode haver taxa municipal no balcão" sem
+dizer quanto — daí a nota explícita na reserva.
+
+**Título é identidade, e quatro títulos tinham data dentro.** No checklist um
+item é reconhecido pelo título, então renomear "Osaka — 06/12 → 08/12 · 2
+noites" para "06/12 → 09/12 · 3 noites" criaria um segundo item no aparelho
+dele em vez de atualizar o primeiro. Os quatro títulos antigos entraram em
+`CHECKLIST_RETIRED`, que é o mecanismo que já existia pra isso. Custo aceito e
+declarado: a nota que estava nesses quatro itens é substituída pela do seed —
+nos quatro casos a nota antiga estava factualmente errada (listava candidatos
+de hostel já superados, ou a data 08/12).
+
+**O pino do mapa é do quadrante, não da porta.** O prédio não está no
+OpenStreetMap e o endereço da Agoda vem sem o nome do bairro, então a
+coordenada é o centro de 幸町二丁目 (34,6692 / 135,4894), com margem de uns
+150 m. Está escrito na nota da reserva: é melhor um pino honesto com aviso que
+um pino exato e errado.
+
+**Testes: 227 assertivas** (eram 194). As novas que importam: as 6 pernas
+emendam sem buraco de 28/11 a 13/12, a perna de Osaka casa com as datas da
+reserva, nenhuma noite tem duas reservas, nenhum título do seed está
+aposentado, o alarme concorda com a data da viagem, e os dígitos do cartão não
+estão no arquivo. Fora da suíte, uma simulação do aparelho dele (8 itens
+salvos, revisões antigas) confirmou o que mais podia dar errado: **nenhum
+item duplicado**, Osaka já chega marcada, e o que é dele — o valor de iene
+comprado, as notas escritas à mão — sobreviveu ao merge.
+
 ## 2.14.3 — 2026-10-25
 
 **O ícone da aba é um torii**, vermelho `--seal` sobre o branco quente `--ink`.

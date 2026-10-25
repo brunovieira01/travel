@@ -1427,7 +1427,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.14.3";
+const APP_VERSION = "2.15.0";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
@@ -2188,7 +2188,7 @@ const TRIPS = [
     title: "Viagem ao Japão",
     // Ordem das cidades na aba Atrações, na sequência do roteiro — não
     // alfabética. Alfabética punha Fujiyoshida (que não tem nenhuma noite
-    // reservada) em primeiro e Tóquio (8 das 15 noites) em último.
+    // reservada) em primeiro e Tóquio (7 das 15 noites) em último.
     // Nara entra depois de Kyoto porque é bate-volta de lá; Fujiyoshida
     // fica no fim de propósito: está no catálogo, mas fora do roteiro.
     cityOrder: ["Tóquio", "Hakone", "Kyoto", "Nara", "Osaka", "Fujiyoshida"],
@@ -2210,8 +2210,8 @@ const TRIPS = [
       { label:"Tóquio 1",  cities:["Tóquio"],         checkin:"2026-11-28", checkout:"2026-12-02" },
       { label:"Hakone",    cities:["Hakone"],         checkin:"2026-12-02", checkout:"2026-12-03" },
       { label:"Kyoto",     cities:["Kyoto","Nara"],   checkin:"2026-12-03", checkout:"2026-12-06" },
-      { label:"Osaka",     cities:["Osaka"],          checkin:"2026-12-06", checkout:"2026-12-08" },
-      { label:"Tóquio 2",  cities:["Tóquio"],         checkin:"2026-12-08", checkout:"2026-12-12" },
+      { label:"Osaka",     cities:["Osaka"],          checkin:"2026-12-06", checkout:"2026-12-09" },
+      { label:"Tóquio 2",  cities:["Tóquio"],         checkin:"2026-12-09", checkout:"2026-12-12" },
       { label:"Aeroporto", cities:[],                 checkin:"2026-12-12", checkout:"2026-12-13" }
     ],
     places: [
@@ -4682,7 +4682,7 @@ function staysRevKey(){ return `stays_rev_${currentTripId}`; }
    usa o serviço. É por isso que a W-Inn (hospedagem de 28/11) aparece em
    novembro, e o ryokan (reservado em setembro) aparece em dezembro.
    ========================================================== */
-const EXPENSES_REV = 6;   // 6: rótulos com o nome da hospedagem de volta (v2.14.0)
+const EXPENSES_REV = 7;   // 7: hostel de Osaka (v2.15.0)
 
 const EXPENSE_CATEGORIES = ["voo","hospedagem","transporte","comida","passeio","compras","outro"];
 const EXPENSE_STATUSES  = ["pago","agendado","estimado"];
@@ -4742,6 +4742,10 @@ const EXPENSES_SEED = {
     { id:"exp-hostel-kyoto", label:"K's House Kyoto — 3 noites", group:"", category:"hospedagem",
       currency:"BRL", amount:451.04, method:"Cartão de crédito", chargeDate:"2026-10-23", status:"pago",
       notes:"Cama em dormitório misto de 8, 03→06/12. Pago on-line, impostos R$ 82,33 inclusos.\nFora disso: taxa de hospedagem de Kyoto, ¥200 por noite (¥600), em espécie no balcão.\nEndereço, telefone e número da reserva na aba Hospedagem." },
+
+    { id:"exp-hostel-osaka", label:"Hostel Chillax Osaka — 3 noites", group:"", category:"hospedagem",
+      currency:"JPY", amount:6318, method:"Cartão de crédito", chargeDate:"2026-11-27", status:"agendado",
+      notes:"Agoda, reserva 1070495302. Dormitório de 6 beliches, 06→09/12.\nQuarto ¥5.220 + impostos e taxas ¥1.098 = ¥6.318.\n⚠️ Fica em \"agendado\" porque a Agoda só debita o cartão em 27/11 — um dia ANTES de fechar o cancelamento grátis (28/11). Se cancelar nessa janela, conferir o estorno.\nTaxa de hospedagem de Osaka: ¥0 — a faixa começa em ¥5.000 por pessoa por noite e aqui dá ¥1.740.\nEndereço e número da reserva na aba Hospedagem." },
 
     { id:"exp-anel", label:"Oficina de anel em Kyoto (GetYourGuide)", group:"", category:"passeio",
       currency:"BRL", amount:132.15, method:"Cartão de crédito", chargeDate:"2026-10-15", status:"pago",
@@ -4906,7 +4910,7 @@ function expenseTotals(list, fx){
 // Subir isto faz as reservas novas do seed chegarem a quem já tem dados
 // salvos. Sem isso, getStays() via `saved` e devolvia cedo — o seed só valia
 // num aparelho virgem, e a W-Inn nunca apareceria neste aqui.
-const STAYS_REV = 4;   // 4: as três reservas voltaram ao seed, com coordenada (v2.14.0)
+const STAYS_REV = 5;   // 5: Hostel Chillax, Osaka 06→09/12 (v2.15.0)
 
 /* As reservas já fechadas, que vêm junto com a viagem.
 
@@ -4946,7 +4950,15 @@ const STAYS_SEED = {
       code:"Reserva 1207316193603183 · Confirmação 2587383671",
       address:"Dotemachi-dori Shichijo-agaru, Naya-cho 418, Shimogyo-ku, 600-8142 Kyoto",
       lat:34.9898378, lng:135.7649002,
-      notes:"Telefone +81-75-3422444.\nCama em dormitório misto de 8 (1 beliche). Banheiro privativo no quarto + banheiro compartilhado. Sem refeições.\nCheck-in das 15h às 21h · check-out das 8h às 11h.\nR$ 451,04 pagos on-line (impostos R$ 82,33 inclusos).\n⚠️ Taxa de hospedagem de Kyoto cobrada no balcão, em espécie: ¥200 por noite = ¥600.\n~700 m da estação de Kyoto, a pé.\nNão aparecer gera cobrança de no-show.\nO PIN está no e-mail de confirmação e no arquivo privado, de propósito não aqui." }
+      notes:"Telefone +81-75-3422444.\nCama em dormitório misto de 8 (1 beliche). Banheiro privativo no quarto + banheiro compartilhado. Sem refeições.\nCheck-in das 15h às 21h · check-out das 8h às 11h.\nR$ 451,04 pagos on-line (impostos R$ 82,33 inclusos).\n⚠️ Taxa de hospedagem de Kyoto cobrada no balcão, em espécie: ¥200 por noite = ¥600.\n~700 m da estação de Kyoto, a pé.\nNão aparecer gera cobrança de no-show.\nO PIN está no e-mail de confirmação e no arquivo privado, de propósito não aqui." },
+
+    { id:"stay-chillax", name:"Hostel Chillax", city:"Osaka", type:"Hostel",
+      status:"reservado", checkin:"2026-12-06", checkout:"2026-12-09",
+      price:"¥6.318", bookedOn:"2026-10-25", site:"Agoda",
+      code:"Reserva 1070495302",
+      address:"Saiwaicho 2-1-3 (CHILLOUT Building), Naniwa-ku, 556-0021 Osaka (〒556-0021 大阪市浪速区幸町2-1-3)",
+      lat:34.6691747, lng:135.4894316,
+      notes:"Cama em dormitório de 6 beliches, 20 m², não-fumantes. Café e chá, água, wi-fi e bicicleta inclusos.\nCheck-in 15h · check-out 11h.\n¥6.318 no total: quarto ¥5.220 + impostos e taxas ¥1.098. A Agoda debita o cartão sozinha em 27/11 — por isso o lançamento em Custos fica \"agendado\" até lá.\nCancelamento grátis até 28/11; em 29/11 vira parcialmente reembolsável e em 06/12 não reembolsável. Não aparecer cobra 100%.\nTaxa de hospedagem de Osaka: ¥0. A faixa começa em ¥5.000 por pessoa por noite (mudou em 01/09/2025, era ¥7.000) e aqui dá ¥1.740.\n⚠️ O pino é do quadrante 幸町二丁目, não da porta: o prédio não está no OpenStreetMap e o endereço da Agoda vem sem o nome do bairro. Conferir no mapa da Agoda antes de sair da estação.\nAgoda não usa PIN: quem abre a reserva é a conta dele." }
   ]
 };
 
@@ -5943,7 +5955,7 @@ const CHECKLIST_SEED = [
   { section:"Agora (setembro)", title:"Férias na Cubo Itaú", done:true },
   { section:"Agora (setembro)", title:"Conferir validade do passaporte", done:true },
   { section:"Agora (setembro)", title:"Definir quantas noites em cada ponta de Tóquio", done:true,
-    notes:"Decidido: 4 noites na chegada (28/11→02/12) e 4 na volta (08/12→12/12), mais 1 na capsule perto do aeroporto (12/12→13/12)." },
+    notes:"Decidido: 4 noites na chegada (28/11→02/12) e 4 na volta (08/12→12/12), mais 1 na capsule perto do aeroporto (12/12→13/12).\n⚠️ Mudou em 25/10: a reserva de Osaka saiu com 3 noites em vez de 2, então a volta a Tóquio virou 09/12→12/12 · 3 noites. Foi uma noite de Tóquio trocada por uma de Osaka." },
   { section:"Agora (setembro)", title:"Pedir o cartão físico da Revolut", notes:"Leva semanas pra chegar." },
   { section:"Agora (setembro)", title:"Confirmar com o amigo qual era o karaokê recomendado" },
 
@@ -5953,14 +5965,14 @@ const CHECKLIST_SEED = [
     notes:"Fukuzumiro, em Tonosawa. ¥53.900 em espécie na chegada · jantar kaiseki às 17h · cancelamento grátis até 29/11." },
   { section:"Hospedagem — as 6 reservas", title:"Kyoto (hostel) — 03/12 → 06/12 · 3 noites", done:true,
     notes:"Fechado em 23/10: K's House Kyoto – Travelers Hostel, cama em dormitório misto de 8, R$ 451,04 já pagos on-line (impostos R$ 82,33 inclusos).\nCheck-in 15h–21h · check-out 8h–11h. A poucos minutos a pé da estação de Kyoto.\n⚠️ A taxa de hospedagem de Kyoto é cobrada no balcão, em espécie: ¥200 por noite = ¥600.\nNão aparecer gera cobrança de no-show — não há reembolso.\nNome, endereço, telefone e código da reserva ficam na aba Hospedagem, que só carrega depois do login." },
-  { section:"Hospedagem — as 6 reservas", title:"Osaka (hostel) — 06/12 → 08/12 · 2 noites",
-    notes:"Candidatos: Hostel Chillax (Nipponbashi) · Mad Cat Hostel & Bar · Backstage Osaka." },
-  { section:"Hospedagem — as 6 reservas", title:"Tóquio 2 (hostel diferente) — 08/12 → 12/12 · 4 noites",
-    notes:"De propósito num hostel diferente do primeiro bloco." },
+  { section:"Hospedagem — as 6 reservas", title:"Osaka (hostel) — 06/12 → 09/12 · 3 noites", done:true,
+    notes:"Fechado em 25/10: Hostel Chillax, dormitório de 6 beliches, ¥6.318 (a Agoda debita o cartão em 27/11).\nSaiu com 3 noites e não 2 — a noite extra veio de Tóquio 2, que caiu pra 3.\nFica em Saiwaicho (Naniwa-ku), a caminho de Daikokucho/Namba — NÃO em Nipponbashi, como dizia o plano antigo.\nCancelamento grátis até 28/11.\nEndereço e número da reserva na aba Hospedagem." },
+  { section:"Hospedagem — as 6 reservas", title:"Tóquio 2 (hostel diferente) — 09/12 → 12/12 · 3 noites",
+    notes:"De propósito num hostel diferente do primeiro bloco: o W-Inn é hotel quieto em Asakusa, então aqui cabe um hostel social.\nEram 4 noites — a reserva de Osaka com 3 noites comeu uma." },
   { section:"Hospedagem — as 6 reservas", title:"Capsule perto do aeroporto — 12/12 → 13/12 · 1 noite",
     notes:"Última noite, pra não depender de trem cedo no dia do voo." },
   { section:"Hospedagem — as 6 reservas", title:"Fechar tudo com cancelamento grátis",
-    notes:"3 de 6 fechadas (Tóquio 1, Hakone, Kyoto) = 8 das 15 noites. Faltam 7 noites: Osaka (2), Tóquio 2 (4) e a cápsula do aeroporto (1).\nBooking · Agoda (melhor preço na Ásia) · Rakuten Travel." },
+    notes:"4 de 6 fechadas (Tóquio 1, Hakone, Kyoto, Osaka) = 11 das 15 noites. Faltam 4 noites: Tóquio 2 (3) e a cápsula do aeroporto (1).\nBooking · Agoda (melhor preço na Ásia) · Rakuten Travel." },
 
   { section:"Durante outubro", title:"2º aporte BRL→JPY na Revolut",
     notes:"Você optou por esperar o iene cair — lembrar que isso é aposta de câmbio, não a média que a estratégia original buscava." },
@@ -6032,8 +6044,8 @@ const CHECKLIST_SEED = [
     notes:"= 2/nov 10h JST. Japão está 12h à frente e o Brasil não tem mais horário de verão.\nQuero saída de Shinjuku entre 8h e 8h30." },
   { section:"Transporte — alarmes (horário de Brasília)", title:"🔔 2 de novembro, 22h — Shinkansen Odawara → Kyoto (viagem 03/12)",
     notes:"= 3/nov 10h JST. ⚠️ Sua tabela-resumo dizia \"3/nov 22h Brasília\" — está errado, seria 12h DEPOIS da abertura. A lista de alarmes estava certa; valem as datas desta seção." },
-  { section:"Transporte — alarmes (horário de Brasília)", title:"🔔 7 de novembro, 22h — Shinkansen Shin-Osaka → Tóquio (viagem 08/12)",
-    notes:"= 8/nov 10h JST. ⚠️ Mesma correção: a tabela-resumo dizia \"8/nov 22h Brasília\", 12h tarde demais." },
+  { section:"Transporte — alarmes (horário de Brasília)", title:"🔔 8 de novembro, 22h — Shinkansen Shin-Osaka → Tóquio (viagem 09/12)",
+    notes:"= 9/nov 10h JST. ⚠️ Mesma correção: a tabela-resumo dizia \"8/nov 22h Brasília\", 12h tarde demais.\n⚠️ O alarme ANDOU UM DIA (era 7/nov) porque a viagem virou 09/12 com a reserva de Osaka de 3 noites. A venda abre 1 mês antes da data da viagem." },
 
   { section:"Transporte — 02/12 · Shinjuku → Hakone", title:"Comprar o Romancecar no e-Romancecar — ¥2.470",
     notes:"¥1.270 de passagem comum + ¥1.200 de sobretaxa de expresso.\nProcurar saída de Shinjuku entre 8h e 8h30 (ex. Hakone 41 às 8h10, chega 9h22; ou o das 8h31).\n02/12 é quarta, dia útil — demanda bem menor que em fim de semana." },
@@ -6100,10 +6112,10 @@ const CHECKLIST_SEED = [
   { section:"Kyoto — 05/12 · oficina do anel (hora marcada)", title:"Cancelamento grátis até 04/12 às 12h",
     notes:"Depois desse horário não há reembolso: se não aparecer, perde os R$ 132,15.\nComo é no meio do dia 05/12, o dia inteiro gira em torno dela — o bloco \"Kyoto — 05/12 · oficina do anel\" já sai da oficina pra Gion e termina no Kodaiji." },
 
-  { section:"Transporte — 06/12 e 08/12", title:"06/12 · Kyoto → Osaka: nada a comprar — ~¥580",
+  { section:"Transporte — 06/12 e 09/12", title:"06/12 · Kyoto → Osaka: nada a comprar — ~¥580",
     notes:"Trem local, sai a cada poucos minutos. Só encostar o Suica na catraca." },
-  { section:"Transporte — 06/12 e 08/12", title:"08/12 · Shin-Osaka → Tóquio no smartEX — ¥14.520, ~2h30",
-    notes:"Aqui o Nozomi serve e é o mais rápido." },
+  { section:"Transporte — 06/12 e 09/12", title:"09/12 · Shin-Osaka → Tóquio no smartEX — ¥14.520, ~2h30",
+    notes:"Aqui o Nozomi serve e é o mais rápido.\n⚠️ A data era 08/12 e virou 09/12 quando Osaka ficou com 3 noites. O smartEX abre a venda 1 mês antes: 09/11." },
 
   { section:"Transporte — IC card e o que NÃO comprar", title:"Instalar o Suica digital na carteira do celular",
     notes:"Suica é um tipo de IC card." },
@@ -6134,12 +6146,17 @@ const CHECKLIST_RETIRED = [
   "Pré-reservar o resto com cancelamento grátis",
   "Reservar hostels",
   "Comprar o Hakone Free Pass na chegada",
-  "Reservar Shinkansen Tóquio→Kyoto e Osaka→Tóquio via smartEX"
+  "Reservar Shinkansen Tóquio→Kyoto e Osaka→Tóquio via smartEX",
+  // v2.15.0 — Osaka virou 3 noites: estes três títulos carregavam a data antiga
+  "Osaka (hostel) — 06/12 → 08/12 · 2 noites",
+  "Tóquio 2 (hostel diferente) — 08/12 → 12/12 · 4 noites",
+  "08/12 · Shin-Osaka → Tóquio no smartEX — ¥14.520, ~2h30",
+  "🔔 7 de novembro, 22h — Shinkansen Shin-Osaka → Tóquio (viagem 08/12)"
 ];
 
 /* Sobe quando o conteúdo acima muda. A lista guardada no navegador é
    reconciliada com o seed novo sem perder o que você já marcou. */
-const CHECKLIST_REV = 6;   // 6: Tóquio 1 fechado + nomes de hospedagem de volta (v2.14.0)
+const CHECKLIST_REV = 7;   // 7: Osaka fechado, 3 noites — Tóquio 2 encolheu (v2.15.0)
 
 function checkKey(){ return `checklist_${currentTripId}`; }
 
