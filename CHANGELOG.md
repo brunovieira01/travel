@@ -4,6 +4,29 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.14.1 — 2026-10-25
+
+**Ícone na aba.** Até agora o navegador mostrava a folha em branco genérica, e
+no computador dele, com uma fileira de abas abertas, a do app era
+indistinguível de qualquer outra. Agora tem o **hinomaru**: o círculo vermelho
+em `--seal` (#C4392A) sobre o papel escuro do app em `--paper` (#12100E),
+cantos arredondados.
+
+- Desenhado **dentro do `index.html`** como `data:` URI de SVG, não como
+  `favicon.ico`. Motivo: um arquivo de imagem no repo seria uma requisição a
+  mais no carregamento e um binário a mais pra manter por causa de 16 pixels;
+  o SVG ainda escala sozinho de 16px (aba) a 180px (atalho na tela inicial do
+  celular), sem gerar três tamanhos à mão.
+- Junto veio `<meta name="theme-color" content="#12100E">`: no Android, a barra
+  do navegador passa a ter a cor do papel em vez de branco — o app para de
+  parecer um site colado numa moldura clara.
+- Sete assertivas novas na suíte (**190 no total**). Elas decodificam o
+  `data:` URI e **parseiam o SVG como XML**, conferindo o namespace e as duas
+  cores. Isso não é zelo excessivo: um `data:` URI malformado não quebra nada,
+  não gera erro no console e não aparece em teste nenhum — o navegador
+  simplesmente volta a mostrar a folha em branco, que é exatamente o sintoma
+  que se queria resolver.
+
 ## 2.14.0 — 2026-10-23
 
 **As reservas voltaram pro app**, com uma exceção curta e deliberada. Decisão
