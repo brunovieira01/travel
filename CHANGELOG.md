@@ -4,6 +4,28 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.14.3 — 2026-10-25
+
+**O ícone da aba é um torii**, vermelho `--seal` sobre o branco quente `--ink`.
+Escolha dele entre os quatro candidatos da página de comparação.
+
+Eu tinha avisado que a 16px as traves de um torii ficariam borradas. Ficavam
+com a geometria que eu havia desenhado — não com esta. O conserto não foi
+engrossar o traço, foi **encaixar na grade**:
+
+- O viewBox é 64 e a aba desenha 16 pixels, então **4 unidades do SVG = 1
+  pixel**. Toda medida das quatro peças (x, y, largura, altura) é múltipla de
+  4, e por isso cada traço cai inteiro dentro de um pixel. Medido antes de
+  escolher: **0 pixels meio-tom**. A primeira tentativa de simplesmente
+  engrossar deixava o pilar em `x=14` e produzia **42 pixels meio-tom** — mais
+  tinta, desenho pior.
+- A trave de cima (*kasagi*) tem 12 unidades = 3px, mais grossa que as outras
+  peças (2px). É a assimetria que faz a silhueta ler como portão em vez de
+  letra H.
+- Três assertivas novas (**194 no total**), e a que importa é a da grade:
+  ela falha se alguém mexer num número e sair do múltiplo de 4. Sem ela, a
+  única forma de notar é abrir o navegador e achar que "está meio embaçado".
+
 ## 2.14.2 — 2026-10-25
 
 **O ícone da aba agora é a bandeira, com fundo branco.** Na 2.14.1 eu pus o

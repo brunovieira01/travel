@@ -4,13 +4,20 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Journey Planner</title>
-<!-- Ícone da aba: a bandeira do Japão — disco em --seal sobre o branco quente
-     --ink, diâmetro 59% da altura (a bandeira usa 3/5). Desenhado aqui dentro
-     como data URI: arquivo .ico seria uma requisição a mais e um binário a mais
-     no repo por 16 pixels, e o SVG escala sozinho do favicon ao atalho da tela
-     inicial. O fundo é BRANCO de propósito — na v2.14.1 ele era --paper, e no
-     escuro o disco vermelho não lê como bandeira, lê como ponto vermelho. -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23F7F3EC'/%3E%3Ccircle cx='32' cy='32' r='19' fill='%23C4392A'/%3E%3C/svg%3E">
+<!-- Ícone da aba: um torii em --seal sobre o branco quente --ink (escolha
+     dele, v2.14.3; antes era o disco da bandeira). Desenhado aqui dentro como
+     data URI: arquivo .ico seria uma requisição a mais e um binário a mais no
+     repo por 16 pixels, e o SVG escala sozinho do favicon ao atalho da tela
+     inicial.
+
+     NÃO MEXER NOS NÚMEROS SEM REFAZER A CONTA. Todo x/y/largura/altura aqui é
+     múltiplo de 4, porque 64 ÷ 16 = 4: cada 4 unidades do viewBox são UM pixel
+     na aba. Fora da grade, um traço cai com meia tinta em duas colunas
+     vizinhas e o desenho vira borrão cinza — foi o que aconteceu com a
+     primeira tentativa de engrossar (pilar em x=14 virou 42 pixels meio-tom).
+     A trave de cima é mais grossa (12 = 3px) de propósito: é ela que faz a
+     silhueta ler como portão e não como a letra H. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23F7F3EC'/%3E%3Cg fill='%23C4392A'%3E%3Crect x='4' y='8' width='56' height='12'/%3E%3Crect x='12' y='28' width='40' height='8'/%3E%3Crect x='16' y='20' width='8' height='36'/%3E%3Crect x='40' y='20' width='8' height='36'/%3E%3C/g%3E%3C/svg%3E">
 <meta name="theme-color" content="#12100E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1420,7 +1427,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.14.2";
+const APP_VERSION = "2.14.3";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
