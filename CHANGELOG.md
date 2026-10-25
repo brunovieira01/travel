@@ -4,6 +4,23 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.14.2 — 2026-10-25
+
+**O ícone da aba agora é a bandeira, com fundo branco.** Na 2.14.1 eu pus o
+disco vermelho sobre o papel escuro do app achando que "combinar com o app"
+era o critério. Não era: a bandeira do Japão é disco vermelho no **branco**, e
+no escuro aquilo não lê como bandeira — lê como um ponto vermelho qualquer.
+Reação dele, literal: "it just looks like a red circle on a black background".
+
+- Fundo `--ink` (#F7F3EC, o branco quente do próprio sistema de design, não
+  branco puro) e disco `--seal` (#C4392A) com **59% da altura** — a bandeira
+  real usa 3/5.
+- O branco também resolve o problema prático: numa fileira de abas, quase todo
+  favicon é escuro ou colorido, e o quadrado claro separa na hora.
+- Assertiva nova conferindo a **proporção do disco** (entre 50% e 68% da
+  altura): menor que isso vira pastilha com um ponto no meio, maior encosta na
+  borda. **191 assertivas.**
+
 ## 2.14.1 — 2026-10-25
 
 **Ícone na aba.** Até agora o navegador mostrava a folha em branco genérica, e

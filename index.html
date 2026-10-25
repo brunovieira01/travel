@@ -4,10 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Journey Planner</title>
-<!-- Ícone da aba: o hinomaru em --seal sobre --paper, desenhado aqui dentro como
-     data URI. Arquivo .ico separado seria uma requisição a mais e um arquivo a
-     mais no repo pra 16 pixels; SVG escala do favicon ao atalho da tela inicial. -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%2312100E'/%3E%3Ccircle cx='32' cy='32' r='18' fill='%23C4392A'/%3E%3C/svg%3E">
+<!-- Ícone da aba: a bandeira do Japão — disco em --seal sobre o branco quente
+     --ink, diâmetro 59% da altura (a bandeira usa 3/5). Desenhado aqui dentro
+     como data URI: arquivo .ico seria uma requisição a mais e um binário a mais
+     no repo por 16 pixels, e o SVG escala sozinho do favicon ao atalho da tela
+     inicial. O fundo é BRANCO de propósito — na v2.14.1 ele era --paper, e no
+     escuro o disco vermelho não lê como bandeira, lê como ponto vermelho. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23F7F3EC'/%3E%3Ccircle cx='32' cy='32' r='19' fill='%23C4392A'/%3E%3C/svg%3E">
 <meta name="theme-color" content="#12100E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1417,7 +1420,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.14.1";
+const APP_VERSION = "2.14.2";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
