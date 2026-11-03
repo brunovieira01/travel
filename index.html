@@ -638,6 +638,12 @@
   .check-main{ flex:1; min-width:0; }
   .check-title{ font-weight:600; font-size: 14px; }
   .check-item.done .check-title{ text-decoration: line-through; color: var(--ink-3); }
+  .check-prio{ display:inline-block; font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+    padding:1px 6px; margin-right:8px; border-radius:4px; vertical-align:1px; color:#fff; text-decoration:none; }
+  .check-prio.p1{ background:#c0392b; }
+  .check-prio.p2{ background:#b9770e; }
+  .check-prio.p3{ background:#6b7280; }
+  .check-sec-tag{ font-weight:400; font-size:11px; color: var(--ink-3); margin-left:8px; }
   .check-notes{ font-size: 12px; color: var(--ink-2); margin-top: 4px; white-space:pre-wrap; }
   .check-actions{ flex:0 0 auto; }
   .check-progress{ margin-top: var(--s2); }
@@ -1331,6 +1337,7 @@
     <span id="check-summary" class="plan-summary"></span>
     <div class="plan-toolbar-actions">
       <button class="gmaps-btn" id="check-new">+ Novo item</button>
+      <button class="link-btn" id="check-prio-toggle">Agrupar por prioridade</button>
       <button class="link-btn" id="check-reset">Restaurar lista original</button>
     </div>
   </div>
@@ -1348,6 +1355,7 @@
           <input type="text" id="check-section" list="check-sections" placeholder="Ex: Durante outubro">
           <datalist id="check-sections"></datalist>
         </label>
+        <label>Prioridade<select id="check-priority"><option value="">Sem prioridade</option><option value="1">Alta</option><option value="2">Média</option><option value="3">Baixa</option></select></label>
         <label>Observações<textarea id="check-notes" rows="3" placeholder="Links, preços, avisos, o que você já descobriu"></textarea></label>
         <div class="stay-row2">
           <label>Já tenho<input type="text" id="check-amount" inputmode="decimal" placeholder="Ex: 60000"></label>
@@ -1427,7 +1435,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.15.0";
+const APP_VERSION = "2.16.0";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
@@ -4484,10 +4492,7 @@ async function pullFromSupabase(){
     // de antes desta atualização). Marca como antiga: o próximo getChecklist()
     // reconcilia e devolve a versão nova pro banco.
     storageSet(checkRevKey(), 1);
-    saveChecklist(checks.data.map(r => ({
-      id: r.id, section: r.section || "Sem seção", title: r.title, notes: r.notes || "",
-      done: !!r.done, amount: r.amount, target: r.target, unit: r.unit || "", position: r.position
-    })));
+    saveChecklist(checks.data.map(rowToCheckItem));
   }
   // O pull sai na frente do boot() quando o Google Maps demora: aí ainda não
   // existe mapa nem aba pra desenhar. Os dados já estão no localStorage e o
@@ -4599,19 +4604,100 @@ async function pushPlan(){
   renderAuthBar();
 }
 
+let checklistPushAgain = false;        // salvou de novo durante um push: roda outro ao fim
+let checklistPushing = false;          // push em andamento (apaga e reinsere a tabela)
+let checklistPriorityMissing = false;  // coluna priority ausente no banco (migração 2.16.0)
+let lastCheckSave = 0;                 // quando foi o último salvamento LOCAL do checklist
+let checkRefreshing = false;
+
+function rowToCheckItem(r){
+  return {
+    id: r.id, section: r.section || "Sem seção", title: r.title, notes: r.notes || "",
+    done: !!r.done, amount: r.amount, target: r.target, unit: r.unit || "",
+    priority: r.priority ?? null, position: r.position
+  };
+}
+
+/* Janela aberta o dia todo (ou o celular mexendo na mesma lista): traz do banco o que
+   mudou lá. Quatro travas, porque o push apaga e reinsere a tabela inteira e uma leitura
+   no momento errado sobrescreveria uma edição de verdade:
+   - sem sessão, ou com o formulário aberto: não faz nada
+   - salvou aqui nos últimos 15 s, ou há push em andamento: espera o próximo ciclo
+   - tabela vazia no banco: nunca vence o que está local
+   - se você salvar aqui enquanto a resposta viaja, a resposta é descartada */
+async function refreshChecklistFromDb(){
+  if (!sbReady() || checkRefreshing || checklistPushing) return;
+  if (Date.now() - lastCheckSave < 15000) return;
+  const modal = document.getElementById("check-modal");
+  if (modal && modal.classList.contains("open")) return;
+  checkRefreshing = true;
+  const stamp = lastCheckSave;
+  try {
+    const res = await sbRun(
+      sb.from("checklist_items").select("*").eq("trip_id", sbTripId).order("position"),
+      "atualizar checklist");
+    if (stamp !== lastCheckSave || checklistPushing) return;
+    const rows = res.data || [];
+    if (!rows.length) return;
+    const next = rows.map(rowToCheckItem);
+    const sig = l => JSON.stringify(l.map(i => [i.title, i.section || "", i.notes || "", !!i.done,
+      i.amount ?? null, i.target ?? null, i.unit || "",
+      // sem a coluna no banco, a prioridade local não conta como diferença
+      checklistPriorityMissing ? null : (i.priority ?? null)]));
+    if (sig(next) === sig(getChecklist())) return;
+    if (checklistPriorityMissing) {
+      // preserva a prioridade local (o banco não tem como devolvê-la)
+      const local = new Map(getChecklist().map(i => [i.title, i.priority ?? null]));
+      next.forEach(i => { i.priority = local.get(i.title) ?? null; });
+    }
+    saveChecklist(next);
+    renderChecklist();
+  } catch (e) { console.error(e); }
+  finally { checkRefreshing = false; }
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshChecklistFromDb(); });
+window.addEventListener("focus", refreshChecklistFromDb);
+setInterval(refreshChecklistFromDb, 60000);
+
+/* A flag fica ligada durante TODO o push (apagar + reinserir), inclusive se falhar:
+   é ela que impede o refresh de ler a tabela no meio, quando ela está vazia. */
 async function pushChecklist(){
+  if (checklistPushing) { checklistPushAgain = true; return; }
+  checklistPushing = true;
+  try { await pushChecklistNow(); }
+  finally {
+    checklistPushing = false;
+    if (checklistPushAgain) { checklistPushAgain = false; pushChecklist(); }
+  }
+}
+
+async function pushChecklistNow(){
   if (!sbReady()) return;
   try {
     const rows = getChecklist().map((it, i) => ({
       user_id: sbUser.id, trip_id: sbTripId,
       section: it.section || null, title: it.title, notes: it.notes || null,
       done: !!it.done, amount: it.amount, target: it.target, unit: it.unit || null,
+      priority: it.priority ?? null,
       position: i
     }));
+    const semPrioridade = rs => rs.map(({ priority, ...resto }) => resto);
     await sbRun(sb.from("checklist_items").delete().eq("trip_id", sbTripId), "apagar checklist");
     if (rows.length) {
       // checa o erro aqui porque a tabela só existe depois da migração 1.3.0
-      await sbRun(sb.from("checklist_items").insert(rows), "salvar checklist");
+      if (checklistPriorityMissing) {
+        await sbRun(sb.from("checklist_items").insert(semPrioridade(rows)), "salvar checklist");
+      } else {
+        try {
+          await sbRun(sb.from("checklist_items").insert(rows), "salvar checklist");
+        } catch (e) {
+          // coluna `priority` ainda não existe (migração 2.16.0 não rodou): salva sem
+          // ela em vez de derrubar a sincronização inteira. A prioridade fica só local.
+          if (!/priority/i.test(e.message || "")) throw e;
+          checklistPriorityMissing = true;
+          await sbRun(sb.from("checklist_items").insert(semPrioridade(rows)), "salvar checklist");
+        }
+      }
     }
     syncState = "on"; syncErrorMsg = "";
   } catch (e) { console.error(e); syncState = "err"; syncErrorMsg = e.message || String(e); }
@@ -6217,6 +6303,8 @@ function reconcileChecklist(saved){
       amount: old ? (old.amount ?? s.amount ?? null) : (s.amount ?? null),
       target: renote ? (s.target ?? null) : (old.target ?? s.target ?? null),
       unit: s.unit || (old && old.unit) || "",
+      // prioridade é SUA: o seed não tem como saber, então vem sempre do que já estava salvo
+      priority: old ? (old.priority ?? null) : null,
       position: out.length
     });
   });
@@ -6252,7 +6340,7 @@ function getChecklist(){
   return saved;
 }
 function saveChecklist(list){ storageSet(checkKey(), list); }
-function saveChecklistAndSync(list){ saveChecklist(list); pushChecklist(); }
+function saveChecklistAndSync(list){ lastCheckSave = Date.now(); saveChecklist(list); pushChecklist(); }
 function fmtNum(n){ return Number(n || 0).toLocaleString("pt-BR"); }
 
 function renderChecklist(){
@@ -6265,11 +6353,22 @@ function renderChecklist(){
     `${done} de ${list.length} feitos` +
     (money.length ? ` · ${money.map(m => `${m.unit || ""}${fmtNum(m.amount)} de ${m.unit || ""}${fmtNum(m.target)}`).join(" · ")}` : "");
 
-  const sections = [];
-  list.forEach(i => { const s = i.section || "Sem seção"; if (!sections.includes(s)) sections.push(s); });
+  const byPrio = !!storageGet("checklist_byprio", false);
+  const PRIO = ["Sem prioridade", "Alta", "Média", "Baixa"];
+  const groupOf = i => byPrio ? PRIO[i.priority || 0] : (i.section || "Sem seção");
+  let sections = [];
+  if (byPrio) {
+    sections = [1, 2, 3, 0].map(p => PRIO[p]).filter(n => list.some(i => groupOf(i) === n));
+  } else {
+    list.forEach(i => { const s = i.section || "Sem seção"; if (!sections.includes(s)) sections.push(s); });
+  }
+  const tg = document.getElementById("check-prio-toggle");
+  if (tg) tg.textContent = byPrio ? "Agrupar por seção" : "Agrupar por prioridade";
 
   body.innerHTML = sections.map(sec => {
-    const items = list.filter(i => (i.section || "Sem seção") === sec);
+    // por prioridade: o que já foi feito desce pro fim do grupo, a ordem da lista se mantém
+    const items = list.filter(i => groupOf(i) === sec)
+      .sort((a, b) => byPrio ? (Number(!!a.done) - Number(!!b.done)) : 0);
     return `
       <div class="check-section">
         <div class="check-section-head">
@@ -6283,7 +6382,7 @@ function renderChecklist(){
             <div class="check-item ${it.done ? "done" : ""}">
               <button class="check-box ${it.done ? "on" : ""}" data-toggle="${it.id}" title="marcar como feito">${it.done ? "✓" : ""}</button>
               <div class="check-main">
-                <div class="check-title">${esc(it.title)}</div>
+                <div class="check-title">${it.priority ? `<span class="check-prio p${it.priority}">${PRIO[it.priority]}</span>` : ""}${esc(it.title)}${byPrio && it.section ? `<span class="check-sec-tag">${esc(it.section)}</span>` : ""}</div>
                 ${it.notes ? `<div class="check-notes">${esc(it.notes)}</div>` : ""}
                 ${pct !== null ? `
                 <div class="check-progress">
@@ -6314,7 +6413,7 @@ function openCheckModal(item){
   document.getElementById("check-modal-title").textContent = item ? "Editar item" : "Novo item";
   const v = (id, val) => document.getElementById(id).value = (val ?? "");
   v("check-title", item?.title); v("check-section", item?.section);
-  v("check-notes", item?.notes); v("check-amount", item?.amount);
+  v("check-notes", item?.notes); v("check-priority", item?.priority); v("check-amount", item?.amount);
   v("check-target", item?.target); v("check-unit", item?.unit);
   document.getElementById("check-sections").innerHTML =
     [...new Set(getChecklist().map(i => i.section).filter(Boolean))].map(s => `<option value="${esc(s)}">`).join("");
@@ -6342,6 +6441,7 @@ function saveCheckFromForm(){
     section: g("check-section") || "Sem seção",
     title: g("check-title"), notes: g("check-notes"),
     amount: num(g("check-amount")), target: num(g("check-target")), unit: g("check-unit"),
+    priority: g("check-priority") ? Number(g("check-priority")) : null,
     done: existing ? existing.done : false,
     position: existing ? existing.position : list.length
   };
@@ -6353,6 +6453,10 @@ function saveCheckFromForm(){
 
 function wireCheckControls(){
   document.getElementById("check-new").onclick = () => openCheckModal(null);
+  document.getElementById("check-prio-toggle").onclick = () => {
+    storageSet("checklist_byprio", !storageGet("checklist_byprio", false));
+    renderChecklist();
+  };
   document.getElementById("check-modal-close").onclick = closeCheckModal;
   document.getElementById("check-save").onclick = saveCheckFromForm;
   document.getElementById("check-modal").addEventListener("click", e => { if (e.target.id === "check-modal") closeCheckModal(); });

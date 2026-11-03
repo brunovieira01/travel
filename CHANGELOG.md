@@ -4,6 +4,46 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.16.0 — 2026-11-03
+
+**Checklist pra deixar aberto no computador: prioridade e atualização sozinha.**
+O pedido dele: ter a mesma lista do app numa janela sempre aberta no PC,
+editável, e poder priorizar o que importa mais. Editar, criar e excluir já
+existiam; faltavam duas coisas.
+
+- **Prioridade (alta, média, baixa) em cada item**, escolhida no formulário de
+  edição, com uma etiqueta colorida ao lado do título. O botão **Agrupar por
+  prioridade** troca as seções por quatro grupos (Alta, Média, Baixa, Sem
+  prioridade); o que já foi feito desce pro fim do grupo e a seção de origem
+  aparece em cinza ao lado do título. A escolha de agrupamento fica no aparelho.
+- **A janela se atualiza sozinha.** Até aqui o app só lia o banco ao entrar, então
+  uma janela aberta o dia todo mostraria a lista de ontem — e, pior, o próximo
+  clique dela **apagaria e regravaria a tabela inteira** por cima do que ele tivesse
+  mudado no celular. Agora a lista é relida do banco quando a janela volta ao
+  foco e a cada 60 s, com quatro travas: não lê com o formulário aberto; não lê
+  nos 15 s depois de um salvamento local nem durante um push; banco vazio nunca
+  vence a lista local; e se ele salvar aqui enquanto a resposta viaja, a resposta
+  é descartada. Pushes que se sobrepõem viram um só, rodado ao fim do primeiro.
+
+**Migração 2.16.0 (`supabase_migration_2.16.0.sql`) — rodar no SQL Editor.**
+Cria a coluna `priority`. **Enquanto não rodar, nada quebra:** o primeiro push
+que a Supabase recusa por falta da coluna é refeito sem ela, e a prioridade fica
+só no aparelho (o refresh preserva a local em vez de zerar). Esse recuo foi
+escrito porque o inverso — subir o app antes da migração — derrubaria a
+sincronização inteira do checklist.
+
+**`reconcileChecklist` perdia a prioridade.** Ele reconstrói cada item do seed
+do zero, então sem esta linha toda revisão futura do seed apagaria as
+prioridades que ele tivesse escolhido. `priority` agora vem sempre do item já
+salvo, como `amount`.
+
+**Testes:** o repositório não tem suíte, então esta versão foi verificada com
+um roteiro em jsdom contra um Supabase falso (21 asserções): push com e sem a
+coluna, ida e volta da prioridade, mudança vinda do celular, as quatro travas, a
+resposta descartada numa corrida, a prioridade sobrevivendo ao reconcile, os dois
+modos de renderização e o salvamento pelo formulário. Não passou por navegador
+de verdade nem por um Supabase de verdade.
+
 ## 2.15.0 — 2026-10-25
 
 **Osaka fechada: Hostel Chillax, 06/12 → 09/12.** Agoda, reserva 1070495302,
