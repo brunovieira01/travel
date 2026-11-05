@@ -4,6 +4,15 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.16.2 — 2026-11-04
+
+**Dois itens novos no checklist, pedidos por voz:** "Cortar o cabelo antes da viagem" e
+"Comprar uma mochila para a viagem", na seção "Início de novembro". Entram sem
+prioridade e desmarcados; a prioridade é sua (pelo lápis). Em aparelho que já tem a lista,
+chegam no próximo login (`CHECKLIST_REV` 9). Os títulos estão em português, como o resto
+da lista — o pedido veio em inglês ("Get a haircut", "Buy a backpack"). Não renomeie
+depois: título é identidade, renomear cria item duplicado.
+
 ## 2.16.1 — 2026-11-04
 
 **Romancecar de 02/12 comprado.** Entra nos dois lugares do app que guardam

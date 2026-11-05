@@ -1435,7 +1435,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.16.1";
+const APP_VERSION = "2.16.2";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
@@ -6088,6 +6088,8 @@ const CHECKLIST_SEED = [
   { section:"Início de novembro", title:"Pokémon Café", notes:"Reserva abre 31 dias antes, às 18h JST." },
   { section:"Início de novembro", title:"Comprar e testar o eSIM ainda no Brasil", notes:"A ativação costuma exigir internet." },
   { section:"Início de novembro", title:"Providenciar euros pro dia em Paris" },
+  { section:"Início de novembro", title:"Cortar o cabelo antes da viagem" },
+  { section:"Início de novembro", title:"Comprar uma mochila para a viagem" },
 
   { section:"2 semanas antes (meados de novembro)", title:"Shibuya Sky",
     notes:"Abre 14 dias antes; o slot do pôr do sol some em horas. Entrar entre 15h40 e 16h (pôr do sol é 16h28 em dezembro)." },
@@ -6246,7 +6248,7 @@ const CHECKLIST_RETIRED = [
 
 /* Sobe quando o conteúdo acima muda. A lista guardada no navegador é
    reconciliada com o seed novo sem perder o que você já marcou. */
-const CHECKLIST_REV = 8;   // 8: Romancecar comprado (v2.16.1)
+const CHECKLIST_REV = 9;   // 9: cabelo e mochila (v2.16.2); 8: Romancecar comprado (v2.16.1)
 
 function checkKey(){ return `checklist_${currentTripId}`; }
 
