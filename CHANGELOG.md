@@ -4,6 +4,42 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.16.1 — 2026-11-04
+
+**Romancecar de 02/12 comprado.** Entra nos dois lugares do app que guardam
+isso, e só neles:
+
+- **Custos:** uma linha paga, categoria transporte, em iene. Forma de
+  pagamento e data do débito ficam **em branco de propósito** — não estavam no
+  comprovante, e inventar a data jogaria a linha no mês errado da aba.
+  Preencha pelo lápis quando souber.
+- **Checklist:** o item "Comprar o Romancecar" ganha os dados da compra nas
+  notas e vem marcado em aparelho novo. O título fica com o ¥2.470 do plano
+  porque título é identidade (renomear criaria um item duplicado no aparelho
+  dele). Em aparelho que já tem a lista, as **notas** são atualizadas pelo seed
+  (esse título entrou em `CHECKLIST_RENOTED`: a nota antiga é substituída,
+  custo declarado), mas o **"feito"** é dele: o reconcile nunca marca por ele.
+
+**O horário novo mexe no dia de Hakone.** O trem comprado chega 09:53; o plano
+contava ~09:30 e o trem de montanha de 10h. Ficou como aviso nas notas do item,
+sem reescrever o resto do dia.
+
+**A conferir:** ¥1.150 parece ser só a sobretaxa de expresso; a passagem comum
+(¥1.270 no plano) é paga à parte, no portão.
+
+**Carro e poltrona ficam fora do app**, por decisão dele em 04/11: o repositório é público e
+o `index.html` é legível no GitHub independentemente do login da página. O **número da reserva
+fica**, de propósito — é o que ele precisa para retirar o bilhete. Hora, data e preço também
+ficam.
+
+Esta linha antes dizia que reserva, assento e carro não ficavam "neste texto". Era verdade
+sobre o CHANGELOG e falsa sobre o `index.html`, que vai para o mesmo repositório público — o
+warden encontrou os três nas linhas 4838 e 6141 antes do push.
+
+Testes: 15 asserções novas em jsdom (reconcile em aparelho com revisão
+antiga, sem duplicar item nem linha, edição do usuário preservada, aparelho
+novo, Custos com linha sem data) + as 21 da 2.16.0, que seguem passando.
+
 ## 2.16.0 — 2026-11-03
 
 **Checklist pra deixar aberto no computador: prioridade e atualização sozinha.**

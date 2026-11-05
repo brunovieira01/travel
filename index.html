@@ -1435,7 +1435,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.16.0";
+const APP_VERSION = "2.16.1";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
@@ -4768,7 +4768,7 @@ function staysRevKey(){ return `stays_rev_${currentTripId}`; }
    usa o serviço. É por isso que a W-Inn (hospedagem de 28/11) aparece em
    novembro, e o ryokan (reservado em setembro) aparece em dezembro.
    ========================================================== */
-const EXPENSES_REV = 7;   // 7: hostel de Osaka (v2.15.0)
+const EXPENSES_REV = 8;   // 8: Romancecar comprado, ¥1.150 (v2.16.1)
 
 const EXPENSE_CATEGORIES = ["voo","hospedagem","transporte","comida","passeio","compras","outro"];
 const EXPENSE_STATUSES  = ["pago","agendado","estimado"];
@@ -4832,6 +4832,10 @@ const EXPENSES_SEED = {
     { id:"exp-hostel-osaka", label:"Hostel Chillax Osaka — 3 noites", group:"", category:"hospedagem",
       currency:"JPY", amount:6318, method:"Cartão de crédito", chargeDate:"2026-11-27", status:"agendado",
       notes:"Agoda, reserva 1070495302. Dormitório de 6 beliches, 06→09/12.\nQuarto ¥5.220 + impostos e taxas ¥1.098 = ¥6.318.\n⚠️ Fica em \"agendado\" porque a Agoda só debita o cartão em 27/11 — um dia ANTES de fechar o cancelamento grátis (28/11). Se cancelar nessa janela, conferir o estorno.\nTaxa de hospedagem de Osaka: ¥0 — a faixa começa em ¥5.000 por pessoa por noite e aqui dá ¥1.740.\nEndereço e número da reserva na aba Hospedagem." },
+
+    { id:"exp-romancecar", label:"Romancecar Hakone 21 — Shinjuku → Hakone-Yumoto", group:"", category:"transporte",
+      currency:"JPY", amount:1150, method:"", chargeDate:"", status:"pago",
+      notes:"e-Romancecar, reserva 00011. Quarta 02/12, Hakone 21 (EXE10): sai de Shinjuku 08:11, chega a Hakone-Yumoto 09:53. 1 adulto, assento comum.\n⚠️ A conferir: ¥1.150 parece ser só a sobretaxa de expresso. No plano, a passagem comum (¥1.270) é à parte, paga no portão com o IC card.\nForma de pagamento e data do débito ficaram em branco de propósito: não vieram no comprovante." },
 
     { id:"exp-anel", label:"Oficina de anel em Kyoto (GetYourGuide)", group:"", category:"passeio",
       currency:"BRL", amount:132.15, method:"Cartão de crédito", chargeDate:"2026-10-15", status:"pago",
@@ -6133,8 +6137,8 @@ const CHECKLIST_SEED = [
   { section:"Transporte — alarmes (horário de Brasília)", title:"🔔 8 de novembro, 22h — Shinkansen Shin-Osaka → Tóquio (viagem 09/12)",
     notes:"= 9/nov 10h JST. ⚠️ Mesma correção: a tabela-resumo dizia \"8/nov 22h Brasília\", 12h tarde demais.\n⚠️ O alarme ANDOU UM DIA (era 7/nov) porque a viagem virou 09/12 com a reserva de Osaka de 3 noites. A venda abre 1 mês antes da data da viagem." },
 
-  { section:"Transporte — 02/12 · Shinjuku → Hakone", title:"Comprar o Romancecar no e-Romancecar — ¥2.470",
-    notes:"¥1.270 de passagem comum + ¥1.200 de sobretaxa de expresso.\nProcurar saída de Shinjuku entre 8h e 8h30 (ex. Hakone 41 às 8h10, chega 9h22; ou o das 8h31).\n02/12 é quarta, dia útil — demanda bem menor que em fim de semana." },
+  { section:"Transporte — 02/12 · Shinjuku → Hakone", title:"Comprar o Romancecar no e-Romancecar — ¥2.470", done:true,
+    notes:"✅ COMPRADO — reserva 00011 · Hakone 21 (EXE10) · quarta 02/12 · Shinjuku 08:11 → Hakone-Yumoto 09:53 · 1 adulto, assento comum · ¥1.150.\n⚠️ Chega 09:53, não ~09:30: o trem de montanha das 10h sai 7 min depois. Com o Free Pass pra comprar e a mala pra largar, não cabe — contar com o trem seguinte ou comprar o passe antes.\n⚠️ A conferir: ¥1.150 parece ser só a sobretaxa de expresso; a passagem comum (¥1.270 no plano) é à parte, no portão, com o IC card. O título fica com o ¥2.470 do plano de propósito (título é identidade do item).\nAntes de comprar: saída entre 8h e 8h30 (ex. Hakone 41 às 8h10, chega 9h22). Quarta, dia útil — demanda bem menor que em fim de semana." },
   { section:"Transporte — 02/12 · Shinjuku → Hakone", title:"Assento: panorâmico se houver no horário bom; se não, janela normal no MESMO horário",
     notes:"Prioridade nº 1 é chegar cedo em Hakone; o panorâmico é a nº 2. Só existe no modelo 70000 GSE e custa o mesmo que os normais.\nAs janelas do trem são contínuas e de 1 m de altura — qualquer assento de janela já tem vista boa. NÃO trocar um horário bom por um panorâmico mais tarde." },
   { section:"Transporte — 02/12 · Shinjuku → Hakone", title:"Sair de Asakusa por volta das 7h",
@@ -6242,7 +6246,7 @@ const CHECKLIST_RETIRED = [
 
 /* Sobe quando o conteúdo acima muda. A lista guardada no navegador é
    reconciliada com o seed novo sem perder o que você já marcou. */
-const CHECKLIST_REV = 7;   // 7: Osaka fechado, 3 noites — Tóquio 2 encolheu (v2.15.0)
+const CHECKLIST_REV = 8;   // 8: Romancecar comprado (v2.16.1)
 
 function checkKey(){ return `checklist_${currentTripId}`; }
 
@@ -6263,6 +6267,7 @@ function checkSeedRevKey(){ return `checklist_seedrev_${currentTripId}`; }
 /* Títulos cujas NOTAS mudaram de fato e precisam vir do seed novo. Nos demais
    itens a sua nota vence, pra não apagar nada que você escreveu. */
 const CHECKLIST_RENOTED = [
+  "Comprar o Romancecar no e-Romancecar — ¥2.470",
   "Tóquio 1 (hostel) — 28/11 → 02/12 · 4 noites",
   "Fechar tudo com cancelamento grátis",
   "Deixar a reserva acessível no celular antes de sair do hostel",
