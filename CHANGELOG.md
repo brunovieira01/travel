@@ -4,6 +4,26 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.16.3 — 2026-11-06
+
+**Cabelo e mochila não apareciam no celular, mesmo publicados na 2.16.2.** Pedido:
+"I wanted to have in my checklist a check mark for doing a haircut and purchasing a backpack".
+Causa provável: `refreshChecklistFromDb` (o refresh a cada 60 s / ao voltar pra janela) gravava a lista
+do banco como se fosse a atual, sem marcar `checklist_rev_` como antiga. Se o banco ainda
+tinha a lista velha (outro aparelho/aba em versão anterior reenviou, já que o push apaga e
+reinsere tudo), o celular ficava com a lista sem os itens e `CHECKLIST_REV` 9 já marcado
+como aplicado — o reconcile nunca mais rodava. O login (`pullFromSupabase`) já fazia essa
+marcação; o refresh não. Correção: o refresh passa a marcar a revisão como antiga, e
+uma chave própria (`CHECKLIST_RECHECK`) força um reconcile único em quem já ficou preso.
+`CHECKLIST_REV` continua 9, então o seed não sobrescreve suas notas nem metas (ex.: "Iene comprado").
+Reconcile mantém o que você marcou, prioridades, notas e itens seus; sem duplicados.
+Testado com lista salva em rev 8 e com lista presa em rev 9 sem os itens: nos dois casos
+aparecem "Cortar o cabelo antes da viagem" e "Comprar uma mochila para a viagem" (seção
+"Início de novembro"), 0 duplicados. **Não medido:** o localStorage real do celular — não
+tenho acesso a ele; a causa é a única brecha achada no código, não observada no aparelho. Se os itens
+continuarem sumindo depois do push, a causa é outra.
+Os títulos continuam em português de propósito.
+
 ## 2.16.2 — 2026-11-04
 
 **Dois itens novos no checklist, pedidos por voz:** "Cortar o cabelo antes da viagem" e

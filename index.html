@@ -1435,7 +1435,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.16.2";
+const APP_VERSION = "2.16.3";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
@@ -4650,6 +4650,10 @@ async function refreshChecklistFromDb(){
       const local = new Map(getChecklist().map(i => [i.title, i.priority ?? null]));
       next.forEach(i => { i.priority = local.get(i.title) ?? null; });
     }
+    // Marca como antiga, igual ao pullFromSupabase: o banco pode ter vindo de um
+    // aparelho numa versão anterior do seed. Sem isto a lista velha era gravada
+    // como se fosse a atual e item novo do seed (cabelo, mochila) sumia pra sempre.
+    storageSet(checkRevKey(), 1);
     saveChecklist(next);
     renderChecklist();
   } catch (e) { console.error(e); }
@@ -6249,6 +6253,9 @@ const CHECKLIST_RETIRED = [
 /* Sobe quando o conteúdo acima muda. A lista guardada no navegador é
    reconciliada com o seed novo sem perder o que você já marcou. */
 const CHECKLIST_REV = 9;   // 9: cabelo e mochila (v2.16.2); 8: Romancecar comprado (v2.16.1)
+/* Reconcile único (v2.16.3), independente do seed: quem ficou preso com a lista velha
+   e rev 9 marcado roda o reconcile uma vez, mas o seed NÃO vence as suas notas. */
+const CHECKLIST_RECHECK = 1;
 
 function checkKey(){ return `checklist_${currentTripId}`; }
 
@@ -6264,6 +6271,7 @@ function checkRevKey(){ return `checklist_rev_${currentTripId}`; }
    Sem essa separação, todo login reaplicava o seed por cima do que estava
    salvo: "Iene comprado" voltava pra ¥120.000 sempre, e salvar o valor certo
    parecia simplesmente não salvar. */
+function checkRecheckKey(){ return `checklist_recheck_${currentTripId}`; }
 function checkSeedRevKey(){ return `checklist_seedrev_${currentTripId}`; }
 
 /* Títulos cujas NOTAS mudaram de fato e precisam vir do seed novo. Nos demais
@@ -6334,13 +6342,15 @@ function getChecklist(){
     storageSet(checkKey(), seeded);
     storageSet(checkRevKey(), CHECKLIST_REV);
     storageSet(checkSeedRevKey(), CHECKLIST_REV);
+    storageSet(checkRecheckKey(), CHECKLIST_RECHECK);
     return seeded;
   }
-  if (storageGet(checkRevKey(), 1) < CHECKLIST_REV) {
+  if (storageGet(checkRevKey(), 1) < CHECKLIST_REV || storageGet(checkRecheckKey(), 0) < CHECKLIST_RECHECK) {
     const merged = reconcileChecklist(saved);
     storageSet(checkKey(), merged);
     storageSet(checkRevKey(), CHECKLIST_REV);
     storageSet(checkSeedRevKey(), CHECKLIST_REV);
+    storageSet(checkRecheckKey(), CHECKLIST_RECHECK);
     setTimeout(() => { if (sbReady()) pushChecklist(); }, 0);   // manda a versão nova pro banco
     return merged;
   }
