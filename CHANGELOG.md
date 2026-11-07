@@ -4,6 +4,17 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.17.0 — 2026-11-06
+
+**Busca no checklist, pedida por voz:** "build a feature that I'm able to search the checklist by what's written on the titles or on the description."
+Campo "Buscar no título ou na descrição…" acima da lista; filtra enquanto você digita, olhando o título
+e a descrição (as notas) de cada item. Ignora maiúsculas e acentos ("mochila", "MOCHILA" e "Móchila" dão o mesmo
+resultado). Seções sem nenhum item achado somem enquanto a busca está ativa; o resumo mostra quantos itens
+foram achados; sem resultado aparece "Nada encontrado". Apagar o texto (ou "limpar") traz a lista inteira.
+A busca só esconde itens na tela: não mexe em marcados, ordem, prioridade nem no que é salvo/sincronizado.
+Letra de 16 px no campo para o iPhone não dar zoom ao tocar. Não busca no nome da seção, de propósito
+(você pediu título e descrição). O texto da busca não é guardado: ao recarregar a página, volta vazio.
+
 ## 2.16.3 — 2026-11-06
 
 **Cabelo e mochila não apareciam no celular, mesmo publicados na 2.16.2.** Pedido:

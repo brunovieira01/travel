@@ -612,6 +612,10 @@
   }
 
   /* ---------- CHECKLIST ---------- */
+  .check-search{ display:flex; align-items:center; gap:10px; margin: 0 0 12px; }
+  .check-search input{ flex:1 1 auto; min-width:0; font-size:16px; } /* 16px: o iOS não dá zoom ao focar */
+  .check-search [hidden]{ display:none; }
+  .check-empty{ padding:18px 4px; color: var(--ink-3); font-size:13px; }
   .check-section{ border-top: 1px solid var(--line-soft); }
   .check-section:first-child{ border-top: 0; }
   .check-section-head{
@@ -1341,6 +1345,10 @@
       <button class="link-btn" id="check-reset">Restaurar lista original</button>
     </div>
   </div>
+  <div class="check-search">
+    <input type="text" id="check-search" placeholder="Buscar no título ou na descrição…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Buscar no checklist">
+    <button type="button" class="link-btn" id="check-search-clear" hidden>limpar</button>
+  </div>
   <div id="check-body"></div>
 </section>
 
@@ -1435,7 +1443,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.16.3";
+const APP_VERSION = "2.17.0";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
@@ -6360,14 +6368,22 @@ function saveChecklist(list){ storageSet(checkKey(), list); }
 function saveChecklistAndSync(list){ lastCheckSave = Date.now(); saveChecklist(list); pushChecklist(); }
 function fmtNum(n){ return Number(n || 0).toLocaleString("pt-BR"); }
 
+let checkQuery = "";
+// sem acento e sem caixa: "Início" casa com "inicio", "MOCHILA" com "mochila"
+function normSearch(t){ return String(t ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+function checkMatches(it, q){ return !q || normSearch(it.title).includes(q) || normSearch(it.notes).includes(q); }
+
 function renderChecklist(){
   const list = getChecklist();
+  const q = normSearch(checkQuery).trim();
+  const clr = document.getElementById("check-search-clear");
+  if (clr) clr.hidden = !checkQuery;
   const body = document.getElementById("check-body");
 
   const done = list.filter(i => i.done).length;
   const money = list.filter(i => i.target);
   document.getElementById("check-summary").textContent =
-    `${done} de ${list.length} feitos` +
+    `${done} de ${list.length} feitos` + (q ? ` · ${list.filter(i => checkMatches(i, q)).length} achados` : "") +
     (money.length ? ` · ${money.map(m => `${m.unit || ""}${fmtNum(m.amount)} de ${m.unit || ""}${fmtNum(m.target)}`).join(" · ")}` : "");
 
   const byPrio = !!storageGet("checklist_byprio", false);
@@ -6375,16 +6391,16 @@ function renderChecklist(){
   const groupOf = i => byPrio ? PRIO[i.priority || 0] : (i.section || "Sem seção");
   let sections = [];
   if (byPrio) {
-    sections = [1, 2, 3, 0].map(p => PRIO[p]).filter(n => list.some(i => groupOf(i) === n));
+    sections = [1, 2, 3, 0].map(p => PRIO[p]).filter(n => list.some(i => groupOf(i) === n && checkMatches(i, q)));
   } else {
-    list.forEach(i => { const s = i.section || "Sem seção"; if (!sections.includes(s)) sections.push(s); });
+    list.filter(i => checkMatches(i, q)).forEach(i => { const s = i.section || "Sem seção"; if (!sections.includes(s)) sections.push(s); });
   }
   const tg = document.getElementById("check-prio-toggle");
   if (tg) tg.textContent = byPrio ? "Agrupar por seção" : "Agrupar por prioridade";
 
-  body.innerHTML = sections.map(sec => {
+  body.innerHTML = (q && !sections.length) ? `<div class="check-empty">Nada encontrado para “${esc(checkQuery.trim())}”.</div>` : sections.map(sec => {
     // por prioridade: o que já foi feito desce pro fim do grupo, a ordem da lista se mantém
-    const items = list.filter(i => groupOf(i) === sec)
+    const items = list.filter(i => groupOf(i) === sec && checkMatches(i, q))
       .sort((a, b) => byPrio ? (Number(!!a.done) - Number(!!b.done)) : 0);
     return `
       <div class="check-section">
@@ -6470,6 +6486,9 @@ function saveCheckFromForm(){
 
 function wireCheckControls(){
   document.getElementById("check-new").onclick = () => openCheckModal(null);
+  const cs = document.getElementById("check-search"), cc = document.getElementById("check-search-clear");
+  cs.oninput = () => { checkQuery = cs.value; renderChecklist(); };
+  cc.onclick = () => { cs.value = ""; checkQuery = ""; renderChecklist(); cs.focus(); };
   document.getElementById("check-prio-toggle").onclick = () => {
     storageSet("checklist_byprio", !storageGet("checklist_byprio", false));
     renderChecklist();
