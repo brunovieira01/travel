@@ -4,6 +4,12 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.18.0 — 2026-11-07
+
+**Seguro-saúde no checklist.** Pedido: "add a checklist item on the travel app for buying an international health insurance."
+Novo item "Comprar seguro-saúde internacional" em "Início de novembro", com nota sobre cobertura no Japão e guardar a apólice.
+`CHECKLIST_REV` 10: o item aparece nos aparelhos existentes sem apagar o que você marcou.
+
 ## 2.17.0 — 2026-11-06
 
 **Busca no checklist, pedida por voz:** "build a feature that I'm able to search the checklist by what's written on the titles or on the description."
