@@ -4,6 +4,16 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.19.0 — 2026-11-08
+
+**Checklist reorganizado; smartEX cancelado.** Pedido: deixar o checklist mais claro no celular, principalmente as ações imediatas.
+- Seções por data: "ANTES · …" (hospedagem, 10/nov, início de novembro, dinheiro, ~2 semanas antes, antes de embarcar) e "VIAGEM · …" (primeiros dias em Tóquio, depois por dia/cidade). Nenhum item de planejamento foi apagado; só mudou de seção.
+- smartEX cancelado: saem a conta, o nome do titular, o teste de cobrança, os 3 alarmes de compra e o cadastro do Suica no smartEX. Os dois Shinkansen viram "comprar na máquina da JR" em "Nos primeiros dias em Tóquio". O Suica vai direto na carteira do celular.
+- Marcados como feitos: seguro-saúde, eSIM, internet no Japão, datas da iluminação do Kenninji (2 itens), manutenção do teleférico de Hakone, site do e-Romancecar.
+- Novos: adaptador de tomada, digitalizar documentos, excursão em Gion.
+- `CHECKLIST_FORCEDONE`: o reconcile sempre preservava o "feito" do aparelho, então `done:true` no seed só chegava a aparelho novo. Agora o seed marca esses itens uma única vez nos aparelhos existentes (depois do login); desmarcar depois vale.
+- `CHECKLIST_REV` 11.
+
 ## 2.18.0 — 2026-11-07
 
 **Seguro-saúde no checklist.** Pedido: "add a checklist item on the travel app for buying an international health insurance."

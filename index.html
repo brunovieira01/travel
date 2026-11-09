@@ -1443,7 +1443,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.18.0";
+const APP_VERSION = "2.19.0";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
@@ -6052,187 +6052,195 @@ function wirePlanControls(){
    e as edições substituem a semente.
    ========================================================== */
 const CHECKLIST_SEED = [
-  { section:"Agora (setembro)", title:"Reservar o ryokan em Hakone (02→03/12)", done:true,
-    notes:"Fechado: o ryokan em Hakone, quarto japonês tradicional, 02→03/12.\nCancelamento grátis até 29/11/2026 — se mudar de ideia, é até essa data.\nRyokan bom na região sai por volta de ¥50.000 a noite. CONFERIR duas coisas: se o preço é por pessoa ou pelo quarto, e se inclui jantar kaiseki + café (normalmente incluem, e isso muda a conta)." },
-  { section:"Agora (setembro)", title:"Férias na Cubo Itaú", done:true },
-  { section:"Agora (setembro)", title:"Conferir validade do passaporte", done:true },
-  { section:"Agora (setembro)", title:"Definir quantas noites em cada ponta de Tóquio", done:true,
-    notes:"Decidido: 4 noites na chegada (28/11→02/12) e 4 na volta (08/12→12/12), mais 1 na capsule perto do aeroporto (12/12→13/12).\n⚠️ Mudou em 25/10: a reserva de Osaka saiu com 3 noites em vez de 2, então a volta a Tóquio virou 09/12→12/12 · 3 noites. Foi uma noite de Tóquio trocada por uma de Osaka." },
-  { section:"Agora (setembro)", title:"Pedir o cartão físico da Revolut", notes:"Leva semanas pra chegar." },
-  { section:"Agora (setembro)", title:"Confirmar com o amigo qual era o karaokê recomendado" },
-
-  { section:"Hospedagem — as 6 reservas", title:"Tóquio 1 (hostel) — 28/11 → 02/12 · 4 noites", done:true,
+  // ===================== ANTES · Hospedagem — as 6 reservas =====================
+  { section:"ANTES · Hospedagem — as 6 reservas", title:"Tóquio 1 (hostel) — 28/11 → 02/12 · 4 noites", done:true,
     notes:"Fechado: TOKYO-W-INN Asakusa, 4 noites, R$ 597,24 pagos on-line (débito do cartão em 24/11).\nSaiu hotel em Asakusa em vez de hostel em Shinjuku: é mais quieto do que o plano original, então a parte social dos 4 primeiros dias depende de sair — o item do bar do hostel não serve aqui.\nEndereço, telefone e número da reserva na aba Hospedagem." },
-  { section:"Hospedagem — as 6 reservas", title:"Hakone (ryokan) — 02/12 → 03/12 · 1 noite", done:true,
+  { section:"ANTES · Hospedagem — as 6 reservas", title:"Hakone (ryokan) — 02/12 → 03/12 · 1 noite", done:true,
     notes:"Fukuzumiro, em Tonosawa. ¥53.900 em espécie na chegada · jantar kaiseki às 17h · cancelamento grátis até 29/11." },
-  { section:"Hospedagem — as 6 reservas", title:"Kyoto (hostel) — 03/12 → 06/12 · 3 noites", done:true,
+  { section:"ANTES · Hospedagem — as 6 reservas", title:"Kyoto (hostel) — 03/12 → 06/12 · 3 noites", done:true,
     notes:"Fechado em 23/10: K's House Kyoto – Travelers Hostel, cama em dormitório misto de 8, R$ 451,04 já pagos on-line (impostos R$ 82,33 inclusos).\nCheck-in 15h–21h · check-out 8h–11h. A poucos minutos a pé da estação de Kyoto.\n⚠️ A taxa de hospedagem de Kyoto é cobrada no balcão, em espécie: ¥200 por noite = ¥600.\nNão aparecer gera cobrança de no-show — não há reembolso.\nNome, endereço, telefone e código da reserva ficam na aba Hospedagem, que só carrega depois do login." },
-  { section:"Hospedagem — as 6 reservas", title:"Osaka (hostel) — 06/12 → 09/12 · 3 noites", done:true,
+  { section:"ANTES · Hospedagem — as 6 reservas", title:"Osaka (hostel) — 06/12 → 09/12 · 3 noites", done:true,
     notes:"Fechado em 25/10: Hostel Chillax, dormitório de 6 beliches, ¥6.318 (a Agoda debita o cartão em 27/11).\nSaiu com 3 noites e não 2 — a noite extra veio de Tóquio 2, que caiu pra 3.\nFica em Saiwaicho (Naniwa-ku), a caminho de Daikokucho/Namba — NÃO em Nipponbashi, como dizia o plano antigo.\nCancelamento grátis até 28/11.\nEndereço e número da reserva na aba Hospedagem." },
-  { section:"Hospedagem — as 6 reservas", title:"Tóquio 2 (hostel diferente) — 09/12 → 12/12 · 3 noites",
+  { section:"ANTES · Hospedagem — as 6 reservas", title:"Tóquio 2 (hostel diferente) — 09/12 → 12/12 · 3 noites",
     notes:"De propósito num hostel diferente do primeiro bloco: o W-Inn é hotel quieto em Asakusa, então aqui cabe um hostel social.\nEram 4 noites — a reserva de Osaka com 3 noites comeu uma." },
-  { section:"Hospedagem — as 6 reservas", title:"Capsule perto do aeroporto — 12/12 → 13/12 · 1 noite",
+  { section:"ANTES · Hospedagem — as 6 reservas", title:"Capsule perto do aeroporto — 12/12 → 13/12 · 1 noite",
     notes:"Última noite, pra não depender de trem cedo no dia do voo." },
-  { section:"Hospedagem — as 6 reservas", title:"Fechar tudo com cancelamento grátis",
+  { section:"ANTES · Hospedagem — as 6 reservas", title:"Fechar tudo com cancelamento grátis",
     notes:"4 de 6 fechadas (Tóquio 1, Hakone, Kyoto, Osaka) = 11 das 15 noites. Faltam 4 noites: Tóquio 2 (3) e a cápsula do aeroporto (1).\nBooking · Agoda (melhor preço na Ásia) · Rakuten Travel." },
 
-  { section:"Durante outubro", title:"2º aporte BRL→JPY na Revolut",
-    notes:"Você optou por esperar o iene cair — lembrar que isso é aposta de câmbio, não a média que a estratégia original buscava." },
-  { section:"Durante outubro", title:"Reservar o Shinkansen Odawara→Kyoto (Hikari ou Kodama)",
-    notes:"⚠️ O Nozomi NÃO para em Odawara. Tem que ser Hikari ou Kodama — e o Hikari tem poucas saídas, então vale conferir horário e reservar cedo, ainda mais sendo dezembro.\nTokaido Shinkansen, ~1h54. ¥11.770 sem reserva ou ¥12.100 com assento reservado.\nHakone-Yumoto→Odawara está coberto pelo Free Pass (~15 min)." },
-  { section:"Durante outubro", title:"Reservar o Shinkansen Osaka→Tóquio pelo smartEX",
-    notes:"¥14.520.\nTotal de trens entre cidades: ¥34.080. JR Pass não compensa (¥50.000 o passe)." },
-  { section:"Durante outubro", title:"Confirmar as datas 2026 da iluminação noturna do Kenninji",
-    notes:"Saem em outubro. A janela do ano passado (29/nov–13/dez) bate quase exato com a viagem." },
-  { section:"Durante outubro", title:"Resolver a internet no Japão",
-    notes:"O plano da Vivo provavelmente não cobre bem. Ligar e perguntar cobertura e custo; comparar com eSIM (Ubigi, Airalo, Sakura Mobile, Holafly) ou pocket wifi. Checar se o celular aceita eSIM." },
-  { section:"Durante outubro", title:"Reconferir se o ETIAS segue adiado",
-    notes:"Previsão agora é 2027, e ainda haveria 6 meses de tolerância." },
-  { section:"Durante outubro", title:"Se for de mala grande: planejar takkyubin (Yamato) entre hotéis" },
-
-  { section:"10 de novembro, 10h JST — data e hora marcadas", title:"Museu Ghibli",
+  // ===================== ANTES · 10/nov, 10h JST — data e hora marcadas =====================
+  { section:"ANTES · 10/nov, 10h JST — data e hora marcadas", title:"Museu Ghibli",
     notes:"Só pela Lawson, interface em japonês, esgota em segundos. Deixar tudo preparado antes." },
 
-  { section:"Início de novembro", title:"3º aporte BRL→JPY na Revolut",
+  // ===================== ANTES · Início de novembro (agora) =====================
+  { section:"ANTES · Início de novembro (agora)", title:"3º aporte BRL→JPY na Revolut",
     notes:"Último momento confortável — depois disso some a margem de manobra." },
-  { section:"Início de novembro", title:"USJ (se for) — Studio Pass + Express Pass com Super Nintendo World",
+  { section:"ANTES · Início de novembro (agora)", title:"Comprar seguro-saúde internacional", done:true,
+    notes:"✅ Contratado.\nContratar antes de embarcar (28/11): cobertura médica e hospitalar no Japão, com repatriação. Guardar a apólice e o telefone de emergência no celular, também offline." },
+  { section:"ANTES · Início de novembro (agora)", title:"Comprar e testar o eSIM ainda no Brasil", done:true,
+    notes:"✅ Comprado.\nA ativação costuma exigir internet." },
+  { section:"ANTES · Início de novembro (agora)", title:"Resolver a internet no Japão", done:true,
+    notes:"O plano da Vivo provavelmente não cobre bem. Ligar e perguntar cobertura e custo; comparar com eSIM (Ubigi, Airalo, Sakura Mobile, Holafly) ou pocket wifi. Checar se o celular aceita eSIM." },
+  { section:"ANTES · Início de novembro (agora)", title:"Cortar o cabelo antes da viagem" },
+  { section:"ANTES · Início de novembro (agora)", title:"Comprar uma mochila para a viagem" },
+  { section:"ANTES · Início de novembro (agora)", title:"USJ (se for) — Studio Pass + Express Pass com Super Nintendo World",
     notes:"O Studio Pass sozinho NÃO garante entrada na SNW. Power-Up Band ¥4.000–4.900 é praticamente obrigatória. Melhores dias: ter/qua/qui do início de dezembro." },
-  { section:"Início de novembro", title:"Pokémon Café", notes:"Reserva abre 31 dias antes, às 18h JST." },
-  { section:"Início de novembro", title:"Comprar e testar o eSIM ainda no Brasil", notes:"A ativação costuma exigir internet." },
-  { section:"Início de novembro", title:"Providenciar euros pro dia em Paris" },
-  { section:"Início de novembro", title:"Cortar o cabelo antes da viagem" },
-  { section:"Início de novembro", title:"Comprar uma mochila para a viagem" },
-  { section:"Início de novembro", title:"Comprar seguro-saúde internacional",
-    notes:"Contratar antes de embarcar (28/11): cobertura médica e hospitalar no Japão, com repatriação. Guardar a apólice e o telefone de emergência no celular, também offline." },
+  { section:"ANTES · Início de novembro (agora)", title:"Pokémon Café",
+    notes:"Reserva abre 31 dias antes, às 18h JST." },
 
-  { section:"2 semanas antes (meados de novembro)", title:"Shibuya Sky",
-    notes:"Abre 14 dias antes; o slot do pôr do sol some em horas. Entrar entre 15h40 e 16h (pôr do sol é 16h28 em dezembro)." },
-  { section:"2 semanas antes (meados de novembro)", title:"Baixar o app do Suica e adicionar à carteira do celular" },
-  { section:"2 semanas antes (meados de novembro)", title:"Baixar Japan Transit Planner, Tabelog e o mapa offline no Google Maps" },
-  { section:"2 semanas antes (meados de novembro)", title:"Reservar restaurantes concorridos pelo Tabelog" },
-  { section:"2 semanas antes (meados de novembro)", title:"Conferir o tempo de conexão em Frankfurt",
-    notes:"O sistema biométrico EES causa filas longas nas fronteiras Schengen desde abril/2026, e é sua primeira entrada no espaço (digitais e foto)." },
-
-  { section:"Na viagem", title:"Comprar o Hakone Free Pass — a versão de ODAWARA, não a de Shinjuku",
-    notes:"\"Hakone Area Only\", ¥6.000 por 2 dias, e dá pra comprar na própria estação de Hakone-Yumoto — não precisa quebrar a viagem do Romancecar em Odawara.\nCobre trem de montanha, funicular, teleférico, ônibus Tozan e o barco do Lago Ashi. NÃO cobre o Romancecar, que você compra inteiro e à parte (¥2.470).\nA outra versão (Shinjuku, ¥7.100) inclui a ida e a volta de Odakyu até Shinjuku; com ela você pagaria só a sobretaxa de ¥1.200 do Romancecar, dando ¥8.300 contra ¥8.470 — ¥170 mais barato, mas com mais peça móvel (comprar o passe antes e um bilhete só de sobretaxa). Não vale a troca.\n⚠️ Conferir na compra se o Geo Museum (¥100) entra: não entra." },
-  { section:"Na viagem", title:"Levar ¥20.000 em espécie como reserva",
-    notes:"Sacar em ATM de 7-Eleven/Family Mart, recusando a conversão oferecida pela máquina." },
-  { section:"Na viagem", title:"Tentar pegar o cartão Suica físico ao chegar" },
-  { section:"Na viagem", title:"Kyoto→Osaka: trem local, sem reserva", notes:"~¥580. Não precisa comprar antes." },
-
-  { section:"Dinheiro", title:"Iene comprado", target:248000, unit:"¥",
+  // ===================== ANTES · Dinheiro =====================
+  { section:"ANTES · Dinheiro", title:"Iene comprado", target:248000, unit:"¥",
     notes:"Este número é SEU: edite no lápis conforme for comprando iene. O app não o sobrescreve mais.\nMeta = o cenário econômico (~¥248.000). Médio ~¥322.000, confortável ~¥408.000.\nComposição do econômico: hospedagem ¥102.000 · trens e transporte entre cidades ¥35.670 · alimentação ¥60.000 · transporte local ¥19.500 · ingressos ¥30.000 · taxa de saída ¥3.000.\nJá não entram aqui: teamLab e o museu ao ar livre de Hakone, os dois fora do roteiro." },
+  { section:"ANTES · Dinheiro", title:"2º aporte BRL→JPY na Revolut",
+    notes:"Você optou por esperar o iene cair — lembrar que isso é aposta de câmbio, não a média que a estratégia original buscava." },
+  { section:"ANTES · Dinheiro", title:"Pedir o cartão físico da Revolut",
+    notes:"Leva semanas pra chegar." },
+  { section:"ANTES · Dinheiro", title:"Levar ¥20.000 em espécie como reserva",
+    notes:"Sacar em ATM de 7-Eleven/Family Mart, recusando a conversão oferecida pela máquina." },
+  { section:"ANTES · Dinheiro", title:"Providenciar euros pro dia em Paris" },
 
-  { section:"Avisos que mudam decisões", title:"Ônibus em Hakone: procurar o \"T\" laranja da Tozan",
-    notes:"Existe uma empresa rival na região, a Izu Hakone, com ônibus parecidos que NÃO aceitam o Free Pass — e você paga de novo.\nComo distinguir: o símbolo. \"T\" laranja = Tozan, vale o passe. Leão = Izu Hakone, não vale." },
-  { section:"Avisos que mudam decisões", title:"Kart de rua está fora",
-    notes:"A PID brasileira não vale no Japão — Brasil assinou Viena 1968, Japão só aceita Genebra 1949." },
-  { section:"Avisos que mudam decisões", title:"Kabukicho: combinar preço antes de entrar onde não há cardápio visível" },
-  { section:"Avisos que mudam decisões", title:"Gion: foto proibida nas vielas de Hanamikoji", notes:"Multa ¥10.000." },
-  { section:"Avisos que mudam decisões", title:"Conferir horários de inverno",
+  // ===================== ANTES · ~2 semanas antes (meados de novembro) =====================
+  { section:"ANTES · ~2 semanas antes (meados de novembro)", title:"Shibuya Sky",
+    notes:"Abre 14 dias antes; o slot do pôr do sol some em horas. Entrar entre 15h40 e 16h (pôr do sol é 16h28 em dezembro)." },
+  { section:"ANTES · ~2 semanas antes (meados de novembro)", title:"Reservar restaurantes concorridos pelo Tabelog" },
+
+  // ===================== ANTES · Antes de embarcar (26/11) =====================
+  { section:"ANTES · Antes de embarcar (26/11)", title:"Baixar o app do Suica e adicionar à carteira do celular",
+    notes:"Baixar direto na carteira do celular, sem vincular a nada: os Shinkansen serão comprados nas máquinas da JR, sem smartEX.\n⚠️ Pelo celular, para visitante, o Suica só funciona no iPhone. Em Android, pegar o cartão físico ao chegar (item de 'Nos primeiros dias em Tóquio')." },
+  { section:"ANTES · Antes de embarcar (26/11)", title:"Instalar o Suica digital na carteira do celular",
+    notes:"Suica é um tipo de IC card." },
+  { section:"ANTES · Antes de embarcar (26/11)", title:"Baixar Japan Transit Planner, Tabelog e o mapa offline no Google Maps" },
+  { section:"ANTES · Antes de embarcar (26/11)", title:"Conferir o tempo de conexão em Frankfurt",
+    notes:"O sistema biométrico EES causa filas longas nas fronteiras Schengen desde abril/2026, e é sua primeira entrada no espaço (digitais e foto)." },
+  { section:"ANTES · Antes de embarcar (26/11)", title:"Conferir horários de inverno",
     notes:"Owakudani: em dezembro funciona 9h-16h e o último teleférico é 16h15. Conferir também atividade vulcânica, que às vezes suspende o serviço.\nBarco do Lago Ashi: a tabela de baixa temporada começa em 1º de dezembro — menos saídas. Vento forte cancela a travessia.\nSantuário Hakone: o torii na água costuma ter fila pra foto.\nO sol se põe às 16h33 em Hakone e 16h45 em Kyoto." },
-  { section:"Avisos que mudam decisões", title:"Já fecharam (guias desatualizados ainda listam)",
-    notes:"Contact, Sound Museum Vision, Immersive Fort Tokyo, Unicorn Gundam de Odaiba, GiGO Akihabara prédio 1, Square Enix Café de Akiba." },
-
-  // ===================== TRANSPORTE =====================
-  { section:"Transporte — outubro: preparação", title:"Criar conta no smartEX (no computador, não no app)",
-    notes:"https://smart-ex.jp/en/ — sem taxa nem anuidade. A verificação do banco funciona melhor no desktop.\nPrecisa: nome, data de nascimento, telefone, estação de Shinkansen mais próxima, cartão de crédito, e-mail e método de senha de uso único." },
-  { section:"Transporte — outubro: preparação", title:"Cadastrar o nome do titular EXATAMENTE como impresso no cartão, em letras romanas",
-    notes:"Regra nova desde 25/05/2026. Sem isso as reservas ficam bloqueadas." },
-  { section:"Transporte — outubro: preparação", title:"Testar uma cobrança de verdade no smartEX ainda em outubro",
-    notes:"Exige 3D Secure com o banco. Aceitos: Visa, Mastercard, Amex, Diners, JCB, Discover.\nSe falhar, ligar pro banco e pedir liberação pro smartEX. Melhor descobrir agora que no dia da reserva, com o relógio correndo." },
-  { section:"Transporte — outubro: preparação", title:"Abrir o site do e-Romancecar antes, só pra conhecer a interface",
-    notes:"https://www.web-odakyu.com/e-romancecar/ — não exige cadastro de membro." },
-  { section:"Transporte — outubro: preparação", title:"Conferir se o teleférico de Hakone tem manutenção programada em 02/12",
+  { section:"ANTES · Antes de embarcar (26/11)", title:"Confirmar as datas 2026 da iluminação noturna do Kenninji", done:true,
+    notes:"Saem em outubro. A janela do ano passado (29/nov–13/dez) bate quase exato com a viagem." },
+  { section:"ANTES · Antes de embarcar (26/11)", title:"Conferir se o teleférico de Hakone tem manutenção programada em 02/12", done:true,
     notes:"Em 2025 o trecho Sounzan–Owakudani fechou de 8 a 19 de dezembro pra manutenção de inverno. 02/12 provavelmente está livre, mas confirmar no site oficial — se fechar, há ônibus substituto e o roteiro muda." },
+  { section:"ANTES · Antes de embarcar (26/11)", title:"Reconferir se o ETIAS segue adiado",
+    notes:"Previsão agora é 2027, e ainda haveria 6 meses de tolerância." },
+  { section:"ANTES · Antes de embarcar (26/11)", title:"Se for de mala grande: planejar takkyubin (Yamato) entre hotéis" },
+  { section:"ANTES · Antes de embarcar (26/11)", title:"Adaptador de tomada para o Japão" },
+  { section:"ANTES · Antes de embarcar (26/11)", title:"Digitalizar documentos" },
+  { section:"ANTES · Antes de embarcar (26/11)", title:"Comprar excursão em Gion para dezembro" },
 
-  { section:"Transporte — alarmes (horário de Brasília)", title:"🔔 1 de novembro, 22h — Romancecar Shinjuku → Hakone-Yumoto (viagem 02/12)",
-    notes:"= 2/nov 10h JST. Japão está 12h à frente e o Brasil não tem mais horário de verão.\nQuero saída de Shinjuku entre 8h e 8h30." },
-  { section:"Transporte — alarmes (horário de Brasília)", title:"🔔 2 de novembro, 22h — Shinkansen Odawara → Kyoto (viagem 03/12)",
-    notes:"= 3/nov 10h JST. ⚠️ Sua tabela-resumo dizia \"3/nov 22h Brasília\" — está errado, seria 12h DEPOIS da abertura. A lista de alarmes estava certa; valem as datas desta seção." },
-  { section:"Transporte — alarmes (horário de Brasília)", title:"🔔 8 de novembro, 22h — Shinkansen Shin-Osaka → Tóquio (viagem 09/12)",
-    notes:"= 9/nov 10h JST. ⚠️ Mesma correção: a tabela-resumo dizia \"8/nov 22h Brasília\", 12h tarde demais.\n⚠️ O alarme ANDOU UM DIA (era 7/nov) porque a viagem virou 09/12 com a reserva de Osaka de 3 noites. A venda abre 1 mês antes da data da viagem." },
+  // ===================== ANTES · Passes e transporte — o que NÃO comprar =====================
+  { section:"ANTES · Passes e transporte — o que NÃO comprar", title:"NÃO usar eki-net nem EX Reservation Plus",
+    notes:"Rejeitam a maioria dos cartões estrangeiros em 2026." },
+  { section:"ANTES · Passes e transporte — o que NÃO comprar", title:"NÃO comprar JR Pass",
+    notes:"Para este roteiro sai mais caro que as passagens avulsas." },
+  { section:"ANTES · Passes e transporte — o que NÃO comprar", title:"Total do transporte: ¥35.670",
+    notes:"Romancecar ¥2.470 + Hakone Free Pass ¥6.000 + Odawara→Kyoto ¥12.100 + Kyoto→Osaka ¥580 + Shin-Osaka→Tóquio ¥14.520.\nSubiu ¥2.040 em relação ao plano com museu (¥33.630) porque o loop completo usa teleférico e barco — e aí o passe compensa. É o custo da sua decisão de 16/10, não um erro de conta.\nSua conta original de ¥35.280 ainda era outra coisa: incluía um trecho Odawara→Hakone-Yumoto que o Romancecar já cobre." },
+  { section:"ANTES · Passes e transporte — o que NÃO comprar", title:"Abrir o site do e-Romancecar antes, só pra conhecer a interface", done:true,
+    notes:"https://www.web-odakyu.com/e-romancecar/ — não exige cadastro de membro." },
 
-  { section:"Transporte — 02/12 · Shinjuku → Hakone", title:"Comprar o Romancecar no e-Romancecar — ¥2.470", done:true,
+  // ===================== ANTES · Pendências antigas (setembro) =====================
+  { section:"ANTES · Pendências antigas (setembro)", title:"Reservar o ryokan em Hakone (02→03/12)", done:true,
+    notes:"Fechado: o ryokan em Hakone, quarto japonês tradicional, 02→03/12.\nCancelamento grátis até 29/11/2026 — se mudar de ideia, é até essa data.\nRyokan bom na região sai por volta de ¥50.000 a noite. CONFERIR duas coisas: se o preço é por pessoa ou pelo quarto, e se inclui jantar kaiseki + café (normalmente incluem, e isso muda a conta)." },
+  { section:"ANTES · Pendências antigas (setembro)", title:"Férias na Cubo Itaú", done:true },
+  { section:"ANTES · Pendências antigas (setembro)", title:"Conferir validade do passaporte", done:true },
+  { section:"ANTES · Pendências antigas (setembro)", title:"Definir quantas noites em cada ponta de Tóquio", done:true,
+    notes:"Decidido: 4 noites na chegada (28/11→02/12) e 4 na volta (08/12→12/12), mais 1 na capsule perto do aeroporto (12/12→13/12).\n⚠️ Mudou em 25/10: a reserva de Osaka saiu com 3 noites em vez de 2, então a volta a Tóquio virou 09/12→12/12 · 3 noites. Foi uma noite de Tóquio trocada por uma de Osaka." },
+  { section:"ANTES · Pendências antigas (setembro)", title:"Confirmar com o amigo qual era o karaokê recomendado" },
+
+  // ===================== VIAGEM · Nos primeiros dias em Tóquio =====================
+  { section:"VIAGEM · Nos primeiros dias em Tóquio", title:"Comprar o Shinkansen Odawara → Kyoto (Hikari ou Kodama) na máquina da JR",
+    notes:"Para 03/12. Comprar PRESENCIALMENTE nas máquinas da JR assim que chegar em Tóquio — sem smartEX.\n⚠️ O Nozomi NÃO para em Odawara. Tem que ser Hikari ou Kodama — e o Hikari tem poucas saídas, então vale conferir horário e comprar cedo, ainda mais sendo dezembro.\nTokaido Shinkansen, ~1h54. ¥12.100, ~1h54.\nHakone-Yumoto→Odawara está coberto pelo Free Pass (~15 min)." },
+  { section:"VIAGEM · Nos primeiros dias em Tóquio", title:"Comprar o Shinkansen Shin-Osaka → Tóquio na máquina da JR",
+    notes:"Para 09/12. Comprar PRESENCIALMENTE nas máquinas da JR assim que chegar em Tóquio — sem smartEX.\n¥14.520, ~2h30. Aqui o Nozomi serve e é o mais rápido.\nJR Pass não compensa (¥50.000 o passe)." },
+  { section:"VIAGEM · Nos primeiros dias em Tóquio", title:"Tentar pegar o cartão Suica físico ao chegar" },
+  { section:"VIAGEM · Nos primeiros dias em Tóquio", title:"Kabukicho: combinar preço antes de entrar onde não há cardápio visível" },
+
+  // ===================== VIAGEM · 02/12 · Tóquio → Hakone =====================
+  { section:"VIAGEM · 02/12 · Tóquio → Hakone", title:"Comprar o Romancecar no e-Romancecar — ¥2.470", done:true,
     notes:"✅ COMPRADO — reserva 00011 · Hakone 21 (EXE10) · quarta 02/12 · Shinjuku 08:11 → Hakone-Yumoto 09:53 · 1 adulto, assento comum · ¥1.150.\n⚠️ Chega 09:53, não ~09:30: o trem de montanha das 10h sai 7 min depois. Com o Free Pass pra comprar e a mala pra largar, não cabe — contar com o trem seguinte ou comprar o passe antes.\n⚠️ A conferir: ¥1.150 parece ser só a sobretaxa de expresso; a passagem comum (¥1.270 no plano) é à parte, no portão, com o IC card. O título fica com o ¥2.470 do plano de propósito (título é identidade do item).\nAntes de comprar: saída entre 8h e 8h30 (ex. Hakone 41 às 8h10, chega 9h22). Quarta, dia útil — demanda bem menor que em fim de semana." },
-  { section:"Transporte — 02/12 · Shinjuku → Hakone", title:"Assento: panorâmico se houver no horário bom; se não, janela normal no MESMO horário",
+  { section:"VIAGEM · 02/12 · Tóquio → Hakone", title:"Assento: panorâmico se houver no horário bom; se não, janela normal no MESMO horário",
     notes:"Prioridade nº 1 é chegar cedo em Hakone; o panorâmico é a nº 2. Só existe no modelo 70000 GSE e custa o mesmo que os normais.\nAs janelas do trem são contínuas e de 1 m de altura — qualquer assento de janela já tem vista boa. NÃO trocar um horário bom por um panorâmico mais tarde." },
-  { section:"Transporte — 02/12 · Shinjuku → Hakone", title:"Sair de Asakusa por volta das 7h",
+  { section:"VIAGEM · 02/12 · Tóquio → Hakone", title:"Sair de Asakusa por volta das 7h",
     notes:"São 35-40 min até Shinjuku. O check-out do hotel é até 11h, então não prende." },
-  { section:"Transporte — 02/12 · Shinjuku → Hakone", title:"Chegar 30 min antes — a estação da Odakyu é SEPARADA da JR",
+  { section:"VIAGEM · 02/12 · Tóquio → Hakone", title:"Chegar 30 min antes — a estação da Odakyu é SEPARADA da JR",
     notes:"Fica a sudoeste, embaixo da loja de departamentos Odakyu. Shinjuku é a estação mais movimentada do mundo e é sua primeira vez navegando o metrô de Tóquio. Ir pro lugar errado e perder o trem é erro clássico." },
-  { section:"Transporte — 02/12 · Shinjuku → Hakone", title:"Se perder o trem: a sobretaxa de ¥1.200 é perdida, a passagem comum continua valendo",
+  { section:"VIAGEM · 02/12 · Tóquio → Hakone", title:"Se perder o trem: a sobretaxa de ¥1.200 é perdida, a passagem comum continua valendo",
     notes:"Mudanças e reembolsos só ANTES do horário de partida; depois, nem troca nem reembolso.\nDá pra pegar um Odakyu comum pra Hakone, chegando ~30 min mais tarde e sem assento garantido.\nAntes da partida há flexibilidade: trocar de horário online custa ¥100, inclusive pra mais cedo." },
 
-  { section:"Hakone — 02/12 · o dia (janela de 10h às 17h)", title:"Decidido: loop clássico, sem o museu ao ar livre", done:true,
+  // ===================== VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h) =====================
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"Decidido: loop clássico, sem o museu ao ar livre", done:true,
     notes:"Sua decisão em 16/10. Fica registrado pra não reabrir: o museu pede 2-3h e não cabe junto com o loop — loop + museu no mesmo dia só fecha no papel, com zero folga antes das 17h.\nO loop tem ~3h30 de deslocamento e cinco meios de transporte; o que ele vende de cartão-postal é a vista do Fuji, que você disse não fazer questão. O que sobra e vale: o vale vulcânico, a travessia do lago e o torii na água.\nSe o tempo virar, o plano B é o museu Pola (coberto) — e aí sem Free Pass." },
-  { section:"Hakone — 02/12 · o dia (janela de 10h às 17h)", title:"Comprar o Hakone Free Pass de 2 dias — ¥6.000",
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"Comprar o Hakone Free Pass — a versão de ODAWARA, não a de Shinjuku",
+    notes:"\"Hakone Area Only\", ¥6.000 por 2 dias, e dá pra comprar na própria estação de Hakone-Yumoto — não precisa quebrar a viagem do Romancecar em Odawara.\nCobre trem de montanha, funicular, teleférico, ônibus Tozan e o barco do Lago Ashi. NÃO cobre o Romancecar, que você compra inteiro e à parte (¥2.470).\nA outra versão (Shinjuku, ¥7.100) inclui a ida e a volta de Odakyu até Shinjuku; com ela você pagaria só a sobretaxa de ¥1.200 do Romancecar, dando ¥8.300 contra ¥8.470 — ¥170 mais barato, mas com mais peça móvel (comprar o passe antes e um bilhete só de sobretaxa). Não vale a troca.\n⚠️ Conferir na compra se o Geo Museum (¥100) entra: não entra." },
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"Comprar o Hakone Free Pass de 2 dias — ¥6.000",
     notes:"Com o loop completo o passe passa a compensar: avulso o mesmo trajeto sai ¥6.010 (e no roteiro antigo, com museu, dava prejuízo de ¥2.040).\nAlém do empate no preço, ele tira seis compras de bilhete do dia e cobre o Hakone-Yumoto→Odawara do dia 3.\nComprar na estação de Hakone-Yumoto, na chegada. NÃO cobre o Romancecar nem o Geo Museum (¥100)." },
-  { section:"Hakone — 02/12 · o dia (janela de 10h às 17h)", title:"~9h30 · Chegar em Hakone-Yumoto e largar a mala",
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"Ônibus em Hakone: procurar o \"T\" laranja da Tozan",
+    notes:"Existe uma empresa rival na região, a Izu Hakone, com ônibus parecidos que NÃO aceitam o Free Pass — e você paga de novo.\nComo distinguir: o símbolo. \"T\" laranja = Tozan, vale o passe. Leão = Izu Hakone, não vale." },
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"~9h30 · Chegar em Hakone-Yumoto e largar a mala",
     notes:"No ryokan (fica a 1 parada de trem de Hakone-Yumoto) ou em locker na estação. O quarto só às 15h, mas a mala pode ficar antes." },
-  { section:"Hakone — 02/12 · o dia (janela de 10h às 17h)", title:"10h · Hakone-Yumoto → Gora no trem de montanha — 40 min, no passe",
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"10h · Hakone-Yumoto → Gora no trem de montanha — 40 min, no passe",
     notes:"O trem sobe a encosta em ziguezague, com três reversões em que o condutor troca de ponta. É atração por si só — não é tempo perdido." },
-  { section:"Hakone — 02/12 · o dia (janela de 10h às 17h)", title:"10h50 · Gora → Sounzan no funicular — 10 min, no passe",
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"10h50 · Gora → Sounzan no funicular — 10 min, no passe",
     notes:"Saídas a cada ~15 min. Em Sounzan você já embarca no teleférico." },
-  { section:"Hakone — 02/12 · o dia (janela de 10h às 17h)", title:"11h10 · Sounzan → Owakudani no teleférico — 8 min, no passe",
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"11h10 · Sounzan → Owakudani no teleférico — 8 min, no passe",
     notes:"⚠️ Conferir antes de subir: atividade vulcânica às vezes suspende o trecho, e neblina também fecha.\n⚠️ Em dezembro de 2025 este trecho fechou de 8 a 19/12 pra manutenção — 02/12 deve estar livre, mas é o item de outubro de conferir no site." },
-  { section:"Hakone — 02/12 · o dia (janela de 10h às 17h)", title:"11h25–12h30 · Owakudani (vale vulcânico + ovo preto)",
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"11h25–12h30 · Owakudani (vale vulcânico + ovo preto)",
     notes:"⚠️ Em DEZEMBRO funciona 9h-16h (não 17h) e o último teleférico é 16h15 — você está lá com folga enorme, o risco é zero nesse horário.\nOvo preto no Kurotamago-kan. Geo Museum ¥100 (fora do passe), 9h-16h, no 1º andar.\nO black curry bread da estação é recomendado por quem já foi." },
-  { section:"Hakone — 02/12 · o dia (janela de 10h às 17h)", title:"12h40 · Owakudani → Togendai no teleférico, e 12h50 o barco — no passe",
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"12h40 · Owakudani → Togendai no teleférico, e 12h50 o barco — no passe",
     notes:"Teleférico ~15 min até Togendai, na beira do Lago Ashi; de lá sai o barco pirata.\n⚠️ A tabela de baixa temporada começa em 1º/12 e tem menos saídas: conferir o horário no dia. Vento forte cancela a travessia — se cancelar, há ônibus Togendai→Hakone-machi." },
-  { section:"Hakone — 02/12 · o dia (janela de 10h às 17h)", title:"13h30–14h30 · Santuário Hakone e o torii na água",
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"13h30–14h30 · Santuário Hakone e o torii na água",
     notes:"O barco encosta em Motohakone-ko; o torii fica a ~10 min a pé, dentro do lago. Costuma ter fila pra foto.\nAqui dá pra almoçar — mas leve: o kaiseki é às 17h e são vários pratos." },
-  { section:"Hakone — 02/12 · o dia (janela de 10h às 17h)", title:"14h40 · Ônibus Motohakone → Hakone-Yumoto — 40 min, no passe",
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"14h40 · Ônibus Motohakone → Hakone-Yumoto — 40 min, no passe",
     notes:"⚠️ Procurar o \"T\" laranja da Tozan. A Izu Hakone tem ônibus parecidos (símbolo de leão) que NÃO aceitam o passe — e você paga de novo." },
-  { section:"Hakone — 02/12 · o dia (janela de 10h às 17h)", title:"~15h30 · Voltar pro ryokan e usar o onsen antes do jantar",
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"~15h30 · Voltar pro ryokan e usar o onsen antes do jantar",
     notes:"Este é o ponto alto do dia, não um resto de tempo. Você pagou ¥53.900 pela noite — o onsen com calma vale mais que uma atração extra correndo.\nSobra ~1h30 antes do jantar, que é exatamente o que o banho pede sem pressa." },
-  { section:"Hakone — 02/12 · o dia (janela de 10h às 17h)", title:"⚠️ Estar no quarto às 17h pro jantar kaiseki",
+  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"⚠️ Estar no quarto às 17h pro jantar kaiseki",
     notes:"É o limite duro do dia. Todo o roteiro acima foi montado pra caber com folga antes disso." },
 
-  { section:"Transporte — 03/12 · Hakone → Kyoto", title:"Manhã: café e onsen no ryokan, sem pressa",
+  // ===================== VIAGEM · 03/12 · Hakone → Kyoto =====================
+  { section:"VIAGEM · 03/12 · Hakone → Kyoto", title:"Manhã: café e onsen no ryokan, sem pressa",
     notes:"É o que a diária de ¥53.900 compra. Não trocar isso por mais uma atração." },
-  { section:"Transporte — 03/12 · Hakone → Kyoto", title:"Sair de Hakone-Yumoto entre 10h e 10h30",
+  { section:"VIAGEM · 03/12 · Hakone → Kyoto", title:"Sair de Hakone-Yumoto entre 10h e 10h30",
     notes:"Yumoto→Odawara ~15 min + espera. Shinkansen de Odawara ~11h, chega em Kyoto ~13h.\nPor que não mais cedo: perde a manhã do ryokan. Por que não mais tarde: em Kyoto anoitece às 16h45 em dezembro, e você tem só 3 noites lá." },
-  { section:"Transporte — 03/12 · Hakone → Kyoto", title:"Pular o Castelo de Odawara",
+  { section:"VIAGEM · 03/12 · Hakone → Kyoto", title:"Pular o Castelo de Odawara",
     notes:"Fica na própria estação e cabe em 1h, mas custa uma hora de luz em Kyoto — e castelo não é o seu perfil. Se o tempo estiver ruim e o onsen já estiver feito, é o plano B óbvio." },
-  { section:"Transporte — 03/12 · Hakone → Kyoto", title:"Shinkansen Odawara → Kyoto — ¥12.100, ~1h54",
+  { section:"VIAGEM · 03/12 · Hakone → Kyoto", title:"Shinkansen Odawara → Kyoto — ¥12.100, ~1h54",
     notes:"⚠️ Filtrar por Hikari ou Kodama. O Nozomi NÃO para em Odawara. O Hikari tem poucas saídas — conferir o horário na hora de reservar." },
 
-  { section:"Kyoto — 03/12 · noite de chegada", title:"13h · Largar a mochila no hostel antes de sair pra Gion",
+  // ===================== VIAGEM · 03/12 · Kyoto — noite de chegada =====================
+  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"13h · Largar a mochila no hostel antes de sair pra Gion",
     notes:"O check-in abre às 15h, mas hostel guarda mochila antes — e você chega em Kyoto por volta das 13h.\nO hostel fica a poucos minutos a pé da estação de Kyoto, então o desvio custa meia hora, não uma tarde.\nLevar ¥600 em espécie: é a taxa de hospedagem da cidade (¥200 × 3 noites), cobrada no balcão." },
-  { section:"Kyoto — 03/12 · noite de chegada", title:"17h–18h · Gion ao entardecer — grátis",
+  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"17h–18h · Gion ao entardecer — grátis",
     notes:"Hora em que as maiko saem. O sol se põe às 16h45 em Kyoto no dia 3, então chegar ~13h já dá uma tarde e a noite inteira." },
-  { section:"Kyoto — 03/12 · noite de chegada", title:"17h30–19h30 · Kodaiji, iluminação noturna — ¥800",
+  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"Gion: foto proibida nas vielas de Hanamikoji",
+    notes:"Multa ¥10.000." },
+  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"17h30–19h30 · Kodaiji, iluminação noturna — ¥800",
     notes:"CONFIRMADO para 2026: 23/10 a 13/12, todos os dias das 17h às 22h, última entrada 21h30. Você chega dentro do período.\nJardim do Kobori Enshu iluminado + projection mapping no jardim da Hojo. O pico das folhas é fim de nov/início de dez — cai exatamente na sua janela." },
-  { section:"Kyoto — 03/12 · noite de chegada", title:"Yasaka Shrine com as lanternas acesas — grátis",
+  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"Yasaka Shrine com as lanternas acesas — grátis",
     notes:"Fica entre Gion e Kodaiji, encaixa no caminho sem custo de tempo." },
-  { section:"Kyoto — 03/12 · noite de chegada", title:"Fushimi Inari à noite — grátis",
+  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"Fushimi Inari à noite — grátis",
     notes:"Aberto 24h e muito mais vazio ao entardecer e à noite. Não precisa ser no dia 3 — é o melhor uso de uma das três noites em Kyoto." },
-  { section:"Kyoto — 03/12 · noite de chegada", title:"Conferir se o Kenninji tem iluminação em 2026",
+  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"Conferir se o Kenninji tem iluminação em 2026", done:true,
     notes:"Não achei data confirmada pra 2026 (o valor de ~¥2.000 que você anotou é de anos anteriores). Conferir no site do templo antes de contar com isso." },
 
-  { section:"Kyoto — 05/12 · oficina do anel (hora marcada)", title:"⏰ 05/12, 11h55 · Chegar na oficina do anel — já pago, R$ 132,15",
+  // ===================== VIAGEM · 05/12 · Kyoto — oficina do anel (hora marcada) =====================
+  { section:"VIAGEM · 05/12 · Kyoto — oficina do anel (hora marcada)", title:"⏰ 05/12, 11h55 · Chegar na oficina do anel — já pago, R$ 132,15",
     notes:"Kyoto Ring Making Workshop: Vintage Japanese Coin Ring. Começa 12h, dura 1h, em inglês.\nFukuya Building, 1º andar — 628-1 Suiginyacho, Shimogyo-ku, 600-8411, perto de Shijo/Karasuma. Entrada no nível da rua, com a placa da oficina na porta; o instrutor te recebe lá.\nChegar 11h55: cinco minutos antes, senão você perde o horário.\nVocê escolhe a moeda antiga, martela, dá textura e polimento. Não precisa experiência." },
-  { section:"Kyoto — 05/12 · oficina do anel (hora marcada)", title:"Deixar a reserva acessível no celular antes de sair do hostel",
+  { section:"VIAGEM · 05/12 · Kyoto — oficina do anel (hora marcada)", title:"Deixar a reserva acessível no celular antes de sair do hostel",
     notes:"O ingresso fica no app da GetYourGuide e funciona offline — abrir uma vez antes de sair.\nReserva GYGLMRMV598B. O PIN fica no app e no e-mail — ele não entra neste arquivo, que é público.\nDúvida no dia (achar a porta, atraso): dá pra falar com a operadora pelo app. A operadora é a Traveling Tokyo." },
-  { section:"Kyoto — 05/12 · oficina do anel (hora marcada)", title:"Cancelamento grátis até 04/12 às 12h",
+  { section:"VIAGEM · 05/12 · Kyoto — oficina do anel (hora marcada)", title:"Cancelamento grátis até 04/12 às 12h",
     notes:"Depois desse horário não há reembolso: se não aparecer, perde os R$ 132,15.\nComo é no meio do dia 05/12, o dia inteiro gira em torno dela — o bloco \"Kyoto — 05/12 · oficina do anel\" já sai da oficina pra Gion e termina no Kodaiji." },
 
-  { section:"Transporte — 06/12 e 09/12", title:"06/12 · Kyoto → Osaka: nada a comprar — ~¥580",
+  // ===================== VIAGEM · 06/12 e 09/12 · Kyoto → Osaka → Tóquio =====================
+  { section:"VIAGEM · 06/12 e 09/12 · Kyoto → Osaka → Tóquio", title:"06/12 · Kyoto → Osaka: nada a comprar — ~¥580",
     notes:"Trem local, sai a cada poucos minutos. Só encostar o Suica na catraca." },
-  { section:"Transporte — 06/12 e 09/12", title:"09/12 · Shin-Osaka → Tóquio no smartEX — ¥14.520, ~2h30",
-    notes:"Aqui o Nozomi serve e é o mais rápido.\n⚠️ A data era 08/12 e virou 09/12 quando Osaka ficou com 3 noites. O smartEX abre a venda 1 mês antes: 09/11." },
+  { section:"VIAGEM · 06/12 e 09/12 · Kyoto → Osaka → Tóquio", title:"Kyoto→Osaka: trem local, sem reserva",
+    notes:"~¥580. Não precisa comprar antes." },
+  { section:"VIAGEM · 06/12 e 09/12 · Kyoto → Osaka → Tóquio", title:"09/12 · Shin-Osaka → Tóquio — ¥14.520, ~2h30",
+    notes:"Aqui o Nozomi serve e é o mais rápido.\nBilhete comprado na máquina da JR em Tóquio (sem smartEX).\n⚠️ A data era 08/12 e virou 09/12 quando Osaka ficou com 3 noites." },
 
-  { section:"Transporte — IC card e o que NÃO comprar", title:"Instalar o Suica digital na carteira do celular",
-    notes:"Suica é um tipo de IC card." },
-  { section:"Transporte — IC card e o que NÃO comprar", title:"Cadastrar o Suica DENTRO do smartEX: \"My IC card list\" → \"Add IC card\"",
-    notes:"A ordem é sempre essa: o IC card entra dentro do smartEX, nunca o contrário.\nNa hora da compra, escolher \"Specify Boarding IC Card\" pra vincular.\nA passagem fica guardada na conta do smartEX; o IC card é só a chave que abre a catraca, e a cobrança vai no cartão de crédito, não no saldo do Suica.\nAlternativas se não quiser IC card: QR code do app ou bilhete de papel na estação." },
-  { section:"Transporte — IC card e o que NÃO comprar", title:"NÃO usar eki-net nem EX Reservation Plus",
-    notes:"Rejeitam a maioria dos cartões estrangeiros em 2026." },
-  { section:"Transporte — IC card e o que NÃO comprar", title:"NÃO comprar JR Pass",
-    notes:"Para este roteiro sai mais caro que as passagens avulsas." },
-  { section:"Transporte — IC card e o que NÃO comprar", title:"Total do transporte: ¥35.670",
-    notes:"Romancecar ¥2.470 + Hakone Free Pass ¥6.000 + Odawara→Kyoto ¥12.100 + Kyoto→Osaka ¥580 + Shin-Osaka→Tóquio ¥14.520.\nSubiu ¥2.040 em relação ao plano com museu (¥33.630) porque o loop completo usa teleférico e barco — e aí o passe compensa. É o custo da sua decisão de 16/10, não um erro de conta.\nSua conta original de ¥35.280 ainda era outra coisa: incluía um trecho Odawara→Hakone-Yumoto que o Romancecar já cobre." }
+  // ===================== VIAGEM · Avisos que mudam decisões =====================
+  { section:"VIAGEM · Avisos que mudam decisões", title:"Kart de rua está fora",
+    notes:"A PID brasileira não vale no Japão — Brasil assinou Viena 1968, Japão só aceita Genebra 1949." },
+  { section:"VIAGEM · Avisos que mudam decisões", title:"Já fecharam (guias desatualizados ainda listam)",
+    notes:"Contact, Sound Museum Vision, Immersive Fort Tokyo, Unicorn Gundam de Odaiba, GiGO Akihabara prédio 1, Square Enix Café de Akiba." },
 ];
 
 /* Itens que saíram do planejamento e precisam ser REMOVIDOS de uma lista que já
@@ -6257,12 +6265,23 @@ const CHECKLIST_RETIRED = [
   "Osaka (hostel) — 06/12 → 08/12 · 2 noites",
   "Tóquio 2 (hostel diferente) — 08/12 → 12/12 · 4 noites",
   "08/12 · Shin-Osaka → Tóquio no smartEX — ¥14.520, ~2h30",
-  "🔔 7 de novembro, 22h — Shinkansen Shin-Osaka → Tóquio (viagem 08/12)"
+  "🔔 7 de novembro, 22h — Shinkansen Shin-Osaka → Tóquio (viagem 08/12)",
+  // v2.19.0 — smartEX cancelado: os Shinkansen serão comprados nas máquinas da JR, em Tóquio
+  "Reservar o Shinkansen Odawara→Kyoto (Hikari ou Kodama)",
+  "Reservar o Shinkansen Osaka→Tóquio pelo smartEX",
+  "Criar conta no smartEX (no computador, não no app)",
+  "Cadastrar o nome do titular EXATAMENTE como impresso no cartão, em letras romanas",
+  "Testar uma cobrança de verdade no smartEX ainda em outubro",
+  "🔔 1 de novembro, 22h — Romancecar Shinjuku → Hakone-Yumoto (viagem 02/12)",
+  "🔔 2 de novembro, 22h — Shinkansen Odawara → Kyoto (viagem 03/12)",
+  "🔔 8 de novembro, 22h — Shinkansen Shin-Osaka → Tóquio (viagem 09/12)",
+  "09/12 · Shin-Osaka → Tóquio no smartEX — ¥14.520, ~2h30",
+  "Cadastrar o Suica DENTRO do smartEX: \"My IC card list\" → \"Add IC card\""
 ];
 
 /* Sobe quando o conteúdo acima muda. A lista guardada no navegador é
    reconciliada com o seed novo sem perder o que você já marcou. */
-const CHECKLIST_REV = 10;   // 10: seguro-saúde (v2.18.0); 9: cabelo e mochila (v2.16.2); 8: Romancecar comprado (v2.16.1)
+const CHECKLIST_REV = 11;   // 11: checklist reorganizado, smartEX cancelado (v2.19.0); 10: seguro-saúde (v2.18.0); 9: cabelo e mochila (v2.16.2); 8: Romancecar comprado (v2.16.1)
 /* Reconcile único (v2.16.3), independente do seed: quem ficou preso com a lista velha
    e rev 9 marcado roda o reconcile uma vez, mas o seed NÃO vence as suas notas. */
 const CHECKLIST_RECHECK = 1;
@@ -6287,6 +6306,9 @@ function checkSeedRevKey(){ return `checklist_seedrev_${currentTripId}`; }
 /* Títulos cujas NOTAS mudaram de fato e precisam vir do seed novo. Nos demais
    itens a sua nota vence, pra não apagar nada que você escreveu. */
 const CHECKLIST_RENOTED = [
+  "Comprar e testar o eSIM ainda no Brasil",
+  "Comprar seguro-saúde internacional",
+  "Baixar o app do Suica e adicionar à carteira do celular",
   "Comprar o Romancecar no e-Romancecar — ¥2.470",
   "Tóquio 1 (hostel) — 28/11 → 02/12 · 4 noites",
   "Fechar tudo com cancelamento grátis",
@@ -6300,6 +6322,23 @@ const CHECKLIST_RENOTED = [
   "Iene comprado"
 ];
 
+/* Títulos que o SEED marca como FEITOS, uma única vez, em quem já tem a lista salva (v2.19.0).
+   O reconcile sempre preserva o "feito" que está no aparelho, então um `done:true` no seed só
+   chegava a aparelho novo. Aqui o seed vence UMA vez; depois disso desmarcar vale. A chave só é
+   gravada quando já há sessão (sbReady): antes do login o pull do banco pode trazer a lista
+   velha por cima, e aí a marcação precisa ser reaplicada. */
+const CHECKLIST_FORCEDONE = [
+  "Comprar seguro-saúde internacional",
+  "Comprar e testar o eSIM ainda no Brasil",
+  "Resolver a internet no Japão",
+  "Confirmar as datas 2026 da iluminação noturna do Kenninji",
+  "Conferir se o Kenninji tem iluminação em 2026",
+  "Conferir se o teleférico de Hakone tem manutenção programada em 02/12",
+  "Abrir o site do e-Romancecar antes, só pra conhecer a interface"
+];
+const CHECKLIST_FORCEDONE_REV = 1;
+function checkForceKey(){ return `checklist_forcedone_${currentTripId}`; }
+
 /* Encaixa o seed novo numa lista que já existe no navegador:
    - item do seed que você já tinha  → mantém o "feito" e, em regra, a sua nota
    - item que saiu do planejamento    → sai da lista
@@ -6311,6 +6350,7 @@ function reconcileChecklist(saved){
   // Só na primeira passada depois de um seed novo o seed vence o que está
   // salvo. Nos reconciles seguintes — um por login — o seu texto fica.
   const seedWins = storageGet(checkSeedRevKey(), 0) < CHECKLIST_REV;
+  const forceDone = storageGet(checkForceKey(), 0) < CHECKLIST_FORCEDONE_REV;
   const out = [];
 
   CHECKLIST_SEED.forEach(s => {
@@ -6321,7 +6361,7 @@ function reconcileChecklist(saved){
       section: s.section,
       title: s.title,
       notes: renote ? (s.notes || "") : (old.notes || s.notes || ""),
-      done: old ? !!old.done : !!s.done,
+      done: (forceDone && CHECKLIST_FORCEDONE.includes(s.title)) ? true : (old ? !!old.done : !!s.done),
       // amount é SEU e mais nada: é quanto de iene você já comprou, e o seed
       // não tem como saber. Em item que já existe aqui, o valor salvo sempre
       // vence — foi aqui que o número voltava pro do seed a cada login.
@@ -6353,6 +6393,7 @@ function getChecklist(){
     storageSet(checkRevKey(), CHECKLIST_REV);
     storageSet(checkSeedRevKey(), CHECKLIST_REV);
     storageSet(checkRecheckKey(), CHECKLIST_RECHECK);
+    storageSet(checkForceKey(), CHECKLIST_FORCEDONE_REV);
     return seeded;
   }
   if (storageGet(checkRevKey(), 1) < CHECKLIST_REV || storageGet(checkRecheckKey(), 0) < CHECKLIST_RECHECK) {
@@ -6361,6 +6402,7 @@ function getChecklist(){
     storageSet(checkRevKey(), CHECKLIST_REV);
     storageSet(checkSeedRevKey(), CHECKLIST_REV);
     storageSet(checkRecheckKey(), CHECKLIST_RECHECK);
+    if (sbReady()) storageSet(checkForceKey(), CHECKLIST_FORCEDONE_REV);   // só depois do login (ver CHECKLIST_FORCEDONE)
     setTimeout(() => { if (sbReady()) pushChecklist(); }, 0);   // manda a versão nova pro banco
     return merged;
   }
