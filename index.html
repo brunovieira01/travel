@@ -1004,6 +1004,10 @@
   .todo-note b{ color: var(--ink-2); }
   /* O note do bloco fica no topo da timeline, antes da primeira parada. */
   .block-note{ margin-bottom: var(--s5); border-style: solid; border-left: 3px solid var(--seal); }
+  .day-steps{ margin-bottom: var(--s5); }
+  .day-steps .step{ margin-top: var(--s2); }
+  .day-steps summary{ cursor: pointer; color: var(--ink); font-size: 14px; line-height: 1.4; }
+  .day-steps .step-notes{ margin-top: var(--s1); padding-left: var(--s3); color: var(--ink-3); }
 
   /* ==========================================================
      TELEFONE — abaixo de 760px.
@@ -1443,7 +1447,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.19.0";
+const APP_VERSION = "2.20.0";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
@@ -2792,6 +2796,36 @@ const TRIPS = [
             + "valer a pena</b> — avulso, este mesmo trajeto sai ¥6.010.<br><br>"
             + "O onsen do ryokan é o ponto alto do dia, não o resto do tempo: a volta "
             + "está marcada pra ~15h30 justamente pra ele caber com calma.",
+        steps: [
+          { title:"Decidido: loop clássico, sem o museu ao ar livre", done:true,
+            notes:"Sua decisão em 16/10. Fica registrado pra não reabrir: o museu pede 2-3h e não cabe junto com o loop — loop + museu no mesmo dia só fecha no papel, com zero folga antes das 17h.\nO loop tem ~3h30 de deslocamento e cinco meios de transporte; o que ele vende de cartão-postal é a vista do Fuji, que você disse não fazer questão. O que sobra e vale: o vale vulcânico, a travessia do lago e o torii na água.\nSe o tempo virar, o plano B é o museu Pola (coberto) — e aí sem Free Pass." },
+          { title:"Comprar o Hakone Free Pass — a versão de ODAWARA, não a de Shinjuku",
+            notes:"\"Hakone Area Only\", ¥6.000 por 2 dias, e dá pra comprar na própria estação de Hakone-Yumoto — não precisa quebrar a viagem do Romancecar em Odawara.\nCobre trem de montanha, funicular, teleférico, ônibus Tozan e o barco do Lago Ashi. NÃO cobre o Romancecar, que você compra inteiro e à parte (¥2.470).\nA outra versão (Shinjuku, ¥7.100) inclui a ida e a volta de Odakyu até Shinjuku; com ela você pagaria só a sobretaxa de ¥1.200 do Romancecar, dando ¥8.300 contra ¥8.470 — ¥170 mais barato, mas com mais peça móvel (comprar o passe antes e um bilhete só de sobretaxa). Não vale a troca.\n⚠️ Conferir na compra se o Geo Museum (¥100) entra: não entra." },
+          { title:"Comprar o Hakone Free Pass de 2 dias — ¥6.000",
+            notes:"Com o loop completo o passe passa a compensar: avulso o mesmo trajeto sai ¥6.010 (e no roteiro antigo, com museu, dava prejuízo de ¥2.040).\nAlém do empate no preço, ele tira seis compras de bilhete do dia e cobre o Hakone-Yumoto→Odawara do dia 3.\nComprar na estação de Hakone-Yumoto, na chegada. NÃO cobre o Romancecar nem o Geo Museum (¥100)." },
+          { title:"Ônibus em Hakone: procurar o \"T\" laranja da Tozan",
+            notes:"Existe uma empresa rival na região, a Izu Hakone, com ônibus parecidos que NÃO aceitam o Free Pass — e você paga de novo.\nComo distinguir: o símbolo. \"T\" laranja = Tozan, vale o passe. Leão = Izu Hakone, não vale." },
+          { title:"~9h30 · Chegar em Hakone-Yumoto e largar a mala",
+            notes:"No ryokan (fica a 1 parada de trem de Hakone-Yumoto) ou em locker na estação. O quarto só às 15h, mas a mala pode ficar antes." },
+          { title:"10h · Hakone-Yumoto → Gora no trem de montanha — 40 min, no passe",
+            notes:"O trem sobe a encosta em ziguezague, com três reversões em que o condutor troca de ponta. É atração por si só — não é tempo perdido." },
+          { title:"10h50 · Gora → Sounzan no funicular — 10 min, no passe",
+            notes:"Saídas a cada ~15 min. Em Sounzan você já embarca no teleférico." },
+          { title:"11h10 · Sounzan → Owakudani no teleférico — 8 min, no passe",
+            notes:"⚠️ Conferir antes de subir: atividade vulcânica às vezes suspende o trecho, e neblina também fecha.\n⚠️ Em dezembro de 2025 este trecho fechou de 8 a 19/12 pra manutenção — 02/12 deve estar livre, mas é o item de outubro de conferir no site." },
+          { title:"11h25–12h30 · Owakudani (vale vulcânico + ovo preto)",
+            notes:"⚠️ Em DEZEMBRO funciona 9h-16h (não 17h) e o último teleférico é 16h15 — você está lá com folga enorme, o risco é zero nesse horário.\nOvo preto no Kurotamago-kan. Geo Museum ¥100 (fora do passe), 9h-16h, no 1º andar.\nO black curry bread da estação é recomendado por quem já foi." },
+          { title:"12h40 · Owakudani → Togendai no teleférico, e 12h50 o barco — no passe",
+            notes:"Teleférico ~15 min até Togendai, na beira do Lago Ashi; de lá sai o barco pirata.\n⚠️ A tabela de baixa temporada começa em 1º/12 e tem menos saídas: conferir o horário no dia. Vento forte cancela a travessia — se cancelar, há ônibus Togendai→Hakone-machi." },
+          { title:"13h30–14h30 · Santuário Hakone e o torii na água",
+            notes:"O barco encosta em Motohakone-ko; o torii fica a ~10 min a pé, dentro do lago. Costuma ter fila pra foto.\nAqui dá pra almoçar — mas leve: o kaiseki é às 17h e são vários pratos." },
+          { title:"14h40 · Ônibus Motohakone → Hakone-Yumoto — 40 min, no passe",
+            notes:"⚠️ Procurar o \"T\" laranja da Tozan. A Izu Hakone tem ônibus parecidos (símbolo de leão) que NÃO aceitam o passe — e você paga de novo." },
+          { title:"~15h30 · Voltar pro ryokan e usar o onsen antes do jantar",
+            notes:"Este é o ponto alto do dia, não um resto de tempo. Você pagou ¥53.900 pela noite — o onsen com calma vale mais que uma atração extra correndo.\nSobra ~1h30 antes do jantar, que é exatamente o que o banho pede sem pressa." },
+          { title:"⚠️ Estar no quarto às 17h pro jantar kaiseki",
+            notes:"É o limite duro do dia. Todo o roteiro acima foi montado pra caber com folga antes disso." },
+        ],
         slots: [
           { time:"09:30", stationLabel:"Chegada + mala no ryokan", placeIds:["hakone-yumoto"] },
           { time:"11:10", stationLabel:"Teleférico", placeIds:["hakone-ropeway"] },
@@ -2976,6 +3010,32 @@ const TRIPS = [
         lineColor: "#52B788",
         slots: [
           { time:"09:00", stationLabel:"Veados", placeIds:["nara"] }
+        ]
+      },
+      {
+        label: "Kyoto — 03/12 · noite de chegada",
+        lineColor: "#E76F51",
+        note: "<b>Dia 6 da viagem — quinta, 03/12.</b> Você chega em Kyoto por volta das 13h, larga a mochila e usa a noite: Gion ao entardecer, Yasaka e Kodaiji iluminado.",
+        steps: [
+          { title:"13h · Largar a mochila no hostel antes de sair pra Gion",
+            notes:"O check-in abre às 15h, mas hostel guarda mochila antes — e você chega em Kyoto por volta das 13h.\nO hostel fica a poucos minutos a pé da estação de Kyoto, então o desvio custa meia hora, não uma tarde.\nLevar ¥600 em espécie: é a taxa de hospedagem da cidade (¥200 × 3 noites), cobrada no balcão." },
+          { title:"17h–18h · Gion ao entardecer — grátis",
+            notes:"Hora em que as maiko saem. O sol se põe às 16h45 em Kyoto no dia 3, então chegar ~13h já dá uma tarde e a noite inteira." },
+          { title:"Gion: foto proibida nas vielas de Hanamikoji",
+            notes:"Multa ¥10.000." },
+          { title:"17h30–19h30 · Kodaiji, iluminação noturna — ¥800",
+            notes:"CONFIRMADO para 2026: 23/10 a 13/12, todos os dias das 17h às 22h, última entrada 21h30. Você chega dentro do período.\nJardim do Kobori Enshu iluminado + projection mapping no jardim da Hojo. O pico das folhas é fim de nov/início de dez — cai exatamente na sua janela." },
+          { title:"Yasaka Shrine com as lanternas acesas — grátis",
+            notes:"Fica entre Gion e Kodaiji, encaixa no caminho sem custo de tempo." },
+          { title:"Fushimi Inari à noite — grátis",
+            notes:"Aberto 24h e muito mais vazio ao entardecer e à noite. Não precisa ser no dia 3 — é o melhor uso de uma das três noites em Kyoto." },
+          { title:"Conferir se o Kenninji tem iluminação em 2026", done:true,
+            notes:"Não achei data confirmada pra 2026 (o valor de ~¥2.000 que você anotou é de anos anteriores). Conferir no site do templo antes de contar com isso." },
+        ],
+        slots: [
+          { time:"17:00", stationLabel:"Distrito histórico", placeIds:["gion"] },
+          { time:"17:15", stationLabel:"Santuário iluminado", placeIds:["yasaka"] },
+          { time:"17:30", stationLabel:"Projeção no bambu", placeIds:["kodaiji-noite"] }
         ]
       }
     ]
@@ -6164,36 +6224,6 @@ const CHECKLIST_SEED = [
   { section:"VIAGEM · 02/12 · Tóquio → Hakone", title:"Se perder o trem: a sobretaxa de ¥1.200 é perdida, a passagem comum continua valendo",
     notes:"Mudanças e reembolsos só ANTES do horário de partida; depois, nem troca nem reembolso.\nDá pra pegar um Odakyu comum pra Hakone, chegando ~30 min mais tarde e sem assento garantido.\nAntes da partida há flexibilidade: trocar de horário online custa ¥100, inclusive pra mais cedo." },
 
-  // ===================== VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h) =====================
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"Decidido: loop clássico, sem o museu ao ar livre", done:true,
-    notes:"Sua decisão em 16/10. Fica registrado pra não reabrir: o museu pede 2-3h e não cabe junto com o loop — loop + museu no mesmo dia só fecha no papel, com zero folga antes das 17h.\nO loop tem ~3h30 de deslocamento e cinco meios de transporte; o que ele vende de cartão-postal é a vista do Fuji, que você disse não fazer questão. O que sobra e vale: o vale vulcânico, a travessia do lago e o torii na água.\nSe o tempo virar, o plano B é o museu Pola (coberto) — e aí sem Free Pass." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"Comprar o Hakone Free Pass — a versão de ODAWARA, não a de Shinjuku",
-    notes:"\"Hakone Area Only\", ¥6.000 por 2 dias, e dá pra comprar na própria estação de Hakone-Yumoto — não precisa quebrar a viagem do Romancecar em Odawara.\nCobre trem de montanha, funicular, teleférico, ônibus Tozan e o barco do Lago Ashi. NÃO cobre o Romancecar, que você compra inteiro e à parte (¥2.470).\nA outra versão (Shinjuku, ¥7.100) inclui a ida e a volta de Odakyu até Shinjuku; com ela você pagaria só a sobretaxa de ¥1.200 do Romancecar, dando ¥8.300 contra ¥8.470 — ¥170 mais barato, mas com mais peça móvel (comprar o passe antes e um bilhete só de sobretaxa). Não vale a troca.\n⚠️ Conferir na compra se o Geo Museum (¥100) entra: não entra." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"Comprar o Hakone Free Pass de 2 dias — ¥6.000",
-    notes:"Com o loop completo o passe passa a compensar: avulso o mesmo trajeto sai ¥6.010 (e no roteiro antigo, com museu, dava prejuízo de ¥2.040).\nAlém do empate no preço, ele tira seis compras de bilhete do dia e cobre o Hakone-Yumoto→Odawara do dia 3.\nComprar na estação de Hakone-Yumoto, na chegada. NÃO cobre o Romancecar nem o Geo Museum (¥100)." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"Ônibus em Hakone: procurar o \"T\" laranja da Tozan",
-    notes:"Existe uma empresa rival na região, a Izu Hakone, com ônibus parecidos que NÃO aceitam o Free Pass — e você paga de novo.\nComo distinguir: o símbolo. \"T\" laranja = Tozan, vale o passe. Leão = Izu Hakone, não vale." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"~9h30 · Chegar em Hakone-Yumoto e largar a mala",
-    notes:"No ryokan (fica a 1 parada de trem de Hakone-Yumoto) ou em locker na estação. O quarto só às 15h, mas a mala pode ficar antes." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"10h · Hakone-Yumoto → Gora no trem de montanha — 40 min, no passe",
-    notes:"O trem sobe a encosta em ziguezague, com três reversões em que o condutor troca de ponta. É atração por si só — não é tempo perdido." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"10h50 · Gora → Sounzan no funicular — 10 min, no passe",
-    notes:"Saídas a cada ~15 min. Em Sounzan você já embarca no teleférico." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"11h10 · Sounzan → Owakudani no teleférico — 8 min, no passe",
-    notes:"⚠️ Conferir antes de subir: atividade vulcânica às vezes suspende o trecho, e neblina também fecha.\n⚠️ Em dezembro de 2025 este trecho fechou de 8 a 19/12 pra manutenção — 02/12 deve estar livre, mas é o item de outubro de conferir no site." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"11h25–12h30 · Owakudani (vale vulcânico + ovo preto)",
-    notes:"⚠️ Em DEZEMBRO funciona 9h-16h (não 17h) e o último teleférico é 16h15 — você está lá com folga enorme, o risco é zero nesse horário.\nOvo preto no Kurotamago-kan. Geo Museum ¥100 (fora do passe), 9h-16h, no 1º andar.\nO black curry bread da estação é recomendado por quem já foi." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"12h40 · Owakudani → Togendai no teleférico, e 12h50 o barco — no passe",
-    notes:"Teleférico ~15 min até Togendai, na beira do Lago Ashi; de lá sai o barco pirata.\n⚠️ A tabela de baixa temporada começa em 1º/12 e tem menos saídas: conferir o horário no dia. Vento forte cancela a travessia — se cancelar, há ônibus Togendai→Hakone-machi." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"13h30–14h30 · Santuário Hakone e o torii na água",
-    notes:"O barco encosta em Motohakone-ko; o torii fica a ~10 min a pé, dentro do lago. Costuma ter fila pra foto.\nAqui dá pra almoçar — mas leve: o kaiseki é às 17h e são vários pratos." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"14h40 · Ônibus Motohakone → Hakone-Yumoto — 40 min, no passe",
-    notes:"⚠️ Procurar o \"T\" laranja da Tozan. A Izu Hakone tem ônibus parecidos (símbolo de leão) que NÃO aceitam o passe — e você paga de novo." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"~15h30 · Voltar pro ryokan e usar o onsen antes do jantar",
-    notes:"Este é o ponto alto do dia, não um resto de tempo. Você pagou ¥53.900 pela noite — o onsen com calma vale mais que uma atração extra correndo.\nSobra ~1h30 antes do jantar, que é exatamente o que o banho pede sem pressa." },
-  { section:"VIAGEM · 02/12 · Hakone — o dia (janela de 10h às 17h)", title:"⚠️ Estar no quarto às 17h pro jantar kaiseki",
-    notes:"É o limite duro do dia. Todo o roteiro acima foi montado pra caber com folga antes disso." },
-
   // ===================== VIAGEM · 03/12 · Hakone → Kyoto =====================
   { section:"VIAGEM · 03/12 · Hakone → Kyoto", title:"Manhã: café e onsen no ryokan, sem pressa",
     notes:"É o que a diária de ¥53.900 compra. Não trocar isso por mais uma atração." },
@@ -6203,22 +6233,6 @@ const CHECKLIST_SEED = [
     notes:"Fica na própria estação e cabe em 1h, mas custa uma hora de luz em Kyoto — e castelo não é o seu perfil. Se o tempo estiver ruim e o onsen já estiver feito, é o plano B óbvio." },
   { section:"VIAGEM · 03/12 · Hakone → Kyoto", title:"Shinkansen Odawara → Kyoto — ¥12.100, ~1h54",
     notes:"⚠️ Filtrar por Hikari ou Kodama. O Nozomi NÃO para em Odawara. O Hikari tem poucas saídas — conferir o horário na hora de reservar." },
-
-  // ===================== VIAGEM · 03/12 · Kyoto — noite de chegada =====================
-  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"13h · Largar a mochila no hostel antes de sair pra Gion",
-    notes:"O check-in abre às 15h, mas hostel guarda mochila antes — e você chega em Kyoto por volta das 13h.\nO hostel fica a poucos minutos a pé da estação de Kyoto, então o desvio custa meia hora, não uma tarde.\nLevar ¥600 em espécie: é a taxa de hospedagem da cidade (¥200 × 3 noites), cobrada no balcão." },
-  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"17h–18h · Gion ao entardecer — grátis",
-    notes:"Hora em que as maiko saem. O sol se põe às 16h45 em Kyoto no dia 3, então chegar ~13h já dá uma tarde e a noite inteira." },
-  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"Gion: foto proibida nas vielas de Hanamikoji",
-    notes:"Multa ¥10.000." },
-  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"17h30–19h30 · Kodaiji, iluminação noturna — ¥800",
-    notes:"CONFIRMADO para 2026: 23/10 a 13/12, todos os dias das 17h às 22h, última entrada 21h30. Você chega dentro do período.\nJardim do Kobori Enshu iluminado + projection mapping no jardim da Hojo. O pico das folhas é fim de nov/início de dez — cai exatamente na sua janela." },
-  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"Yasaka Shrine com as lanternas acesas — grátis",
-    notes:"Fica entre Gion e Kodaiji, encaixa no caminho sem custo de tempo." },
-  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"Fushimi Inari à noite — grátis",
-    notes:"Aberto 24h e muito mais vazio ao entardecer e à noite. Não precisa ser no dia 3 — é o melhor uso de uma das três noites em Kyoto." },
-  { section:"VIAGEM · 03/12 · Kyoto — noite de chegada", title:"Conferir se o Kenninji tem iluminação em 2026", done:true,
-    notes:"Não achei data confirmada pra 2026 (o valor de ~¥2.000 que você anotou é de anos anteriores). Conferir no site do templo antes de contar com isso." },
 
   // ===================== VIAGEM · 05/12 · Kyoto — oficina do anel (hora marcada) =====================
   { section:"VIAGEM · 05/12 · Kyoto — oficina do anel (hora marcada)", title:"⏰ 05/12, 11h55 · Chegar na oficina do anel — já pago, R$ 132,15",
@@ -6276,12 +6290,34 @@ const CHECKLIST_RETIRED = [
   "🔔 2 de novembro, 22h — Shinkansen Odawara → Kyoto (viagem 03/12)",
   "🔔 8 de novembro, 22h — Shinkansen Shin-Osaka → Tóquio (viagem 09/12)",
   "09/12 · Shin-Osaka → Tóquio no smartEX — ¥14.520, ~2h30",
-  "Cadastrar o Suica DENTRO do smartEX: \"My IC card list\" → \"Add IC card\""
+  "Cadastrar o Suica DENTRO do smartEX: \"My IC card list\" → \"Add IC card\"",
+  // v2.20.0 — passo a passo de Hakone (02/12) e Kyoto (03/12) saiu do checklist e foi para o plano do dia
+  "Decidido: loop clássico, sem o museu ao ar livre",
+  "Comprar o Hakone Free Pass — a versão de ODAWARA, não a de Shinjuku",
+  "Comprar o Hakone Free Pass de 2 dias — ¥6.000",
+  "Ônibus em Hakone: procurar o \"T\" laranja da Tozan",
+  "~9h30 · Chegar em Hakone-Yumoto e largar a mala",
+  "10h · Hakone-Yumoto → Gora no trem de montanha — 40 min, no passe",
+  "10h50 · Gora → Sounzan no funicular — 10 min, no passe",
+  "11h10 · Sounzan → Owakudani no teleférico — 8 min, no passe",
+  "11h25–12h30 · Owakudani (vale vulcânico + ovo preto)",
+  "12h40 · Owakudani → Togendai no teleférico, e 12h50 o barco — no passe",
+  "13h30–14h30 · Santuário Hakone e o torii na água",
+  "14h40 · Ônibus Motohakone → Hakone-Yumoto — 40 min, no passe",
+  "~15h30 · Voltar pro ryokan e usar o onsen antes do jantar",
+  "⚠️ Estar no quarto às 17h pro jantar kaiseki",
+  "13h · Largar a mochila no hostel antes de sair pra Gion",
+  "17h–18h · Gion ao entardecer — grátis",
+  "Gion: foto proibida nas vielas de Hanamikoji",
+  "17h30–19h30 · Kodaiji, iluminação noturna — ¥800",
+  "Yasaka Shrine com as lanternas acesas — grátis",
+  "Fushimi Inari à noite — grátis",
+  "Conferir se o Kenninji tem iluminação em 2026"
 ];
 
 /* Sobe quando o conteúdo acima muda. A lista guardada no navegador é
    reconciliada com o seed novo sem perder o que você já marcou. */
-const CHECKLIST_REV = 11;   // 11: checklist reorganizado, smartEX cancelado (v2.19.0); 10: seguro-saúde (v2.18.0); 9: cabelo e mochila (v2.16.2); 8: Romancecar comprado (v2.16.1)
+const CHECKLIST_REV = 12;   // 12: passo a passo de Hakone e Kyoto foi para o plano do dia (v2.20.0); 11: checklist reorganizado, smartEX cancelado (v2.19.0); 10: seguro-saúde (v2.18.0); 9: cabelo e mochila (v2.16.2); 8: Romancecar comprado (v2.16.1)
 /* Reconcile único (v2.16.3), independente do seed: quem ficou preso com a lista velha
    e rev 9 marcado roda o reconcile uma vez, mas o seed NÃO vence as suas notas. */
 const CHECKLIST_RECHECK = 1;
@@ -6824,6 +6860,18 @@ function renderTimeline(){
     note.className = "todo-note block-note";
     note.innerHTML = day.note;
     timeline.appendChild(note);
+  }
+
+  // Passo a passo do dia (day.steps): o que antes morava no checklist. Cada passo abre
+  // pra mostrar as notas. Só leitura — não é tarefa, então não tem "feito".
+  if (day.steps && day.steps.length) {
+    const box = document.createElement("div");
+    box.className = "todo-note day-steps";
+    box.innerHTML = `<b>Passo a passo (${day.steps.length})</b>` + day.steps.map(st => {
+      const body = st.notes ? `<div class="step-notes">${esc(st.notes).replace(/\n/g, "<br>")}</div>` : "";
+      return `<details class="step"><summary>${esc(st.title)}</summary>${body}</details>`;
+    }).join("");
+    timeline.appendChild(box);
   }
 
   const maxOrder = Math.max(10, day.slots.length);

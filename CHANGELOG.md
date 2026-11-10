@@ -4,6 +4,15 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.20.0 — 2026-11-09
+
+**Passo a passo de Hakone e Kyoto saiu do checklist e foi para o plano do dia.** Pedido (por voz): o checklist não é lugar de passo a passo; Hakone e Kyoto tinham um detalhado e os outros dias não, então mover pra aba do plano.
+- Hakone: os 14 itens da seção "02/12 · Hakone — o dia" agora aparecem em "Passo a passo", no topo do bloco "Hakone — 02/12 · o dia". Mesmo texto, mesma ordem.
+- Kyoto: os 7 itens da seção "03/12 · Kyoto — noite de chegada" foram para um bloco novo, "Kyoto — 03/12 · noite de chegada" (Gion, Yasaka, Kodaiji), no mesmo formato. O bloco é novo porque não havia nenhum bloco do dia 03/12.
+- Cada passo abre pra mostrar as notas. É só leitura, sem "feito": os itens que estavam marcados como feitos perdem a marca.
+- Checklist: os 21 títulos entram em `CHECKLIST_RETIRED` e `CHECKLIST_REV` sobe para 12, então saem também da lista já guardada no celular. Os demais itens e o que você marcou ficam como estão.
+- Não mexi na seção "05/12 · oficina do anel" (hora marcada, lembrete de reserva) nem nas seções de trajeto (Tóquio → Hakone, Hakone → Kyoto).
+
 ## 2.19.0 — 2026-11-08
 
 **Checklist reorganizado; smartEX cancelado.** Pedido: deixar o checklist mais claro no celular, principalmente as ações imediatas.
