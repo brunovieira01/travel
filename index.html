@@ -1447,7 +1447,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.21.0";
+const APP_VERSION = "2.21.1";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
@@ -4843,7 +4843,7 @@ function staysRevKey(){ return `stays_rev_${currentTripId}`; }
    usa o serviço. É por isso que a W-Inn (hospedagem de 28/11) aparece em
    novembro, e o ryokan (reservado em setembro) aparece em dezembro.
    ========================================================== */
-const EXPENSES_REV = 8;   // 8: Romancecar comprado, ¥1.150 (v2.16.1)
+const EXPENSES_REV = 9;   // 9: Beau M Paris, R$ 200,01 (v2.21.1); 8: Romancecar comprado, ¥1.150 (v2.16.1)
 
 const EXPENSE_CATEGORIES = ["voo","hospedagem","transporte","comida","passeio","compras","outro"];
 const EXPENSE_STATUSES  = ["pago","agendado","estimado"];
@@ -4907,6 +4907,10 @@ const EXPENSES_SEED = {
     { id:"exp-hostel-osaka", label:"Hostel Chillax Osaka — 3 noites", group:"", category:"hospedagem",
       currency:"JPY", amount:6318, method:"Cartão de crédito", chargeDate:"2026-11-27", status:"agendado",
       notes:"Agoda, reserva 1070495302. Dormitório de 6 beliches, 06→09/12.\nQuarto ¥5.220 + impostos e taxas ¥1.098 = ¥6.318.\n⚠️ Fica em \"agendado\" porque a Agoda só debita o cartão em 27/11 — um dia ANTES de fechar o cancelamento grátis (28/11). Se cancelar nessa janela, conferir o estorno.\nTaxa de hospedagem de Osaka: ¥0 — a faixa começa em ¥5.000 por pessoa por noite e aqui dá ¥1.740.\nEndereço e número da reserva na aba Hospedagem." },
+
+    { id:"exp-hostel-paris", label:"Beau M Paris — 1 noite", group:"", category:"hospedagem",
+      currency:"BRL", amount:200.01, method:"", chargeDate:"", status:"pago",
+      notes:"Dormitório compartilhado, 13→14/12. Pago on-line, impostos R$ 14,97 e taxa de hospedagem R$ 4,16 inclusos.\n⚠️ Fora disso: € 2,60 (≈ R$ 16,95) de cobrança extra, a pagar no hotel.\nForma de pagamento e data do débito ficaram em branco de propósito: não vieram no comprovante.\nEndereço, telefone e número da reserva na aba Hospedagem." },
 
     { id:"exp-romancecar", label:"Romancecar Hakone 21 — Shinjuku → Hakone-Yumoto", group:"", category:"transporte",
       currency:"JPY", amount:1150, method:"", chargeDate:"", status:"pago",
@@ -5075,7 +5079,7 @@ function expenseTotals(list, fx){
 // Subir isto faz as reservas novas do seed chegarem a quem já tem dados
 // salvos. Sem isso, getStays() via `saved` e devolvia cedo — o seed só valia
 // num aparelho virgem, e a W-Inn nunca apareceria neste aqui.
-const STAYS_REV = 6;   // 6: vaga em branco em Paris 13→14/12 (v2.21.0); 5: Hostel Chillax, Osaka 06→09/12 (v2.15.0)
+const STAYS_REV = 7;   // 7: Beau M Paris reservado, 13→14/12 (v2.21.1); 6: vaga em branco em Paris 13→14/12 (v2.21.0); 5: Hostel Chillax, Osaka 06→09/12 (v2.15.0)
 
 /* As reservas já fechadas, que vêm junto com a viagem.
 
@@ -5125,9 +5129,12 @@ const STAYS_SEED = {
       lat:34.6691747, lng:135.4894316,
       notes:"Cama em dormitório de 6 beliches, 20 m², não-fumantes. Café e chá, água, wi-fi e bicicleta inclusos.\nCheck-in 15h · check-out 11h.\n¥6.318 no total: quarto ¥5.220 + impostos e taxas ¥1.098. A Agoda debita o cartão sozinha em 27/11 — por isso o lançamento em Custos fica \"agendado\" até lá.\nCancelamento grátis até 28/11; em 29/11 vira parcialmente reembolsável e em 06/12 não reembolsável. Não aparecer cobra 100%.\nTaxa de hospedagem de Osaka: ¥0. A faixa começa em ¥5.000 por pessoa por noite (mudou em 01/09/2025, era ¥7.000) e aqui dá ¥1.740.\n⚠️ O pino é do quadrante 幸町二丁目, não da porta: o prédio não está no OpenStreetMap e o endereço da Agoda vem sem o nome do bairro. Conferir no mapa da Agoda antes de sair da estação.\nAgoda não usa PIN: quem abre a reserva é a conta dele." },
 
-    { id:"stay-paris", name:"Paris — hotel a definir", city:"Paris", type:"Hotel",
-      status:"ideia", checkin:"2026-12-13", checkout:"2026-12-14",
-      price:"", bookedOn:"", site:"", code:"", address:"", notes:"" }
+    { id:"stay-paris", name:"Beau M Paris", city:"Paris", type:"Hostel",
+      status:"pago", checkin:"2026-12-13", checkout:"2026-12-14",
+      price:"R$ 200,01", bookedOn:"", site:"",
+      code:"Reserva 1207317004749894",
+      address:"108 Rue Damrémont, 75018 Paris, França",
+      notes:"Telefone +33-1-84743425.\nDormitório compartilhado misto de 12 camas, 1 cama de solteiro. Banheiro privativo e toalha. Sem refeições. Ocupação: 1 hóspede.\nCheck-in 13/12 das 15h às 00h · check-out 14/12 antes das 10h30 (horário local do hotel, Paris).\nR$ 200,01 pagos on-line (impostos R$ 14,97 e taxa de hospedagem R$ 4,16 inclusos).\n⚠️ Cobrança extra no hotel: € 2,60 (≈ R$ 16,95), pagar no local.\nNão fazer o check-in gera taxa de cancelamento.\nO site da reserva e a data em que foi feita não vieram no comprovante, por isso ficaram em branco." }
   ]
 };
 

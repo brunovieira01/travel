@@ -4,6 +4,12 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.21.1 — 2026-11-23
+
+**A hospedagem de Paris foi registrada.** Pedido: adicionar a reserva de Paris que ele colou. A vaga em branco virou uma reserva paga, e ganhou uma linha em Custos. Os detalhes (endereço, telefone, número) estão só na aba Hospedagem.
+- `STAYS_REV` 7 e `EXPENSES_REV` 9, pra chegar aos aparelhos que já têm dados salvos.
+- Campos que o comprovante não trazia (site, data da reserva, forma de pagamento, data do débito) ficaram em branco.
+
 ## 2.21.0 — 2026-11-21
 
 **Paris entrou na viagem, com a hospedagem em branco.** Pedido (por voz): "add to the travel app the day that I will be in Paris, which is from the 13th to the 14th ... add the space there so that I can add the hotel later." Confirmou que é dezembro, logo depois da saída do Japão.
