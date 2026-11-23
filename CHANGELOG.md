@@ -4,6 +4,14 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.21.0 — 2026-11-21
+
+**Paris entrou na viagem, com a hospedagem em branco.** Pedido (por voz): "add to the travel app the day that I will be in Paris, which is from the 13th to the 14th ... add the space there so that I can add the hotel later." Confirmou que é dezembro, logo depois da saída do Japão.
+- Roteiro: nova parada "Paris", 13/12 → 14/12, sem cidades do catálogo (não afeta os blocos de atrações).
+- Hospedagem: uma reserva vazia "Paris — hotel a definir", status ideia, 13/12 → 14/12. Sem hotel, endereço, preço nem código: é só editar pelo lápis quando decidir.
+- `STAYS_REV` 6, pra a vaga chegar aos aparelhos que já têm reservas salvas.
+- Não mexi na faixa "Cobertura das noites" (continua 28/11 a 12/12).
+
 ## 2.20.0 — 2026-11-09
 
 **Passo a passo de Hakone e Kyoto saiu do checklist e foi para o plano do dia.** Pedido (por voz): o checklist não é lugar de passo a passo; Hakone e Kyoto tinham um detalhado e os outros dias não, então mover pra aba do plano.

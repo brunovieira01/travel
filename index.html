@@ -1447,7 +1447,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.20.0";
+const APP_VERSION = "2.21.0";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
@@ -2232,7 +2232,8 @@ const TRIPS = [
       { label:"Kyoto",     cities:["Kyoto","Nara"],   checkin:"2026-12-03", checkout:"2026-12-06" },
       { label:"Osaka",     cities:["Osaka"],          checkin:"2026-12-06", checkout:"2026-12-09" },
       { label:"Tóquio 2",  cities:["Tóquio"],         checkin:"2026-12-09", checkout:"2026-12-12" },
-      { label:"Aeroporto", cities:[],                 checkin:"2026-12-12", checkout:"2026-12-13" }
+      { label:"Aeroporto", cities:[],                 checkin:"2026-12-12", checkout:"2026-12-13" },
+      { label:"Paris",     cities:[],                 checkin:"2026-12-13", checkout:"2026-12-14" }
     ],
     places: [
       // ===================== TÓQUIO =====================
@@ -3550,6 +3551,8 @@ async function resolveStayLocation(stay){
   const cached = storageGet(`stayloc_${stay.id}`, null);
   if (cached) return cached;
   if (!usingGoogle || !stay.name) return null;
+  // Paris fica fora do Japão: a busca acrescenta "Japan" e acharia um lugar errado.
+  if (/^paris$/i.test(stay.city || "")) return null;
   const query = [stay.name, stay.address || stay.city, "Japan"].filter(Boolean).join(", ");
   return new Promise(resolve => {
     let done = false;
@@ -5072,7 +5075,7 @@ function expenseTotals(list, fx){
 // Subir isto faz as reservas novas do seed chegarem a quem já tem dados
 // salvos. Sem isso, getStays() via `saved` e devolvia cedo — o seed só valia
 // num aparelho virgem, e a W-Inn nunca apareceria neste aqui.
-const STAYS_REV = 5;   // 5: Hostel Chillax, Osaka 06→09/12 (v2.15.0)
+const STAYS_REV = 6;   // 6: vaga em branco em Paris 13→14/12 (v2.21.0); 5: Hostel Chillax, Osaka 06→09/12 (v2.15.0)
 
 /* As reservas já fechadas, que vêm junto com a viagem.
 
@@ -5120,7 +5123,11 @@ const STAYS_SEED = {
       code:"Reserva 1070495302",
       address:"Saiwaicho 2-1-3 (CHILLOUT Building), Naniwa-ku, 556-0021 Osaka (〒556-0021 大阪市浪速区幸町2-1-3)",
       lat:34.6691747, lng:135.4894316,
-      notes:"Cama em dormitório de 6 beliches, 20 m², não-fumantes. Café e chá, água, wi-fi e bicicleta inclusos.\nCheck-in 15h · check-out 11h.\n¥6.318 no total: quarto ¥5.220 + impostos e taxas ¥1.098. A Agoda debita o cartão sozinha em 27/11 — por isso o lançamento em Custos fica \"agendado\" até lá.\nCancelamento grátis até 28/11; em 29/11 vira parcialmente reembolsável e em 06/12 não reembolsável. Não aparecer cobra 100%.\nTaxa de hospedagem de Osaka: ¥0. A faixa começa em ¥5.000 por pessoa por noite (mudou em 01/09/2025, era ¥7.000) e aqui dá ¥1.740.\n⚠️ O pino é do quadrante 幸町二丁目, não da porta: o prédio não está no OpenStreetMap e o endereço da Agoda vem sem o nome do bairro. Conferir no mapa da Agoda antes de sair da estação.\nAgoda não usa PIN: quem abre a reserva é a conta dele." }
+      notes:"Cama em dormitório de 6 beliches, 20 m², não-fumantes. Café e chá, água, wi-fi e bicicleta inclusos.\nCheck-in 15h · check-out 11h.\n¥6.318 no total: quarto ¥5.220 + impostos e taxas ¥1.098. A Agoda debita o cartão sozinha em 27/11 — por isso o lançamento em Custos fica \"agendado\" até lá.\nCancelamento grátis até 28/11; em 29/11 vira parcialmente reembolsável e em 06/12 não reembolsável. Não aparecer cobra 100%.\nTaxa de hospedagem de Osaka: ¥0. A faixa começa em ¥5.000 por pessoa por noite (mudou em 01/09/2025, era ¥7.000) e aqui dá ¥1.740.\n⚠️ O pino é do quadrante 幸町二丁目, não da porta: o prédio não está no OpenStreetMap e o endereço da Agoda vem sem o nome do bairro. Conferir no mapa da Agoda antes de sair da estação.\nAgoda não usa PIN: quem abre a reserva é a conta dele." },
+
+    { id:"stay-paris", name:"Paris — hotel a definir", city:"Paris", type:"Hotel",
+      status:"ideia", checkin:"2026-12-13", checkout:"2026-12-14",
+      price:"", bookedOn:"", site:"", code:"", address:"", notes:"" }
   ]
 };
 
