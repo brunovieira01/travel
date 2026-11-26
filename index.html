@@ -1166,7 +1166,7 @@
       <span id="plan-summary" class="plan-summary"></span>
       <div class="plan-toolbar-actions">
         <button class="gmaps-btn" id="plan-new">+ Entrada livre</button>
-        <button class="link-btn" id="plan-clear">Limpar tudo</button>
+        <button class="link-btn" id="plan-clear" hidden style="display:none;">Limpar tudo</button>
       </div>
     </div>
     <div class="day-map-panel" id="day-map-panel">
@@ -1346,7 +1346,7 @@
     <div class="plan-toolbar-actions">
       <button class="gmaps-btn" id="check-new">+ Novo item</button>
       <button class="link-btn" id="check-prio-toggle">Agrupar por prioridade</button>
-      <button class="link-btn" id="check-reset">Restaurar lista original</button>
+      <button class="link-btn" id="check-reset" hidden style="display:none;">Restaurar lista original</button>
     </div>
   </div>
   <div class="check-search">
@@ -1447,7 +1447,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.21.1";
+const APP_VERSION = "2.21.2";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa

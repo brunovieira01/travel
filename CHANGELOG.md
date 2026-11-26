@@ -4,6 +4,12 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.21.2 — 2026-11-23
+
+**Os botões que apagam tudo de uma vez foram escondidos.** Pedido de emergência dele.
+- "Limpar tudo" (roteiro) e "Restaurar lista original" (checklist) não aparecem mais. O resto continua igual, incluindo excluir um item de cada vez.
+- Os botões continuam no código, só escondidos, então voltam com uma linha.
+
 ## 2.21.1 — 2026-11-23
 
 **A hospedagem de Paris foi registrada.** Pedido: adicionar a reserva de Paris que ele colou. A vaga em branco virou uma reserva paga, e ganhou uma linha em Custos. Os detalhes (endereço, telefone, número) estão só na aba Hospedagem.
