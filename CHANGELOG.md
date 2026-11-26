@@ -4,6 +4,15 @@ Versão fica em `APP_VERSION`, no topo do `<script>` do `index.html`, e aparece 
 ao lado do título. Regra: bump no mesmo commit da mudança — patch para correção,
 minor para feature.
 
+## 2.22.0 — 2026-11-23
+
+**Botão rápido de tier, Meus dias ligado ao "Já fui", e duas reservas no plano.** Pedidos dele.
+- **Tier em um toque.** Cada atração (na aba Atrações e na janela de detalhes) ganhou três botões 1, 2 e 3, com o atual marcado. A troca vale pro filtro, a cor do pino e o agrupamento, e sincroniza entre aparelhos (vai na mesma tabela do "Já fui", como uma linha `tier~N~id` com `visited:false`; não precisa de migração). Escolher o tier original de novo limpa a troca.
+- **Meus dias × "Já fui".** Há uma lista só de lugares visitados. Em Meus dias, cada atração mostra "✓ já fui" quando já foi visitada (mesmo se estava planejada pra outro dia), e ganhou um botão "já fui / desmarcar" que liga e desliga essa mesma lista sem carimbar horário de novo. O "Já fui" do catálogo continua carimbando a visita em Meus dias, uma vez só.
+- **Reservas em Meus dias.** O Romancecar (02/12) e a oficina do anel (05/12, 12h) entram uma vez por aparelho (`PLAN_SEED_REV` 1), depois que o banco é lido, sem duplicar se o dia já tem uma entrada igual. Se ele apagar uma, ela não volta.
+- **Correção: salvar duas vezes seguidas.** O plano e a lista de visitados apagam e reinserem tudo; dois cliques rápidos faziam dois salvamentos ao mesmo tempo e deixavam cada linha duplicada no banco (ou erro de chave repetida). Agora o segundo espera o primeiro.
+- Verificado num navegador simulado com um banco de mentira compartilhado por cinco aparelhos (55 checagens). Não foi testado no banco real.
+
 ## 2.21.2 — 2026-11-23
 
 **Os botões que apagam tudo de uma vez foram escondidos.** Pedido de emergência dele.

@@ -830,6 +830,13 @@
   .cat-fact span{ font-size: 12.5px; font-weight:500; color: var(--ink); }
   .cat-actions{ display:flex; gap: var(--s3); align-items:center; flex-wrap:wrap; margin-top: var(--s1); }
   .cat-actions .spacer{ flex:1; }
+  .tier-quick{ display:inline-flex; gap:4px; align-items:center; }
+  .tier-q{ width:30px; height:30px; border-radius:50%; border:2px solid var(--tc); background:transparent; color:var(--tc);
+           font-weight:800; font-size:13px; line-height:1; cursor:pointer; padding:0; }
+  .tier-q.on{ background:var(--tc); color:#fff; }
+  .plan-visited{ display:inline-block; margin-left:8px; padding:1px 8px; border-radius:10px; background:rgba(46,196,182,.18);
+                 color:#2EC4B6; font-size:11.5px; font-weight:700; vertical-align:middle; }
+  .plan-item.is-visited .plan-item-name{ opacity:.65; }
   .cat-empty{ padding: var(--s8) var(--gutter); text-align:center; color: var(--ink-3); font-size: 14px; }
   .tags{ display:flex; gap: 6px; flex-wrap:wrap; }
   .tag{
@@ -1416,6 +1423,7 @@
       <div class="gd" id="modal-google"></div>
       <div class="modal-actions">
         <a class="pin-link" id="modal-pin-link" target="_blank" rel="noopener">Ver no mapa</a>
+        <span id="modal-tier"></span>
         <button class="link-btn" id="modal-hide-btn">Já fui</button>
       </div>
     </div>
@@ -1447,7 +1455,7 @@
    ========================================================== */
 // Bump a cada mudança (patch = correção, minor = feature) + entrada no CHANGELOG.md,
 // no mesmo commit. Aparece no header pra dar pra saber qual versão está carregada.
-const APP_VERSION = "2.21.2";
+const APP_VERSION = "2.22.0";
 
 /* ⚠️ ESTE ARQUIVO É PÚBLICO (github.com/brunovieira01/travel, GitHub Pages).
    A tela de login esconde a INTERFACE, não o fonte: qualquer pessoa baixa
@@ -3108,6 +3116,40 @@ function storageSet(key, value){
   storageSet("photos_rev", 3);
 })();
 
+/* ---- importância (tier) trocada por ele ----
+   O tier de fábrica fica em _tier0; a troca dele vale por cima. Vai pro banco na mesma
+   tabela do "Já fui" (place_status), como linha "tier~N~id" com visited:false — assim não
+   precisa de migração e a leitura do "Já fui" (que só olha visited:true) a ignora. */
+const TIER_ROW = /^tier~([123])~(.+)$/;
+function tierOvrKey(){ return `tier_ovr_${currentTripId}`; }
+function applyTierOverrides(){
+  const o = storageGet(tierOvrKey(), {});
+  currentTrip().places.forEach(p => {
+    if (p._tier0 === undefined) p._tier0 = p.tier;
+    p.tier = o[p.id] || p._tier0;
+  });
+}
+function setPlaceTier(placeId, tier){
+  const p = placeById(placeId);
+  if (!p || ![1, 2, 3].includes(tier)) return;
+  const o = storageGet(tierOvrKey(), {});
+  if (tier === p._tier0) delete o[placeId]; else o[placeId] = tier;
+  storageSet(tierOvrKey(), o);
+  applyTierOverrides();
+  pushPlaceStatus();
+}
+function tierQuick(p){
+  return `<span class="tier-quick" role="group" aria-label="Importância">${[1, 2, 3].map(t =>
+    `<button type="button" class="tier-q${p.tier === t ? " on" : ""}" data-set-tier="${t}" data-tier-place="${p.id}" style="--tc:${tierColor(t)}" title="${tierLabel(t)}" aria-label="Tier ${t}">${t}</button>`).join("")}</span>`;
+}
+function wireTierButtons(root, after){
+  root.querySelectorAll("[data-set-tier]").forEach(b => b.onclick = (ev) => {
+    ev.stopPropagation();
+    setPlaceTier(b.dataset.tierPlace, Number(b.dataset.setTier));
+    after(b.dataset.tierPlace);
+  });
+}
+
 function hiddenKey(tripId){ return `hidden_places_${tripId}`; }
 function isHidden(placeId){ return storageGet(hiddenKey(currentTripId), []).includes(placeId); }
 function hidePlace(placeId){
@@ -3211,7 +3253,9 @@ function boot(){
   attachCombo(document.getElementById("my-location-input"), () => routeLabels, () => setManualLocation());
   attachCombo(document.getElementById("origin-input"), () => routeLabels);
   attachCombo(document.getElementById("dest-input"), () => routeLabels);
+  applyTierOverrides();
   migratePlanFormat();
+  if (!sb) applyPlanSeed();
   renderTripSelect();
   renderViewTabs();
   renderSubTabs();
@@ -3291,6 +3335,7 @@ function renderTripSelect(){
   document.getElementById("trip-title").textContent = currentTrip().title;
   sel.onchange = () => {
     currentTripId = sel.value;
+    applyTierOverrides();
     currentDayIndex = 0;
     document.getElementById("trip-title").textContent = currentTrip().title;
     renderMapView();
@@ -3747,6 +3792,9 @@ async function openPlaceModal(place){
   document.getElementById("modal-desc").innerHTML = descParts.map(p => `<p style="margin:4px 0;">${p}</p>`).join("");
   document.getElementById("modal-pin-link").href = directionsUrl(place);
   document.getElementById("modal-pin-link").dataset.pinFor = place.id;
+  const modalTier = document.getElementById("modal-tier");
+  const paintModalTier = () => { modalTier.innerHTML = tierQuick(place); wireTierButtons(modalTier, () => { paintModalTier(); renderCatalog(); renderMapView(); renderTimeline(); }); };
+  paintModalTier();
   document.getElementById("modal-hide-btn").onclick = () => { markVisited(place.id); closePlaceModal(); renderMapView(); renderTimeline(); };
 
   const carousel = document.getElementById("modal-carousel");
@@ -4512,6 +4560,7 @@ async function pullFromSupabase(){
   const bancoVazio = !stays.data?.length && !items.data?.length
                   && !status.data?.length && !checks.data?.length;
   if (bancoVazio && !expenses.data?.length) {
+    applyPlanSeed();
     await Promise.all([pushStays(), pushPlan(), pushPlaceStatus(), pushChecklist(), pushExpenses()]);
     return;
   }
@@ -4557,7 +4606,12 @@ async function pullFromSupabase(){
   }
   if (status.data?.length) {
     storageSet(hiddenKey(currentTripId), status.data.filter(r => r.visited).map(r => r.place_id));
+    const ovr = {};
+    status.data.forEach(r => { const m = TIER_ROW.exec(r.place_id || ""); if (m) ovr[m[2]] = Number(m[1]); });
+    storageSet(tierOvrKey(), ovr);
+    applyTierOverrides();
   }
+  if (applyPlanSeed()) await pushPlan();
   if (checks.data?.length) {
     // O banco pode estar numa revisão anterior do checklist (outro aparelho, ou
     // de antes desta atualização). Marca como antiga: o próximo getChecklist()
@@ -4656,7 +4710,19 @@ async function pushStays(){
   renderAuthBar();
 }
 
+/* pushPlan e pushPlaceStatus apagam a tabela e reinserem tudo. Dois cliques seguidos
+   disparavam dois pushes ao mesmo tempo: os dois apagam, os dois inserem, e o banco fica com
+   cada linha duas vezes (ou recusa a segunda por chave repetida e a barra mostra erro).
+   Agora um push em andamento só marca "rodar de novo" — e o de novo lê o estado mais recente. */
+let planPushing = false, planPushAgain = false;
 async function pushPlan(){
+  if (!sbReady()) return;
+  if (planPushing) { planPushAgain = true; return; }
+  planPushing = true;
+  try { do { planPushAgain = false; await pushPlanOnce(); } while (planPushAgain); }
+  finally { planPushing = false; }
+}
+async function pushPlanOnce(){
   if (!sbReady()) return;
   try {
     const plan = getPlan();
@@ -4779,16 +4845,25 @@ async function pushChecklistNow(){
   renderAuthBar();
 }
 
+let statusPushing = false, statusPushAgain = false;
 async function pushPlaceStatus(){
+  if (!sbReady()) return;
+  if (statusPushing) { statusPushAgain = true; return; }
+  statusPushing = true;
+  try { do { statusPushAgain = false; await pushPlaceStatusOnce(); } while (statusPushAgain); }
+  finally { statusPushing = false; }
+}
+async function pushPlaceStatusOnce(){
   if (!sbReady()) return;
   try {
     const hidden = storageGet(hiddenKey(currentTripId), []);
+    const ovr = storageGet(tierOvrKey(), {});
+    const rows = [
+      ...hidden.map(pid => ({ id: uuid(), user_id: sbUser.id, trip_id: sbTripId, place_id: pid, visited: true })),
+      ...Object.entries(ovr).map(([pid, t]) => ({ id: uuid(), user_id: sbUser.id, trip_id: sbTripId, place_id: `tier~${t}~${pid}`, visited: false }))
+    ];
     await sbRun(sb.from("place_status").delete().eq("trip_id", sbTripId), "apagar status");
-    if (hidden.length) {
-      await sbRun(sb.from("place_status").insert(hidden.map(pid => ({
-        id: uuid(), user_id: sbUser.id, trip_id: sbTripId, place_id: pid, visited: true
-      }))), "salvar status");
-    }
+    if (rows.length) await sbRun(sb.from("place_status").insert(rows), "salvar status");
     syncState = "on"; syncErrorMsg = "";
   } catch (e) { console.error(e); syncState = "err"; syncErrorMsg = e.message || String(e); }
   renderAuthBar();
@@ -5785,6 +5860,36 @@ function wireCosts(){
   });
 }
 
+/* Reservas que ele já fez e que têm de aparecer em Meus dias. Meus dias é dado do usuário (não
+   tem semente como o checklist), então isto entra UMA vez por aparelho e por revisão, e só
+   depois que o banco foi lido (senão a leitura apagaria o que entrou). Se o dia já tem uma
+   entrada igual (mesma atração, ou o mesmo título), não duplica. Apagar depois vale: não volta
+   enquanto PLAN_SEED_REV não subir. */
+const PLAN_SEED_REV = 1;   // 1: Romancecar 02/12 e oficina do anel 05/12 (v2.22.0)
+const PLAN_SEED = [
+  { day:"2026-12-02", placeId:"", title:"Romancecar Hakone 21 — Shinjuku → Hakone-Yumoto", start:"08:11",
+    notes:"e-Romancecar (EXE10), 1 adulto, assento comum. Chega em Hakone-Yumoto às 09:53.\nA passagem comum (¥1.270) é à parte, paga no portão com o IC card.\nPra embarcar: o cartão usado na compra e a página da compra, à mão." },
+  { day:"2026-12-05", placeId:"anel-kyoto", title:"", start:"12:00",
+    notes:"⏰ Hora marcada, já pago. Chegar às 11h55, Fukuya Building (628-1 Suiginyacho, Shimogyo-ku).\nCancelamento grátis até 04/12 às 12h." },
+];
+function planSeedKey(){ return `plan_seed_rev_${currentTripId}`; }
+function applyPlanSeed(){
+  if (storageGet(planSeedKey(), 0) >= PLAN_SEED_REV) return false;
+  const plan = getPlan();
+  let changed = false;
+  PLAN_SEED.forEach(sd => {
+    if (!TRIP_DATES.some(x => x.key === sd.day)) return;
+    const list = plan[sd.day] = plan[sd.day] || [];
+    const dup = list.some(i => (sd.placeId && i.placeId === sd.placeId) || (sd.title && i.title === sd.title));
+    if (dup) return;
+    list.push({ id: newItemId(), placeId: sd.placeId, title: sd.title, start: sd.start, notes: sd.notes });
+    changed = true;
+  });
+  if (changed) savePlan(plan);
+  storageSet(planSeedKey(), PLAN_SEED_REV);
+  return changed;
+}
+
 function planKey(){ return `myplan_${currentTripId}`; }
 
 function getPlan(){ return storageGet(planKey(), {}); }
@@ -6009,14 +6114,15 @@ function renderMyPlan(){
           <button class="link-btn" data-up="${d.key}|${it.id}" ${li > 0 ? "" : "disabled style=opacity:.3"}>↑</button>
           <button class="link-btn" data-down="${d.key}|${it.id}" ${li < loose.length - 1 ? "" : "disabled style=opacity:.3"}>↓</button>`;
       return `${leg}
-      <div class="plan-item ${p ? "" : "plan-free"}">
+      <div class="plan-item ${p ? "" : "plan-free"} ${p && isHidden(p.id) ? "is-visited" : ""}">
         <div class="plan-time ${it.start ? "" : "empty"}">${it.start || "—"}</div>
         <div class="plan-item-main">
-          <div class="plan-item-name">${name}</div>
+          <div class="plan-item-name">${name}${p && isHidden(p.id) ? '<span class="plan-visited">✓ já fui</span>' : ""}</div>
           <div class="plan-item-meta">${meta}</div>
           ${it.notes ? `<div class="plan-item-notes">${esc(it.notes)}</div>` : ""}
         </div>
         <div class="plan-item-actions">${arrows}
+          ${p ? `<button class="link-btn" data-visit="${p.id}">${isHidden(p.id) ? "desmarcar" : "já fui"}</button>` : ""}
           <button class="link-btn" data-edit="${d.key}|${it.id}">editar</button>
           <button class="link-btn" data-rm="${it.id}">remover</button>
         </div>
@@ -6059,6 +6165,12 @@ function renderMyPlan(){
     openPlanModal(k, (getPlan()[k] || []).find(i => i.id === id));
   });
   body.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { planRemove(b.dataset.rm); renderMyPlan(); });
+  // Um só "Já fui" no app inteiro: aqui só liga e desliga (sem carimbar horário de novo).
+  body.querySelectorAll("[data-visit]").forEach(b => b.onclick = () => {
+    const id = b.dataset.visit;
+    isHidden(id) ? unhidePlace(id) : hidePlace(id);
+    renderMyPlan(); renderCatalog(); renderMapView(); renderTimeline();
+  });
   body.querySelectorAll("[data-up]").forEach(b => b.onclick = () => {
     const [k, id] = b.dataset.up.split("|"); planMove(k, id, -1); renderMyPlan();
   });
@@ -6693,6 +6805,7 @@ function renderCatalog(){
             <div class="cat-actions">
               <a class="pin-link" data-pin-for="${p.id}" target="_blank" rel="noopener" href="${directionsUrl(p)}">Ver no mapa</a>
               <span class="spacer"></span>
+              ${tierQuick(p)}
               <button class="link-btn" data-cat-hide="${p.id}">${visited ? "Desmarcar" : "Já fui"}</button>
             </div>
           </div>
@@ -6701,6 +6814,7 @@ function renderCatalog(){
     return `<div class="cat-group-title">${k}<span class="n">${groups[k].length}</span></div><div class="cat-grid">${cards}</div>`;
   }).join("");
 
+  wireTierButtons(body, () => { renderCatalog(); renderMapView(); renderTimeline(); });
   body.querySelectorAll("[data-cat-hide]").forEach(b => b.onclick = () => {
     const id = b.dataset.catHide;
     isHidden(id) ? unhidePlace(id) : markVisited(id);
